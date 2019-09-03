@@ -23,6 +23,10 @@
 #include "os/windows/win32.h"
 #endif
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 #include <time.h>
 
 #include "network/network_admin.h"
@@ -124,6 +128,9 @@ char *DumpDebugFacilityNames(char *buf, char *last)
  */
 static void debug_print(const char *dbg, const char *buf)
 {
+#ifdef __ANDROID__
+	__android_log_print(ANDROID_LOG_INFO, "OpenTTD", "[%s] %s", dbg, buf);
+#endif
 	if (_debug_socket != INVALID_SOCKET) {
 		char buf2[1024 + 32];
 

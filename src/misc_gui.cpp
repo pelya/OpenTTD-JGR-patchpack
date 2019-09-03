@@ -36,6 +36,10 @@
 
 #include "safeguards.h"
 
+#ifdef __ANDROID__
+#include <SDL_screenkeyboard.h>
+#endif
+
 /** Method to open the OSK. */
 enum OskActivation {
 	OSKA_DISABLED,           ///< The OSK shall not be activated at all.
@@ -43,6 +47,8 @@ enum OskActivation {
 	OSKA_SINGLE_CLICK,       ///< Single click after focus click opens OSK.
 	OSKA_IMMEDIATELY,        ///< Focusing click already opens OSK.
 };
+
+static char _android_text_input[512];
 
 
 static const NWidgetPart _nested_land_info_widgets[] = {
@@ -817,6 +823,14 @@ void QueryString::HandleEditBox(Window *w, int wid)
 		/* For the OSK also invalidate the parent window */
 		if (w->window_class == WC_OSK) w->InvalidateData();
 	}
+#ifdef __ANDROID__
+	if (SDL_IsScreenKeyboardShown(NULL)) {
+		if (SDL_ANDROID_GetScreenKeyboardTextInputAsync(_android_text_input, sizeof(_android_text_input)) == SDL_ANDROID_TEXTINPUT_ASYNC_FINISHED) {
+			this->text.Assign(_android_text_input);
+			w->OnEditboxChanged(wid);
+		}
+	}
+#endif
 }
 
 void QueryString::DrawEditBox(const Window *w, int wid) const
@@ -996,6 +1010,11 @@ void QueryString::ClickEditBox(Window *w, Point pt, int wid, int click_count, bo
 		/* Open the OSK window */
 		ShowOnScreenKeyboard(w, wid);
 	}
+#ifdef __ANDROID__
+	strecpy(_android_text_input, this->text.buf, lastof(_android_text_input));
+	this->text.DeleteAll();
+	SDL_ANDROID_GetScreenKeyboardTextInputAsync(_android_text_input, sizeof(_android_text_input));
+#endif
 }
 
 /** Class for the string query window. */

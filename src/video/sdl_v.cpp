@@ -31,6 +31,9 @@
 #include "../3rdparty/mingw-std-threads/mingw.mutex.h"
 #include "../3rdparty/mingw-std-threads/mingw.condition_variable.h"
 #endif
+#ifdef __ANDROID__
+#include <SDL_android.h>
+#endif
 #include <algorithm>
 
 #include "../safeguards.h"
@@ -158,7 +161,11 @@ static void DrawSurfaceToScreen()
 	PerformanceMeasurer framerate(PFE_VIDEO);
 
 	int n = _num_dirty_rects;
+#ifdef __ANDROID__
+	if (n == 0 && !_left_button_down) return; // We have to update the screen regularly to receive mouse_up event on Android
+#else
 	if (n == 0) return;
+#endif
 
 	_num_dirty_rects = 0;
 	if (n > MAX_DIRTY_RECTS) {
@@ -172,7 +179,9 @@ static void DrawSurfaceToScreen()
 				SDL_BlitSurface(_sdl_screen, &_dirty_rects[i], _sdl_realscreen, &_dirty_rects[i]);
 			}
 		}
-		SDL_UpdateRects(_sdl_realscreen, n, _dirty_rects);
+		static SDL_Rect dummy_rect = { 0, 0, 8, 8 };
+		if (n > 0) SDL_UpdateRects(_sdl_realscreen, n, _dirty_rects);
+		else SDL_UpdateRects(_sdl_realscreen, 1, &dummy_rect);
 	}
 }
 
@@ -230,7 +239,9 @@ static void GetVideoModes()
 			_resolutions.emplace_back(w, h);
 		}
 		if (_resolutions.empty()) usererror("No usable screen resolutions found!\n");
+#if !defined(__ANDROID__) // Android has native screen sizes first, do not sort them
 		SortResolutions();
+#endif
 	}
 }
 
@@ -245,8 +256,14 @@ static void GetAvailableVideoMode(uint *w, uint *h)
 	/* Use the closest possible resolution */
 	uint best = 0;
 	uint delta = Delta(_resolutions[0].width, *w) * Delta(_resolutions[0].height, *h);
+	if (*w <= 1) {
+		delta = Delta(_resolutions[0].height, *h);
+	}
 	for (uint i = 1; i != _resolutions.size(); ++i) {
 		uint newdelta = Delta(_resolutions[i].width, *w) * Delta(_resolutions[i].height, *h);
+		if (*w <= 1) {
+			newdelta = Delta(_resolutions[i].height, *h);
+		}
 		if (newdelta < delta) {
 			best = i;
 			delta = newdelta;
@@ -398,6 +415,10 @@ bool VideoDriver_SDL::CreateMainSurface(uint w, uint h)
 
 	GameSizeChanged();
 
+#ifdef __ANDROID__
+	SDL_ANDROID_SetSystemMousePointerVisible(0); // We have our own cursor, only works on Android N
+#endif
+
 	return true;
 }
 
@@ -494,6 +515,8 @@ static uint ConvertSdlKeyIntoMy(SDL_keysym *sym, WChar *character)
 	if (sym->scancode == 49) key = WKC_BACKSPACE;
 #elif defined(__sgi__)
 	if (sym->scancode == 22) key = WKC_BACKQUOTE;
+#elif defined(__ANDROID__)
+	if (sym->scancode == SDLK_BACKQUOTE) key = WKC_BACKQUOTE;
 #else
 	if (sym->scancode == 49) key = WKC_BACKQUOTE;
 #endif
@@ -517,7 +540,9 @@ int VideoDriver_SDL::PollEvent()
 	switch (ev.type) {
 		case SDL_MOUSEMOTION:
 			if (_cursor.UpdateCursorPosition(ev.motion.x, ev.motion.y, true)) {
+#ifndef __ANDROID__ // No mouse warping on Android, mouse strictly follows finger
 				SDL_WarpMouse(_cursor.pos.x, _cursor.pos.y);
+#endif
 			}
 			HandleMouseEvents();
 			break;
@@ -559,6 +584,7 @@ int VideoDriver_SDL::PollEvent()
 			HandleMouseEvents();
 			break;
 
+#ifndef __ANDROID__
 		case SDL_ACTIVEEVENT:
 			if (!(ev.active.state & SDL_APPMOUSEFOCUS)) break;
 
@@ -569,7 +595,7 @@ int VideoDriver_SDL::PollEvent()
 				_cursor.in_window = false;
 			}
 			break;
-
+#endif /* not __ANDROID__ */
 		case SDL_QUIT:
 			HandleExitGameRequest();
 			break;
@@ -582,15 +608,34 @@ int VideoDriver_SDL::PollEvent()
 				WChar character;
 				uint keycode = ConvertSdlKeyIntoMy(&ev.key.keysym, &character);
 				HandleKeypress(keycode, character);
+#ifdef __ANDROID__
+				if (ev.key.keysym.sym == SDLK_LCTRL || ev.key.keysym.sym == SDLK_RCTRL) {
+					_ctrl_pressed = true;
+				}
+				if (ev.key.keysym.sym == SDLK_LSHIFT || ev.key.keysym.sym == SDLK_RSHIFT) {
+					_shift_pressed = true;
+				}
+#endif
 			}
 			break;
-
+		case SDL_KEYUP:
+#ifdef __ANDROID__
+			if (ev.key.keysym.sym == SDLK_LCTRL || ev.key.keysym.sym == SDLK_RCTRL) {
+				_ctrl_pressed = false;
+			}
+			if (ev.key.keysym.sym == SDLK_LSHIFT || ev.key.keysym.sym == SDLK_RSHIFT) {
+				_shift_pressed = false;
+			}
+#endif
+			break;
+#ifndef __ANDROID__
 		case SDL_VIDEORESIZE: {
 			int w = max(ev.resize.w, 64);
 			int h = max(ev.resize.h, 64);
 			CreateMainSurface(w, h);
 			break;
 		}
+#endif /* not __ANDROID__ */
 		case SDL_VIDEOEXPOSE: {
 			/* Force a redraw of the entire screen. Note
 			 * that SDL 1.2 seems to do this automatically
@@ -630,6 +675,9 @@ const char *VideoDriver_SDL::Start(const char * const *parm)
 	SetupKeyboard();
 
 	_draw_threaded = GetDriverParam(parm, "no_threads") == nullptr && GetDriverParam(parm, "no_thread") == nullptr;
+#ifdef __ANDROID__
+	_draw_threaded = false;
+#endif
 
 	return nullptr;
 }
@@ -729,8 +777,10 @@ void VideoDriver_SDL::MainLoop()
 
 			bool old_ctrl_pressed = _ctrl_pressed;
 
+#ifndef __ANDROID__
 			_ctrl_pressed  = !!(mod & KMOD_CTRL);
 			_shift_pressed = !!(mod & KMOD_SHIFT);
+#endif
 
 			/* determine which directional keys are down */
 			_dirkeys =

@@ -82,6 +82,7 @@
 #include "linkgraph/linkgraphschedule.h"
 #include "tracerestrict.h"
 
+#include <stdlib.h>
 #include <stdarg.h>
 #include <system_error>
 
@@ -814,6 +815,11 @@ int openttd_main(int argc, char *argv[])
 	 * just be out of the bounds of the window. */
 	_cursor.in_window = true;
 
+#ifdef __ANDROID__
+	// Configure local font path on Android
+	setenv("FONTCONFIG_FONTS", "fonts", 1);
+	DEBUG(misc, 1, "Set FONTCONFIG_FONTS to %s", getenv("FONTCONFIG_FONTS"));
+#endif
 	/* enumerate language files */
 	InitializeLanguagePacks();
 

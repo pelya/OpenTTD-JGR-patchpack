@@ -29,6 +29,10 @@ static FMusicDriver_FluidSynth iFMusicDriver_FluidSynth;
 
 /** List of sound fonts to try by default. */
 static const char *default_sf[] = {
+#ifdef __ANDROID__
+	"GeneralUser-GS-v1.471.sf2",
+#endif
+
 	/* Debian/Ubuntu/OpenSUSE preferred */
 	"/usr/share/sounds/sf2/FluidR3_GM.sf2",
 

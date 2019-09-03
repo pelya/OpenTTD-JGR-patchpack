@@ -28,7 +28,7 @@
 
 #ifdef __APPLE__
 	#include <sys/mount.h>
-#elif (defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L) || defined(__GLIBC__)
+#elif ((defined(_POSIX_VERSION) && _POSIX_VERSION >= 200112L) || defined(__GLIBC__)) && !defined(__ANDROID__)
 	#define HAS_STATVFS
 #endif
 
@@ -55,6 +55,10 @@
 #	endif
 
 #	include "../macosx/macos.h"
+#endif
+
+#ifdef __ANDROID__
+	#include "android/log.h"
 #endif
 
 #include "../../safeguards.h"
@@ -223,6 +227,9 @@ void ShowInfo(const char *str)
 #if !defined(__APPLE__)
 void ShowOSErrorBox(const char *buf, bool system)
 {
+#ifdef __ANDROID__
+	__android_log_print(ANDROID_LOG_FATAL, "OpenTTD", "[ERROR] %s", buf);
+#endif
 	/* All unix systems, except OSX. Only use escape codes on a TTY. */
 	if (isatty(fileno(stderr))) {
 		fprintf(stderr, "\033[1;31mError: %s\033[0;39m\n", buf);
@@ -235,6 +242,11 @@ void ShowOSErrorBox(const char *buf, bool system)
 #ifdef WITH_COCOA
 void cocoaSetupAutoreleasePool();
 void cocoaReleaseAutoreleasePool();
+#endif
+
+#ifdef __ANDROID__
+#define main SDL_main
+extern "C" int CDECL main(int, char *[]);
 #endif
 
 int CDECL main(int argc, char *argv[])
@@ -279,10 +291,23 @@ void OSOpenBrowser(const char *url)
 	pid_t child_pid = fork();
 	if (child_pid != 0) return;
 
+#ifdef __ANDROID__
+	const char *args[9];
+	args[0] = "/system/bin/am";
+	args[1] = "start";
+	args[2] = "-a";
+	args[3] = "android.intent.action.VIEW";
+	args[4] = "--user";
+	args[5] = "0";
+	args[6] = "-d";
+	args[7] = url;
+	args[8] = nullptr;
+#else
 	const char *args[3];
 	args[0] = "xdg-open";
 	args[1] = url;
 	args[2] = nullptr;
+#endif
 	execvp(args[0], const_cast<char * const *>(args));
 	DEBUG(misc, 0, "Failed to open url: %s", url);
 	exit(0);
