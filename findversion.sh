@@ -115,7 +115,7 @@ elif [ -f "$ROOT_DIR/.ottdrev-vc" ]; then
 		MODIFIED="1"
 	else
 		CURRENT_HASH="`$ROOT_DIR/version_utils.sh -s`"
-		if [ "$CURRENT_HASH" != "$HASH_DATA" ]; then
+		if [ "$CURRENT_HASH" != "$HASH_DATA" ] && false; then
 			MODIFIED="2"
 			VERSION="${VERSION}-H`echo "$CURRENT_HASH" | cut -c 1-8`"
 		fi
