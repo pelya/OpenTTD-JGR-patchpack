@@ -40,8 +40,8 @@
 #include "station_base.h"
 #include "station_kdtree.h"
 #include "roadstop_base.h"
-#include "dock_base.h"
 #include "newgrf_railtype.h"
+#include "newgrf_roadtype.h"
 #include "waypoint_base.h"
 #include "waypoint_func.h"
 #include "pbs.h"
@@ -57,17 +57,11 @@
 #include "linkgraph/refresh.h"
 #include "widgets/station_widget.h"
 #include "zoning.h"
+#include "tunnelbridge_map.h"
 
 #include "table/strings.h"
 
 #include "safeguards.h"
-
-/**
- * Static instance of FlowStat::SharesMap.
- * Note: This instance is created on task start.
- *       Lazy creation on first usage results in a data race between the CDist threads.
- */
-/* static */ const FlowStat::SharesMap FlowStat::empty_sharesmap;
 
 /**
  * Check whether the given tile is a hangar.
@@ -402,7 +396,7 @@ void Station::GetTileArea(TileArea *ta, StationType type) const
 
 		case STATION_DOCK:
 		case STATION_OILRIG:
-			*ta = this->dock_station;
+			*ta = this->docking_station;
 			break;
 
 		default: NOT_REACHED();
@@ -988,10 +982,10 @@ static CommandCost CheckFlatLandRailStation(TileArea tile_area, DoCommandFlag fl
  * @param is_truck_stop True when building a truck stop, false otherwise.
  * @param axis Axis of a drive-through road stop.
  * @param station StationID to be queried and returned if available.
- * @param rts Road types to build.
+ * @param rt Road type to build.
  * @return The cost in case of success, or an error code if it failed.
  */
-static CommandCost CheckFlatLandRoadStop(TileArea tile_area, DoCommandFlag flags, uint invalid_dirs, bool is_drive_through, bool is_truck_stop, Axis axis, StationID *station, RoadTypes rts)
+static CommandCost CheckFlatLandRoadStop(TileArea tile_area, DoCommandFlag flags, uint invalid_dirs, bool is_drive_through, bool is_truck_stop, Axis axis, StationID *station, RoadType rt)
 {
 	CommandCost cost(EXPENSES_CONSTRUCTION);
 	int allowed_z = -1;
@@ -1042,47 +1036,57 @@ static CommandCost CheckFlatLandRoadStop(TileArea tile_area, DoCommandFlag flags
 				}
 			}
 
-			RoadTypes cur_rts = IsNormalRoadTile(cur_tile) ? GetRoadTypes(cur_tile) : ROADTYPES_NONE;
-			uint num_roadbits = 0;
 			if (build_over_road) {
 				/* There is a road, check if we can build road+tram stop over it. */
-				if (HasBit(cur_rts, ROADTYPE_ROAD)) {
-					Owner road_owner = GetRoadOwner(cur_tile, ROADTYPE_ROAD);
+				RoadType road_rt = GetRoadType(cur_tile, RTT_ROAD);
+				if (road_rt != INVALID_ROADTYPE) {
+					Owner road_owner = GetRoadOwner(cur_tile, RTT_ROAD);
 					if (road_owner == OWNER_TOWN) {
 						if (!_settings_game.construction.road_stop_on_town_road) return_cmd_error(STR_ERROR_DRIVE_THROUGH_ON_TOWN_ROAD);
 					} else if (!_settings_game.construction.road_stop_on_competitor_road && road_owner != OWNER_NONE) {
 						CommandCost ret = CheckOwnership(road_owner);
 						if (ret.Failed()) return ret;
 					}
-					num_roadbits += CountBits(GetRoadBits(cur_tile, ROADTYPE_ROAD));
+					uint num_pieces = CountBits(GetRoadBits(cur_tile, RTT_ROAD));
+
+					if (RoadTypeIsRoad(rt) && !HasPowerOnRoad(rt, road_rt)) return_cmd_error(STR_ERROR_NO_SUITABLE_ROAD);
+
+					if (GetDisallowedRoadDirections(cur_tile) != DRD_NONE && road_owner != OWNER_TOWN) {
+						CommandCost ret = CheckOwnership(road_owner);
+						if (ret.Failed()) return ret;
+					}
+
+					cost.AddCost(RoadBuildCost(road_rt) * (2 - num_pieces));
+				} else if (RoadTypeIsRoad(rt)) {
+					cost.AddCost(RoadBuildCost(rt) * 2);
 				}
 
-				if (GetDisallowedRoadDirections(cur_tile) != DRD_NONE) return_cmd_error(STR_ERROR_DRIVE_THROUGH_ON_ONEWAY_ROAD);
-
 				/* There is a tram, check if we can build road+tram stop over it. */
-				if (HasBit(cur_rts, ROADTYPE_TRAM)) {
-					Owner tram_owner = GetRoadOwner(cur_tile, ROADTYPE_TRAM);
+				RoadType tram_rt = GetRoadType(cur_tile, RTT_TRAM);
+				if (tram_rt != INVALID_ROADTYPE) {
+					Owner tram_owner = GetRoadOwner(cur_tile, RTT_TRAM);
 					if (Company::IsValidID(tram_owner) &&
 							(!_settings_game.construction.road_stop_on_competitor_road ||
 							/* Disallow breaking end-of-line of someone else
 							 * so trams can still reverse on this tile. */
-							HasExactlyOneBit(GetRoadBits(cur_tile, ROADTYPE_TRAM)))) {
+							HasExactlyOneBit(GetRoadBits(cur_tile, RTT_TRAM)))) {
 						CommandCost ret = CheckOwnership(tram_owner);
 						if (ret.Failed()) return ret;
 					}
-					num_roadbits += CountBits(GetRoadBits(cur_tile, ROADTYPE_TRAM));
-				}
+					uint num_pieces = CountBits(GetRoadBits(cur_tile, RTT_TRAM));
 
-				/* Take into account existing roadbits. */
-				rts |= cur_rts;
+					if (RoadTypeIsTram(rt) && !HasPowerOnRoad(rt, tram_rt)) return_cmd_error(STR_ERROR_NO_SUITABLE_ROAD);
+
+					cost.AddCost(RoadBuildCost(tram_rt) * (2 - num_pieces));
+				} else if (RoadTypeIsTram(rt)) {
+					cost.AddCost(RoadBuildCost(rt) * 2);
+				}
 			} else {
 				ret = DoCommand(cur_tile, 0, 0, flags, CMD_LANDSCAPE_CLEAR);
 				if (ret.Failed()) return ret;
 				cost.AddCost(ret);
+				cost.AddCost(RoadBuildCost(rt) * 2);
 			}
-
-			uint roadbits_to_build = CountBits(rts) * 2 - num_roadbits;
-			cost.AddCost(_price[PR_BUILD_ROAD] * roadbits_to_build);
 		}
 	}
 
@@ -1567,16 +1571,14 @@ CommandCost CmdBuildRailStation(TileIndex tile_org, DoCommandFlag flags, uint32 
 	return cost;
 }
 
-static void MakeRailStationAreaSmaller(BaseStation *st)
+static TileArea MakeStationAreaSmaller(BaseStation *st, TileArea ta, bool (*func)(BaseStation *, TileIndex))
 {
-	TileArea ta = st->train_station;
-
 restart:
 
 	/* too small? */
 	if (ta.w != 0 && ta.h != 0) {
 		/* check the left side, x = constant, y changes */
-		for (uint i = 0; !st->TileBelongsToRailStation(ta.tile + TileDiffXY(0, i));) {
+		for (uint i = 0; !func(st, ta.tile + TileDiffXY(0, i));) {
 			/* the left side is unused? */
 			if (++i == ta.h) {
 				ta.tile += TileDiffXY(1, 0);
@@ -1586,7 +1588,7 @@ restart:
 		}
 
 		/* check the right side, x = constant, y changes */
-		for (uint i = 0; !st->TileBelongsToRailStation(ta.tile + TileDiffXY(ta.w - 1, i));) {
+		for (uint i = 0; !func(st, ta.tile + TileDiffXY(ta.w - 1, i));) {
 			/* the right side is unused? */
 			if (++i == ta.h) {
 				ta.w--;
@@ -1595,7 +1597,7 @@ restart:
 		}
 
 		/* check the upper side, y = constant, x changes */
-		for (uint i = 0; !st->TileBelongsToRailStation(ta.tile + TileDiffXY(i, 0));) {
+		for (uint i = 0; !func(st, ta.tile + TileDiffXY(i, 0));) {
 			/* the left side is unused? */
 			if (++i == ta.w) {
 				ta.tile += TileDiffXY(0, 1);
@@ -1605,7 +1607,7 @@ restart:
 		}
 
 		/* check the lower side, y = constant, x changes */
-		for (uint i = 0; !st->TileBelongsToRailStation(ta.tile + TileDiffXY(i, ta.h - 1));) {
+		for (uint i = 0; !func(st, ta.tile + TileDiffXY(i, ta.h - 1));) {
 			/* the left side is unused? */
 			if (++i == ta.w) {
 				ta.h--;
@@ -1616,7 +1618,28 @@ restart:
 		ta.Clear();
 	}
 
-	st->train_station = ta;
+	return ta;
+}
+
+static bool TileBelongsToRailStation(BaseStation *st, TileIndex tile)
+{
+	return st->TileBelongsToRailStation(tile);
+}
+
+static void MakeRailStationAreaSmaller(BaseStation *st)
+{
+	st->train_station = MakeStationAreaSmaller(st, st->train_station, TileBelongsToRailStation);
+}
+
+static bool TileBelongsToShipStation(BaseStation *st, TileIndex tile)
+{
+	return IsDockTile(tile) && GetStationIndex(tile) == st->index;
+}
+
+static void MakeShipStationAreaSmaller(Station *st)
+{
+	st->ship_station = MakeStationAreaSmaller(st, st->ship_station, TileBelongsToShipStation);
+	UpdateStationDockingTiles(st);
 }
 
 /**
@@ -1906,10 +1929,10 @@ static CommandCost FindJoiningRoadStop(StationID existing_stop, StationID statio
  *           bit 8..15: Length of the road stop.
  * @param p2 bit 0: 0 For bus stops, 1 for truck stops.
  *           bit 1: 0 For normal stops, 1 for drive-through.
- *           bit 2..3: The roadtypes.
- *           bit 5: Allow stations directly adjacent to other stations.
- *           bit 6..7: Entrance direction (#DiagDirection) for normal stops.
- *           bit 6: #Axis of the road for drive-through stops.
+ *           bit 2: Allow stations directly adjacent to other stations.
+ *           bit 3..4: Entrance direction (#DiagDirection) for normal stops.
+ *           bit 3: #Axis of the road for drive-through stops.
+ *           bit 5..10: The roadtype.
  *           bit 16..31: Station ID to join (NEW_STATION if build new one).
  * @param text Unused.
  * @return The cost of this operation or an error.
@@ -1918,7 +1941,8 @@ CommandCost CmdBuildRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 {
 	bool type = HasBit(p2, 0);
 	bool is_drive_through = HasBit(p2, 1);
-	RoadTypes rts = Extract<RoadTypes, 2, 2>(p2);
+	RoadType rt = Extract<RoadType, 5, 6>(p2);
+	if (!ValParamRoadType(rt)) return CMD_ERROR;
 	StationID station_to_join = GB(p2, 16, 16);
 	bool reuse = (station_to_join != NEW_STATION);
 	if (!reuse) station_to_join = INVALID_STATION;
@@ -1938,20 +1962,18 @@ CommandCost CmdBuildRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 
 	if (distant_join && (!_settings_game.station.distant_join_stations || !Station::IsValidID(station_to_join))) return CMD_ERROR;
 
-	if (!HasExactlyOneBit(rts) || !HasRoadTypesAvail(_current_company, rts)) return CMD_ERROR;
-
 	/* Trams only have drive through stops */
-	if (!is_drive_through && HasBit(rts, ROADTYPE_TRAM)) return CMD_ERROR;
+	if (!is_drive_through && RoadTypeIsTram(rt)) return CMD_ERROR;
 
 	DiagDirection ddir;
 	Axis axis;
 	if (is_drive_through) {
 		/* By definition axis is valid, due to there being 2 axes and reading 1 bit. */
-		axis = Extract<Axis, 6, 1>(p2);
+		axis = Extract<Axis, 3, 1>(p2);
 		ddir = AxisToDiagDir(axis);
 	} else {
 		/* By definition ddir is valid, due to there being 4 diagonal directions and reading 2 bits. */
-		ddir = Extract<DiagDirection, 6, 2>(p2);
+		ddir = Extract<DiagDirection, 3, 2>(p2);
 		axis = DiagDirToAxis(ddir);
 	}
 
@@ -1961,12 +1983,12 @@ CommandCost CmdBuildRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 	/* Total road stop cost. */
 	CommandCost cost(EXPENSES_CONSTRUCTION, roadstop_area.w * roadstop_area.h * _price[type ? PR_BUILD_STATION_TRUCK : PR_BUILD_STATION_BUS]);
 	StationID est = INVALID_STATION;
-	ret = CheckFlatLandRoadStop(roadstop_area, flags, is_drive_through ? 5 << axis : 1 << ddir, is_drive_through, type, axis, &est, rts);
+	ret = CheckFlatLandRoadStop(roadstop_area, flags, is_drive_through ? 5 << axis : 1 << ddir, is_drive_through, type, axis, &est, rt);
 	if (ret.Failed()) return ret;
 	cost.AddCost(ret);
 
 	Station *st = nullptr;
-	ret = FindJoiningRoadStop(est, station_to_join, HasBit(p2, 5), roadstop_area, &st);
+	ret = FindJoiningRoadStop(est, station_to_join, HasBit(p2, 2), roadstop_area, &st);
 	if (ret.Failed()) return ret;
 
 	/* Check if this number of road stops can be allocated. */
@@ -1978,9 +2000,11 @@ CommandCost CmdBuildRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 	if (flags & DC_EXEC) {
 		/* Check every tile in the area. */
 		TILE_AREA_LOOP(cur_tile, roadstop_area) {
-			RoadTypes cur_rts = GetRoadTypes(cur_tile);
-			Owner road_owner = HasBit(cur_rts, ROADTYPE_ROAD) ? GetRoadOwner(cur_tile, ROADTYPE_ROAD) : _current_company;
-			Owner tram_owner = HasBit(cur_rts, ROADTYPE_TRAM) ? GetRoadOwner(cur_tile, ROADTYPE_TRAM) : _current_company;
+			/* Get existing road types and owners before any tile clearing */
+			RoadType road_rt = MayHaveRoad(cur_tile) ? GetRoadType(cur_tile, RTT_ROAD) : INVALID_ROADTYPE;
+			RoadType tram_rt = MayHaveRoad(cur_tile) ? GetRoadType(cur_tile, RTT_TRAM) : INVALID_ROADTYPE;
+			Owner road_owner = road_rt != INVALID_ROADTYPE ? GetRoadOwner(cur_tile, RTT_ROAD) : _current_company;
+			Owner tram_owner = tram_rt != INVALID_ROADTYPE ? GetRoadOwner(cur_tile, RTT_TRAM) : _current_company;
 
 			if (IsTileType(cur_tile, MP_STATION) && IsRoadStop(cur_tile)) {
 				RemoveRoadStop(cur_tile, flags);
@@ -2004,23 +2028,27 @@ CommandCost CmdBuildRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 
 			RoadStopType rs_type = type ? ROADSTOP_TRUCK : ROADSTOP_BUS;
 			if (is_drive_through) {
-				/* Update company infrastructure counts. If the current tile is a normal
-				 * road tile, count only the new road bits needed to get a full diagonal road. */
-				RoadType rt;
-				FOR_EACH_SET_ROADTYPE(rt, cur_rts | rts) {
-					Company *c = Company::GetIfValid(rt == ROADTYPE_ROAD ? road_owner : tram_owner);
-					if (c != nullptr) {
-						c->infrastructure.road[rt] += 2 - (IsNormalRoadTile(cur_tile) && HasBit(cur_rts, rt) ? CountBits(GetRoadBits(cur_tile, rt)) : 0);
-						DirtyCompanyInfrastructureWindows(c->index);
-					}
+				/* Update company infrastructure counts. If the current tile is a normal road tile, remove the old
+				 * bits first. */
+				if (IsNormalRoadTile(cur_tile)) {
+					UpdateCompanyRoadInfrastructure(road_rt, road_owner, -(int)CountBits(GetRoadBits(cur_tile, RTT_ROAD)));
+					UpdateCompanyRoadInfrastructure(tram_rt, tram_owner, -(int)CountBits(GetRoadBits(cur_tile, RTT_TRAM)));
 				}
 
-				MakeDriveThroughRoadStop(cur_tile, st->owner, road_owner, tram_owner, st->index, rs_type, rts | cur_rts, axis);
+				if (road_rt == INVALID_ROADTYPE && RoadTypeIsRoad(rt)) road_rt = rt;
+				if (tram_rt == INVALID_ROADTYPE && RoadTypeIsTram(rt)) tram_rt = rt;
+
+				UpdateCompanyRoadInfrastructure(road_rt, road_owner, 2);
+				UpdateCompanyRoadInfrastructure(tram_rt, tram_owner, 2);
+
+				MakeDriveThroughRoadStop(cur_tile, st->owner, road_owner, tram_owner, st->index, rs_type, road_rt, tram_rt, axis);
 				road_stop->MakeDriveThrough();
 			} else {
+				if (road_rt == INVALID_ROADTYPE && RoadTypeIsRoad(rt)) road_rt = rt;
+				if (tram_rt == INVALID_ROADTYPE && RoadTypeIsTram(rt)) tram_rt = rt;
 				/* Non-drive-through stop never overbuild and always count as two road bits. */
-				Company::Get(st->owner)->infrastructure.road[FIND_FIRST_BIT(rts)] += 2;
-				MakeRoadStop(cur_tile, st->owner, st->index, rs_type, rts, ddir);
+				Company::Get(st->owner)->infrastructure.road[rt] += 2;
+				MakeRoadStop(cur_tile, st->owner, st->index, rs_type, road_rt, tram_rt, ddir);
 			}
 			Company::Get(st->owner)->infrastructure.station++;
 
@@ -2109,14 +2137,11 @@ static CommandCost RemoveRoadStop(TileIndex tile, DoCommandFlag flags)
 		}
 
 		/* Update company infrastructure counts. */
-		RoadType rt;
-		FOR_EACH_SET_ROADTYPE(rt, GetRoadTypes(tile)) {
-			Company *c = Company::GetIfValid(GetRoadOwner(tile, rt));
-			if (c != nullptr) {
-				c->infrastructure.road[rt] -= 2;
-				DirtyCompanyInfrastructureWindows(c->index);
-			}
+		FOR_ALL_ROADTRAMTYPES(rtt) {
+			RoadType rt = GetRoadType(tile, rtt);
+			UpdateCompanyRoadInfrastructure(rt, GetRoadOwner(tile, rtt), -2);
 		}
+
 		Company::Get(st->owner)->infrastructure.station--;
 		DirtyCompanyInfrastructureWindows(st->owner);
 
@@ -2192,16 +2217,16 @@ CommandCost CmdRemoveRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, ui
 		if (!IsTileType(cur_tile, MP_STATION) || !IsRoadStop(cur_tile) || (uint32)GetRoadStopType(cur_tile) != GB(p2, 0, 1)) continue;
 
 		/* Save information on to-be-restored roads before the stop is removed. */
-		RoadTypes rts = ROADTYPES_NONE;
 		RoadBits road_bits = ROAD_NONE;
+		RoadType road_type[] = { INVALID_ROADTYPE, INVALID_ROADTYPE };
 		Owner road_owner[] = { OWNER_NONE, OWNER_NONE };
-		assert_compile(lengthof(road_owner) == ROADTYPE_END);
 		if (IsDriveThroughStopTile(cur_tile)) {
-			RoadType rt;
-			FOR_EACH_SET_ROADTYPE(rt, GetRoadTypes(cur_tile)) {
-				road_owner[rt] = GetRoadOwner(cur_tile, rt);
+			FOR_ALL_ROADTRAMTYPES(rtt) {
+				road_type[rtt] = GetRoadType(cur_tile, rtt);
+				if (road_type[rtt] == INVALID_ROADTYPE) continue;
+				road_owner[rtt] = GetRoadOwner(cur_tile, rtt);
 				/* If we don't want to preserve our roads then restore only roads of others. */
-				if (keep_drive_through_roads || road_owner[rt] != _current_company) SetBit(rts, rt);
+				if (!keep_drive_through_roads && road_owner[rtt] == _current_company) road_type[rtt] = INVALID_ROADTYPE;
 			}
 			road_bits = AxisToRoadBits(DiagDirToAxis(GetRoadStopDir(cur_tile)));
 		}
@@ -2215,19 +2240,14 @@ CommandCost CmdRemoveRoadStop(TileIndex tile, DoCommandFlag flags, uint32 p1, ui
 		had_success = true;
 
 		/* Restore roads. */
-		if ((flags & DC_EXEC) && rts != ROADTYPES_NONE) {
-			MakeRoadNormal(cur_tile, road_bits, rts, ClosestTownFromTile(cur_tile, UINT_MAX)->index,
-					road_owner[ROADTYPE_ROAD], road_owner[ROADTYPE_TRAM]);
+		if ((flags & DC_EXEC) && (road_type[RTT_ROAD] != INVALID_ROADTYPE || road_type[RTT_TRAM] != INVALID_ROADTYPE)) {
+			MakeRoadNormal(cur_tile, road_bits, road_type[RTT_ROAD], road_type[RTT_TRAM], ClosestTownFromTile(cur_tile, UINT_MAX)->index,
+					road_owner[RTT_ROAD], road_owner[RTT_TRAM]);
 
 			/* Update company infrastructure counts. */
-			RoadType rt;
-			FOR_EACH_SET_ROADTYPE(rt, rts) {
-				Company *c = Company::GetIfValid(GetRoadOwner(cur_tile, rt));
-				if (c != nullptr) {
-					c->infrastructure.road[rt] += CountBits(road_bits);
-					DirtyCompanyInfrastructureWindows(c->index);
-				}
-			}
+			int count = CountBits(road_bits);
+			UpdateCompanyRoadInfrastructure(road_type[RTT_ROAD], road_owner[RTT_ROAD], count);
+			UpdateCompanyRoadInfrastructure(road_type[RTT_TRAM], road_owner[RTT_ROAD], count);
 		}
 	}
 
@@ -2748,20 +2768,13 @@ CommandCost CmdBuildDock(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 	/* Distant join */
 	if (st == nullptr && distant_join) st = Station::GetIfValid(station_to_join);
 
-	if (!Dock::CanAllocateItem()) return_cmd_error(STR_ERROR_TOO_MANY_DOCKS);
-
 	ret = BuildStationPart(&st, flags, reuse, dock_area, STATIONNAMING_DOCK);
 	if (ret.Failed()) return ret;
 
 	if (flags & DC_EXEC) {
-		/* Create the dock and insert it into the list of docks. */
-		Dock *dock = new Dock(slope_tile, flat_tile);
-		dock->next = st->docks;
-		st->docks = dock;
-
-		st->dock_station.Add(slope_tile);
-		st->dock_station.Add(flat_tile);
-		st->AddFacility(FACIL_DOCK, slope_tile);
+		st->ship_station.Add(tile);
+		st->ship_station.Add(tile + TileOffsByDiagDir(direction));
+		st->AddFacility(FACIL_DOCK, tile);
 
 		st->rect.BeforeAddRect(dock_area.tile, dock_area.w, dock_area.h, StationRect::ADD_TRY);
 
@@ -2772,13 +2785,96 @@ CommandCost CmdBuildDock(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 		}
 		Company::Get(st->owner)->infrastructure.station += 2;
 
-		MakeDock(slope_tile, st->owner, st->index, direction, wc);
+		MakeDock(tile, st->owner, st->index, direction, wc);
+		UpdateStationDockingTiles(st);
 
 		st->AfterStationTileSetChange(true, STATION_DOCK);
 		ZoningMarkDirtyStationCoverageArea(st);
 	}
 
 	return CommandCost(EXPENSES_CONSTRUCTION, _price[PR_BUILD_STATION_DOCK]);
+}
+
+void RemoveDockingTile(TileIndex t)
+{
+	for (DiagDirection d = DIAGDIR_BEGIN; d != DIAGDIR_END; d++) {
+		TileIndex tile = t + TileOffsByDiagDir(d);
+		if (!IsValidTile(tile)) continue;
+
+		if (IsTileType(tile, MP_STATION)) {
+			UpdateStationDockingTiles(Station::GetByTile(tile));
+		} else if (IsTileType(tile, MP_INDUSTRY)) {
+			Station *st = Industry::GetByTile(tile)->neutral_station;
+			if (st != nullptr) {
+				UpdateStationDockingTiles(Industry::GetByTile(tile)->neutral_station);
+			}
+		}
+	}
+}
+
+/**
+ * Clear docking tile status from tiles around a removed dock, if the tile has
+ * no neighbours which would keep it as a docking tile.
+ * @param tile Ex-dock tile to check.
+ */
+void ClearDockingTilesCheckingNeighbours(TileIndex tile)
+{
+	assert(IsValidTile(tile));
+
+	/* Clear and maybe re-set docking tile */
+	for (DiagDirection d = DIAGDIR_BEGIN; d != DIAGDIR_END; d++) {
+		TileIndex docking_tile = tile + TileOffsByDiagDir(d);
+		if (!IsValidTile(docking_tile)) continue;
+
+		if (IsPossibleDockingTile(docking_tile)) {
+			SetDockingTile(docking_tile, false);
+			CheckForDockingTile(docking_tile);
+		}
+	}
+}
+
+/**
+ * Check if a dock tile can be docked from the given direction.
+ * @param t Tile index of dock.
+ * @param d DiagDirection adjacent to dock being tested.
+ * @return True iff the dock can be docked from the given direction.
+ */
+bool IsValidDockingDirectionForDock(TileIndex t, DiagDirection d)
+{
+	assert(IsDockTile(t));
+
+	/** Bitmap of valid directions for each dock tile part. */
+	static const uint8 _valid_docking_tile[] = {
+		0, 0, 0, 0,                        // No docking against the slope part.
+		1 << DIAGDIR_NE | 1 << DIAGDIR_SW, // Docking permitted at the end
+		1 << DIAGDIR_NW | 1 << DIAGDIR_SE, // of the flat piers.
+	};
+
+	StationGfx gfx = GetStationGfx(t);
+	assert(gfx < lengthof(_valid_docking_tile));
+	return HasBit(_valid_docking_tile[gfx], d);
+}
+
+/**
+ * Find the part of a dock that is land-based
+ * @param t Dock tile to find land part of
+ * @return tile of land part of dock
+ */
+static TileIndex FindDockLandPart(TileIndex t)
+{
+	assert(IsDockTile(t));
+
+	StationGfx gfx = GetStationGfx(t);
+	if (gfx < GFX_DOCK_BASE_WATER_PART) return t;
+
+	for (DiagDirection d = DIAGDIR_BEGIN; d != DIAGDIR_END; d++) {
+		TileIndex tile = t + TileOffsByDiagDir(d);
+		if (!IsValidTile(tile)) continue;
+		if (!IsDockTile(tile)) continue;
+		if (GetStationGfx(tile) < GFX_DOCK_BASE_WATER_PART && tile + TileOffsByDiagDir(GetDockDirection(tile)) == t) return tile;
+	}
+
+	return INVALID_TILE;
 }
 
 /**
@@ -2793,14 +2889,11 @@ static CommandCost RemoveDock(TileIndex tile, DoCommandFlag flags)
 	CommandCost ret = CheckOwnership(st->owner);
 	if (ret.Failed()) return ret;
 
-	Dock *removing_dock = Dock::GetByTile(tile);
-	assert(removing_dock != nullptr);
+	if (!IsDockTile(tile)) return CMD_ERROR;
 
-	TileIndex tile1 = removing_dock->sloped;
-	TileIndex tile2 = removing_dock->flat;
-
-	DiagDirection direction = DiagdirBetweenTiles(removing_dock->sloped, removing_dock->flat);
-	TileIndex docking_location = removing_dock->flat + TileOffsByDiagDir(direction);
+	TileIndex tile1 = FindDockLandPart(tile);
+	if (tile1 == INVALID_TILE) return CMD_ERROR;
+	TileIndex tile2 = tile1 + TileOffsByDiagDir(GetDockDirection(tile1));
 
 	ret = EnsureNoVehicleOnGround(tile1);
 	if (ret.Succeeded()) ret = EnsureNoVehicleOnGround(tile2);
@@ -2809,22 +2902,6 @@ static CommandCost RemoveDock(TileIndex tile, DoCommandFlag flags)
 	if (flags & DC_EXEC) {
 		ZoningMarkDirtyStationCoverageArea(st);
 
-		if (st->docks == removing_dock) {
-			/* The first dock in the list is removed. */
-			st->docks = removing_dock->next;
-			/* Last dock is removed. */
-			if (st->docks == nullptr) {
-				st->facilities &= ~FACIL_DOCK;
-			}
-		} else {
-			/* Tell the predecessor in the list to skip this dock. */
-			Dock *pred = st->docks;
-			while (pred->next != removing_dock) pred = pred->next;
-			pred->next = removing_dock->next;
-		}
-
-		delete removing_dock;
-
 		DoClearSquare(tile1);
 		MarkTileDirtyByTile(tile1);
 		MakeWaterKeepingClass(tile2, st->owner);
@@ -2832,29 +2909,35 @@ static CommandCost RemoveDock(TileIndex tile, DoCommandFlag flags)
 		st->rect.AfterRemoveTile(st, tile1);
 		st->rect.AfterRemoveTile(st, tile2);
 
-		st->dock_station.Clear();
-		for (Dock *dock = st->docks; dock != nullptr; dock = dock->next) {
-			st->dock_station.Add(dock->flat);
-			st->dock_station.Add(dock->sloped);
+		MakeShipStationAreaSmaller(st);
+		if (st->ship_station.tile == INVALID_TILE) {
+			st->ship_station.Clear();
+			st->docking_station.Clear();
+			st->docking_tiles.clear();
+			st->facilities &= ~FACIL_DOCK;
 		}
 
 		Company::Get(st->owner)->infrastructure.station -= 2;
 
 		st->AfterStationTileSetChange(false, STATION_DOCK);
 
+		ClearDockingTilesCheckingNeighbours(tile1);
+		ClearDockingTilesCheckingNeighbours(tile2);
+
 		/* All ships that were going to our station, can't go to it anymore.
 		 * Just clear the order, then automatically the next appropriate order
 		 * will be selected and in case of no appropriate order it will just
 		 * wander around the world. */
-		Ship *s;
-		FOR_ALL_SHIPS(s) {
-			if (s->current_order.IsType(OT_LOADING) && s->tile == docking_location) {
-				s->LeaveStation();
-			}
+		if (!(st->facilities & FACIL_DOCK)) {
+			Ship *s;
+			FOR_ALL_SHIPS(s) {
+				if (s->current_order.IsType(OT_LOADING) && s->current_order.GetDestination() == st->index) {
+					s->LeaveStation();
+				}
 
-			if (s->dest_tile == docking_location) {
-				s->SetDestTile(0);
-				s->current_order.Free();
+				if (s->current_order.IsType(OT_GOTO_STATION) && s->current_order.GetDestination() == st->index) {
+					s->SetDestTile(s->GetOrderStationLocation(st->index));
+				}
 			}
 		}
 	}
@@ -2939,7 +3022,6 @@ static void DrawTile_Station(TileInfo *ti)
 	const NewGRFSpriteLayout *layout = nullptr;
 	DrawTileSprites tmp_rail_layout;
 	const DrawTileSprites *t = nullptr;
-	RoadTypes roadtypes;
 	int32 total_offset;
 	const RailtypeInfo *rti = nullptr;
 	uint32 relocation = 0;
@@ -2950,7 +3032,6 @@ static void DrawTile_Station(TileInfo *ti)
 
 	if (HasStationRail(ti->tile)) {
 		rti = GetRailTypeInfo(GetRailType(ti->tile));
-		roadtypes = ROADTYPES_NONE;
 		total_offset = rti->GetRailtypeSpriteOffset();
 
 		if (IsCustomStationSpecIndex(ti->tile)) {
@@ -2977,7 +3058,6 @@ static void DrawTile_Station(TileInfo *ti)
 			}
 		}
 	} else {
-		roadtypes = IsRoadStop(ti->tile) ? GetRoadTypes(ti->tile) : ROADTYPES_NONE;
 		total_offset = 0;
 	}
 
@@ -3106,7 +3186,7 @@ draw_default_foundation:
 		} else {
 			assert_tile(IsDock(ti->tile), ti->tile);
 			TileIndex water_tile = ti->tile + TileOffsByDiagDir(GetDockDirection(ti->tile));
-			WaterClass wc = GetWaterClass(water_tile);
+			WaterClass wc = HasTileWaterClass(water_tile) ? GetWaterClass(water_tile) : WATER_CLASS_INVALID;
 			if (wc == WATER_CLASS_SEA) {
 				DrawShoreTile(ti->tileh);
 			} else {
@@ -3162,10 +3242,30 @@ draw_default_foundation:
 
 	if (HasStationRail(ti->tile) && HasRailCatenaryDrawn(GetRailType(ti->tile))) DrawRailCatenary(ti);
 
-	if (HasBit(roadtypes, ROADTYPE_TRAM)) {
-		Axis axis = GetRoadStopDir(ti->tile) == DIAGDIR_NE ? AXIS_X : AXIS_Y;
-		DrawGroundSprite((HasBit(roadtypes, ROADTYPE_ROAD) ? SPR_TRAMWAY_OVERLAY : SPR_TRAMWAY_TRAM) + (axis ^ 1), PAL_NONE);
-		DrawRoadCatenary(ti, axis == AXIS_X ? ROAD_X : ROAD_Y);
+	if (IsRoadStop(ti->tile)) {
+		RoadType road_rt = GetRoadTypeRoad(ti->tile);
+		RoadType tram_rt = GetRoadTypeTram(ti->tile);
+		const RoadTypeInfo* road_rti = road_rt == INVALID_ROADTYPE ? nullptr : GetRoadTypeInfo(road_rt);
+		const RoadTypeInfo* tram_rti = tram_rt == INVALID_ROADTYPE ? nullptr : GetRoadTypeInfo(tram_rt);
+
+		if (IsDriveThroughStopTile(ti->tile)) {
+			Axis axis = GetRoadStopDir(ti->tile) == DIAGDIR_NE ? AXIS_X : AXIS_Y;
+			uint sprite_offset = axis == AXIS_X ? 1 : 0;
+
+			DrawRoadOverlays(ti, PAL_NONE, road_rti, tram_rti, sprite_offset, sprite_offset);
+		} else {
+			/* Non-drivethrough road stops are only valid for roads. */
+			assert(road_rt != INVALID_ROADTYPE && tram_rt == INVALID_ROADTYPE);
+
+			if (road_rti->UsesOverlay()) {
+				DiagDirection dir = GetRoadStopDir(ti->tile);
+				SpriteID ground = GetCustomRoadSprite(road_rti, ti->tile, ROTSG_ROADSTOP);
+				DrawGroundSprite(ground + dir, PAL_NONE);
+			}
+		}
+
+		/* Draw road, tram catenary */
+		DrawRoadCatenary(ti);
 	}
 
 	if (IsRailWaypoint(ti->tile)) {
@@ -3199,8 +3299,29 @@ void StationPickerDrawSprite(int x, int y, StationType st, RailType railtype, Ro
 		DrawSprite(img + total_offset, HasBit(img, PALETTE_MODIFIER_COLOUR) ? pal : PAL_NONE, x, y);
 	}
 
-	if (roadtype == ROADTYPE_TRAM) {
-		DrawSprite(SPR_TRAMWAY_TRAM + (t->ground.sprite == SPR_ROAD_PAVED_STRAIGHT_X ? 1 : 0), PAL_NONE, x, y);
+	if (roadtype != INVALID_ROADTYPE) {
+		const RoadTypeInfo* rti = GetRoadTypeInfo(roadtype);
+		if (image >= 4) {
+			/* Drive-through stop */
+			uint sprite_offset = 5 - image;
+
+			/* Road underlay takes precedence over tram */
+			if (rti->UsesOverlay()) {
+				SpriteID ground = GetCustomRoadSprite(rti, INVALID_TILE, ROTSG_GROUND);
+				DrawSprite(ground + sprite_offset, PAL_NONE, x, y);
+
+				SpriteID overlay = GetCustomRoadSprite(rti, INVALID_TILE, ROTSG_OVERLAY);
+				if (overlay) DrawSprite(overlay + sprite_offset, PAL_NONE, x, y);
+			} else if (RoadTypeIsTram(roadtype)) {
+				DrawSprite(SPR_TRAMWAY_TRAM + sprite_offset, PAL_NONE, x, y);
+			}
+		} else {
+			/* Drive-in stop */
+			if (RoadTypeIsRoad(roadtype) && rti->UsesOverlay()) {
+				SpriteID ground = GetCustomRoadSprite(rti, INVALID_TILE, ROTSG_ROADSTOP);
+				DrawSprite(ground + image, PAL_NONE, x, y);
+			}
+		}
 	}
 
 	/* Default waypoint has no railtype specific sprites */
@@ -3220,28 +3341,44 @@ static Foundation GetFoundation_Station(TileIndex tile, Slope tileh)
 static void GetTileDesc_Station(TileIndex tile, TileDesc *td)
 {
 	td->owner[0] = GetTileOwner(tile);
-	if (IsDriveThroughStopTile(tile)) {
+
+	if (IsRoadStopTile(tile)) {
+		RoadType road_rt = GetRoadTypeRoad(tile);
+		RoadType tram_rt = GetRoadTypeTram(tile);
 		Owner road_owner = INVALID_OWNER;
 		Owner tram_owner = INVALID_OWNER;
-		RoadTypes rts = GetRoadTypes(tile);
-		if (HasBit(rts, ROADTYPE_ROAD)) road_owner = GetRoadOwner(tile, ROADTYPE_ROAD);
-		if (HasBit(rts, ROADTYPE_TRAM)) tram_owner = GetRoadOwner(tile, ROADTYPE_TRAM);
+		if (road_rt != INVALID_ROADTYPE) {
+			const RoadTypeInfo *rti = GetRoadTypeInfo(road_rt);
+			td->roadtype = rti->strings.name;
+			td->road_speed = rti->max_speed / 2;
+			road_owner = GetRoadOwner(tile, RTT_ROAD);
+		}
 
-		/* Is there a mix of owners? */
-		if ((tram_owner != INVALID_OWNER && tram_owner != td->owner[0]) ||
-				(road_owner != INVALID_OWNER && road_owner != td->owner[0])) {
-			uint i = 1;
-			if (road_owner != INVALID_OWNER) {
-				td->owner_type[i] = STR_LAND_AREA_INFORMATION_ROAD_OWNER;
-				td->owner[i] = road_owner;
-				i++;
-			}
-			if (tram_owner != INVALID_OWNER) {
-				td->owner_type[i] = STR_LAND_AREA_INFORMATION_TRAM_OWNER;
-				td->owner[i] = tram_owner;
+		if (tram_rt != INVALID_ROADTYPE) {
+			const RoadTypeInfo *rti = GetRoadTypeInfo(tram_rt);
+			td->tramtype = rti->strings.name;
+			td->tram_speed = rti->max_speed / 2;
+			tram_owner = GetRoadOwner(tile, RTT_TRAM);
+		}
+
+		if (IsDriveThroughStopTile(tile)) {
+			/* Is there a mix of owners? */
+			if ((tram_owner != INVALID_OWNER && tram_owner != td->owner[0]) ||
+					(road_owner != INVALID_OWNER && road_owner != td->owner[0])) {
+				uint i = 1;
+				if (road_owner != INVALID_OWNER) {
+					td->owner_type[i] = STR_LAND_AREA_INFORMATION_ROAD_OWNER;
+					td->owner[i] = road_owner;
+					i++;
+				}
+				if (tram_owner != INVALID_OWNER) {
+					td->owner_type[i] = STR_LAND_AREA_INFORMATION_TRAM_OWNER;
+					td->owner[i] = tram_owner;
+				}
 			}
 		}
 	}
+
 	td->build_date = BaseStation::GetByTile(tile)->build_date;
 
 	if (HasStationTileRail(tile)) {
@@ -3327,7 +3464,10 @@ static TrackStatus GetTileTrackStatus_Station(TileIndex tile, TransportType mode
 			break;
 
 		case TRANSPORT_ROAD:
-			if ((GetRoadTypes(tile) & sub_mode) != 0 && IsRoadStop(tile)) {
+			if (IsRoadStop(tile)) {
+				RoadTramType rtt = (RoadTramType)sub_mode;
+				if (!HasTileRoadType(tile, rtt)) break;
+
 				DiagDirection dir = GetRoadStopDir(tile);
 				Axis axis = DiagDirToAxis(dir);
 
@@ -4178,6 +4318,33 @@ uint MoveGoodsToStation(CargoID type, uint amount, SourceType source_type, Sourc
 	return moved + UpdateStationWaiting(st2, type, worst_cargo, source_type, source_id);
 }
 
+void UpdateStationDockingTiles(Station *st)
+{
+	st->docking_station.Clear();
+	st->docking_tiles.clear();
+
+	/* For neutral stations, start with the industry area instead of dock area */
+	const TileArea *area = st->industry != nullptr ? &st->industry->location : &st->ship_station;
+
+	if (area->tile == INVALID_TILE) return;
+
+	int x = TileX(area->tile);
+	int y = TileY(area->tile);
+
+	/* Expand the area by a tile on each side while
+	 * making sure that we remain inside the map. */
+	int x2 = min(x + area->w + 1, MapSizeX());
+	int x1 = max(x - 1, 0);
+
+	int y2 = min(y + area->h + 1, MapSizeY());
+	int y1 = max(y - 1, 0);
+
+	TileArea ta(TileXY(x1, y1), TileXY(x2 - 1, y2 - 1));
+	TILE_AREA_LOOP(tile, ta) {
+		if (IsValidTile(tile) && IsPossibleDockingTile(tile)) CheckForDockingTile(tile);
+	}
+}
+
 void BuildOilRig(TileIndex tile)
 {
 	if (!Station::CanAllocateItem()) {
@@ -4201,18 +4368,10 @@ void BuildOilRig(TileIndex tile)
 	st->owner = OWNER_NONE;
 	st->airport.type = AT_OILRIG;
 	st->airport.Add(tile);
-	st->dock_station.tile = tile;
-	st->facilities = FACIL_AIRPORT;
-
-	if (!Dock::CanAllocateItem()) {
-		DEBUG(misc, 0, "Can't allocate dock for oilrig at 0x%X, reverting to oilrig with airport only", tile);
-	} else {
-		st->docks = new Dock(tile, tile + ToTileIndexDiff({1, 0}));
-		st->dock_station.tile = tile;
-		st->facilities |= FACIL_DOCK;
-	}
-
+	st->ship_station.Add(tile);
+	st->facilities = FACIL_AIRPORT | FACIL_DOCK;
 	st->build_date = _date;
+	UpdateStationDockingTiles(st);
 
 	st->rect.BeforeAddTile(tile, StationRect::ADD_FORCE);
 
@@ -4230,34 +4389,61 @@ void DeleteOilRig(TileIndex tile)
 
 	MakeWaterKeepingClass(tile, OWNER_NONE);
 
-	st->dock_station.tile = INVALID_TILE;
-	if (st->docks != nullptr) {
-		delete st->docks;
-		st->docks = nullptr;
+	assert(st->facilities == (FACIL_AIRPORT | FACIL_DOCK) && st->airport.type == AT_OILRIG);
+	delete st;
+	return;
+
+	MakeShipStationAreaSmaller(st);
+	if (st->ship_station.tile == INVALID_TILE) {
+		st->ship_station.Clear();
+		st->docking_station.Clear();
+		st->docking_tiles.clear();
+		st->facilities &= ~FACIL_DOCK;
 	}
 	st->airport.Clear();
-	st->facilities &= ~(FACIL_AIRPORT | FACIL_DOCK);
+	st->facilities &= ~FACIL_AIRPORT;
 	st->airport.flags = 0;
 
 	st->rect.AfterRemoveTile(st, tile);
 
 	st->UpdateVirtCoord();
 	st->RecomputeCatchment();
-	if (!st->IsInUse()) delete st;
+	if (!st->IsInUse()) {
+		delete st;
+	} else {
+		st->industry = nullptr;
+		/* All ships that were going to our station, can't go to it anymore.
+		 * Just clear the order, then automatically the next appropriate order
+		 * will be selected and in case of no appropriate order it will just
+		 * wander around the world. */
+		if (!(st->facilities & FACIL_DOCK)) {
+			Ship *s;
+			FOR_ALL_SHIPS(s) {
+				if (s->current_order.IsType(OT_LOADING) && s->current_order.GetDestination() == st->index) {
+					s->LeaveStation();
+				}
+
+				if (s->current_order.IsType(OT_GOTO_STATION) && s->current_order.GetDestination() == st->index) {
+					s->SetDestTile(s->GetOrderStationLocation(st->index));
+				}
+			}
+		}
+	}
 }
 
 static void ChangeTileOwner_Station(TileIndex tile, Owner old_owner, Owner new_owner)
 {
 	if (IsRoadStopTile(tile)) {
-		for (RoadType rt = ROADTYPE_ROAD; rt < ROADTYPE_END; rt++) {
+		FOR_ALL_ROADTRAMTYPES(rtt) {
 			/* Update all roadtypes, no matter if they are present */
-			if (GetRoadOwner(tile, rt) == old_owner) {
-				if (HasTileRoadType(tile, rt)) {
+			if (GetRoadOwner(tile, rtt) == old_owner) {
+				RoadType rt = GetRoadType(tile, rtt);
+				if (rt != INVALID_ROADTYPE) {
 					/* A drive-through road-stop has always two road bits. No need to dirty windows here, we'll redraw the whole screen anyway. */
 					Company::Get(old_owner)->infrastructure.road[rt] -= 2;
 					if (new_owner != INVALID_OWNER) Company::Get(new_owner)->infrastructure.road[rt] += 2;
 				}
-				SetRoadOwner(tile, rt, new_owner == INVALID_OWNER ? OWNER_NONE : new_owner);
+				SetRoadOwner(tile, rtt, new_owner == INVALID_OWNER ? OWNER_NONE : new_owner);
 			}
 		}
 	}
@@ -4338,17 +4524,16 @@ static bool CanRemoveRoadWithStop(TileIndex tile, DoCommandFlag flags)
 	/* Yeah... water can always remove stops, right? */
 	if (_current_company == OWNER_WATER) return true;
 
-	RoadTypes rts = GetRoadTypes(tile);
-	if (HasBit(rts, ROADTYPE_TRAM)) {
-		Owner tram_owner = GetRoadOwner(tile, ROADTYPE_TRAM);
+	if (GetRoadTypeTram(tile) != INVALID_ROADTYPE) {
+		Owner tram_owner = GetRoadOwner(tile, RTT_TRAM);
 		if (tram_owner != OWNER_NONE && CheckOwnership(tram_owner).Failed()) return false;
 	}
-	if (HasBit(rts, ROADTYPE_ROAD)) {
-		Owner road_owner = GetRoadOwner(tile, ROADTYPE_ROAD);
+	if (GetRoadTypeRoad(tile) != INVALID_ROADTYPE) {
+		Owner road_owner = GetRoadOwner(tile, RTT_ROAD);
 		if (road_owner != OWNER_TOWN) {
 			if (road_owner != OWNER_NONE && CheckOwnership(road_owner).Failed()) return false;
 		} else {
-			if (CheckAllowRemoveRoad(tile, GetAnyRoadBits(tile, ROADTYPE_ROAD), OWNER_TOWN, ROADTYPE_ROAD, flags).Failed()) return false;
+			if (CheckAllowRemoveRoad(tile, GetAnyRoadBits(tile, RTT_ROAD), OWNER_TOWN, RTT_ROAD, flags).Failed()) return false;
 		}
 	}
 
@@ -4369,8 +4554,8 @@ CommandCost ClearTile_Station(TileIndex tile, DoCommandFlag flags)
 			case STATION_RAIL:     return_cmd_error(STR_ERROR_MUST_DEMOLISH_RAILROAD);
 			case STATION_WAYPOINT: return_cmd_error(STR_ERROR_BUILDING_MUST_BE_DEMOLISHED);
 			case STATION_AIRPORT:  return_cmd_error(STR_ERROR_MUST_DEMOLISH_AIRPORT_FIRST);
-			case STATION_TRUCK:    return_cmd_error(HasTileRoadType(tile, ROADTYPE_TRAM) ? STR_ERROR_MUST_DEMOLISH_CARGO_TRAM_STATION_FIRST : STR_ERROR_MUST_DEMOLISH_TRUCK_STATION_FIRST);
-			case STATION_BUS:      return_cmd_error(HasTileRoadType(tile, ROADTYPE_TRAM) ? STR_ERROR_MUST_DEMOLISH_PASSENGER_TRAM_STATION_FIRST : STR_ERROR_MUST_DEMOLISH_BUS_STATION_FIRST);
+			case STATION_TRUCK:    return_cmd_error(HasTileRoadType(tile, RTT_TRAM) ? STR_ERROR_MUST_DEMOLISH_CARGO_TRAM_STATION_FIRST : STR_ERROR_MUST_DEMOLISH_TRUCK_STATION_FIRST);
+			case STATION_BUS:      return_cmd_error(HasTileRoadType(tile, RTT_TRAM) ? STR_ERROR_MUST_DEMOLISH_PASSENGER_TRAM_STATION_FIRST : STR_ERROR_MUST_DEMOLISH_BUS_STATION_FIRST);
 			case STATION_BUOY:     return_cmd_error(STR_ERROR_BUOY_IN_THE_WAY);
 			case STATION_DOCK:     return_cmd_error(STR_ERROR_MUST_DEMOLISH_DOCK_FIRST);
 			case STATION_OILRIG:
@@ -4437,6 +4622,25 @@ static CommandCost TerraformTile_Station(TileIndex tile, DoCommandFlag flags, in
 	return DoCommand(tile, 0, 0, flags, CMD_LANDSCAPE_CLEAR);
 }
 
+FlowStat::iterator FlowStat::erase_item(FlowStat::iterator iter, uint flow_reduction)
+{
+	assert(!this->empty());
+	const uint offset = iter - this->begin();
+	const iterator last = this->end() - 1;
+	for (; iter < last; ++iter) {
+		*iter = { (iter + 1)->first - flow_reduction, (iter + 1)->second };
+	}
+	--this->count;
+	if (this->count == 2) {
+		// transition from external to internal storage
+		ShareEntry *ptr = this->storage.ptr_shares.buffer;
+		this->storage.inline_shares[0] = ptr[0];
+		this->storage.inline_shares[1] = ptr[1];
+		free(ptr);
+	}
+	return this->begin() + offset;
+}
+
 /**
  * Get flow for a station.
  * @param st Station to get flow for.
@@ -4445,7 +4649,7 @@ static CommandCost TerraformTile_Station(TileIndex tile, DoCommandFlag flags, in
 uint FlowStat::GetShare(StationID st) const
 {
 	uint32 prev = 0;
-	for (SharesMap::const_iterator it = this->shares.begin(); it != this->shares.end(); ++it) {
+	for (const_iterator it = this->begin(); it != this->end(); ++it) {
 		if (it->second == st) {
 			return it->first - prev;
 		} else {
@@ -4464,30 +4668,30 @@ uint FlowStat::GetShare(StationID st) const
 StationID FlowStat::GetVia(StationID excluded, StationID excluded2) const
 {
 	if (this->unrestricted == 0) return INVALID_STATION;
-	assert(!this->shares.empty());
-	SharesMap::const_iterator it = this->shares.upper_bound(RandomRange(this->unrestricted));
-	assert(it != this->shares.end() && it->first <= this->unrestricted);
+	assert(!this->empty());
+	const_iterator it = std::upper_bound(this->data(), this->data() + this->count, RandomRange(this->unrestricted));
+	assert(it != this->end() && it->first <= this->unrestricted);
 	if (it->second != excluded && it->second != excluded2) return it->second;
 
 	/* We've hit one of the excluded stations.
 	 * Draw another share, from outside its range. */
 
 	uint end = it->first;
-	uint begin = (it == this->shares.begin() ? 0 : (--it)->first);
+	uint begin = (it == this->begin() ? 0 : (--it)->first);
 	uint interval = end - begin;
 	if (interval >= this->unrestricted) return INVALID_STATION; // Only one station in the map.
 	uint new_max = this->unrestricted - interval;
 	uint rand = RandomRange(new_max);
-	SharesMap::const_iterator it2 = (rand < begin) ? this->shares.upper_bound(rand) :
-			this->shares.upper_bound(rand + interval);
-	assert(it2 != this->shares.end() && it2->first <= this->unrestricted);
+	const_iterator it2 = (rand < begin) ? this->upper_bound(rand) :
+			this->upper_bound(rand + interval);
+	assert(it2 != this->end() && it2->first <= this->unrestricted);
 	if (it2->second != excluded && it2->second != excluded2) return it2->second;
 
 	/* We've hit the second excluded station.
 	 * Same as before, only a bit more complicated. */
 
 	uint end2 = it2->first;
-	uint begin2 = (it2 == this->shares.begin() ? 0 : (--it2)->first);
+	uint begin2 = (it2 == this->begin() ? 0 : (--it2)->first);
 	uint interval2 = end2 - begin2;
 	if (interval2 >= new_max) return INVALID_STATION; // Only the two excluded stations in the map.
 	new_max -= interval2;
@@ -4497,15 +4701,15 @@ StationID FlowStat::GetVia(StationID excluded, StationID excluded2) const
 		Swap(interval, interval2);
 	}
 	rand = RandomRange(new_max);
-	SharesMap::const_iterator it3 = this->shares.upper_bound(this->unrestricted);
+	const_iterator it3 = this->upper_bound(this->unrestricted);
 	if (rand < begin) {
-		it3 = this->shares.upper_bound(rand);
+		it3 = this->upper_bound(rand);
 	} else if (rand < begin2 - interval) {
-		it3 = this->shares.upper_bound(rand + interval);
+		it3 = this->upper_bound(rand + interval);
 	} else {
-		it3 = this->shares.upper_bound(rand + interval + interval2);
+		it3 = this->upper_bound(rand + interval + interval2);
 	}
-	assert(it3 != this->shares.end() && it3->first <= this->unrestricted);
+	assert(it3 != this->end() && it3->first <= this->unrestricted);
 	return it3->second;
 }
 
@@ -4516,15 +4720,13 @@ StationID FlowStat::GetVia(StationID excluded, StationID excluded2) const
  */
 void FlowStat::Invalidate()
 {
-	assert(!this->shares.empty());
-	SharesMap new_shares;
+	assert(!this->empty());
 	uint i = 0;
-	for (SharesMap::iterator it(this->shares.begin()); it != this->shares.end(); ++it) {
-		new_shares[++i] = it->second;
-		if (it->first == this->unrestricted) this->unrestricted = i;
+	for (iterator it(this->begin()); it != this->end(); ++it) {
+		if (it->first == this->unrestricted) this->unrestricted = i + 1;
+		it->first = ++i;
 	}
-	this->shares.swap(new_shares);
-	assert(!this->shares.empty() && this->unrestricted <= (--this->shares.end())->first);
+	assert(!this->empty() && this->unrestricted <= (this->end() - 1)->first);
 }
 
 /**
@@ -4537,45 +4739,38 @@ void FlowStat::ChangeShare(StationID st, int flow)
 {
 	/* We assert only before changing as afterwards the shares can actually
 	 * be empty. In that case the whole flow stat must be deleted then. */
-	assert(!this->shares.empty());
+	assert(!this->empty());
 
-	uint removed_shares = 0;
-	uint added_shares = 0;
 	uint last_share = 0;
-	SharesMap new_shares;
-	for (SharesMap::iterator it(this->shares.begin()); it != this->shares.end(); ++it) {
+	for (iterator it(this->begin()); it != this->end(); ++it) {
 		if (it->second == st) {
-			if (flow < 0) {
-				uint share = it->first - last_share;
-				if (flow == INT_MIN || (uint)(-flow) >= share) {
-					removed_shares += share;
-					if (it->first <= this->unrestricted) this->unrestricted -= share;
-					if (flow != INT_MIN) flow += share;
-					last_share = it->first;
-					continue; // remove the whole share
-				}
-				removed_shares += (uint)(-flow);
-			} else {
-				added_shares += (uint)(flow);
+			uint share = it->first - last_share;
+			if (flow < 0 && (flow == INT_MIN || (uint)(-flow) >= share)) {
+				if (it->first <= this->unrestricted) this->unrestricted -= share;
+				this->erase_item(it, share);
+				break; // remove the whole share
 			}
 			if (it->first <= this->unrestricted) this->unrestricted += flow;
-
-			/* If we don't continue above the whole flow has been added or
-			 * removed. */
+			for (; it != this->end(); ++it) {
+				it->first += flow;
+			}
 			flow = 0;
+			break;
 		}
-		new_shares[it->first + added_shares - removed_shares] = it->second;
 		last_share = it->first;
 	}
 	if (flow > 0) {
-		new_shares[last_share + (uint)flow] = st;
+		// must be non-empty here
+		last_share = (this->end() - 1)->first;
+		this->AppendShare(st, (uint)flow, true); // true to avoid changing this->unrestricted, which we fixup below
 		if (this->unrestricted < last_share) {
+			// Move to front to unrestrict
 			this->ReleaseShare(st);
 		} else {
+			// First restricted item, so bump unrestricted count
 			this->unrestricted += flow;
 		}
 	}
-	this->shares.swap(new_shares);
 }
 
 /**
@@ -4585,28 +4780,25 @@ void FlowStat::ChangeShare(StationID st, int flow)
  */
 void FlowStat::RestrictShare(StationID st)
 {
-	assert(!this->shares.empty());
-	uint flow = 0;
+	assert(!this->empty());
+	iterator it = this->begin();
+	const iterator end = this->end();
 	uint last_share = 0;
-	SharesMap new_shares;
-	for (SharesMap::iterator it(this->shares.begin()); it != this->shares.end(); ++it) {
-		if (flow == 0) {
-			if (it->first > this->unrestricted) return; // Not present or already restricted.
-			if (it->second == st) {
-				flow = it->first - last_share;
-				this->unrestricted -= flow;
-			} else {
-				new_shares[it->first] = it->second;
+	for (; it != end; ++it) {
+		if (it->first > this->unrestricted) return; // Not present or already restricted.
+		if (it->second == st) {
+			uint flow = it->first - last_share;
+			this->unrestricted -= flow;
+			if (this->unrestricted == last_share) return; // No further action required
+			const iterator last = end - 1;
+			for (iterator jt = it; jt != last; ++jt) {
+				*jt = { (jt + 1)->first - flow, (jt + 1)->second };
 			}
-		} else {
-			new_shares[it->first - flow] = it->second;
+			*last = { flow + (last - 1)->first, st };
+			return;
 		}
 		last_share = it->first;
 	}
-	if (flow == 0) return;
-	new_shares[last_share + flow] = st;
-	this->shares.swap(new_shares);
-	assert(!this->shares.empty());
 }
 
 /**
@@ -4616,34 +4808,27 @@ void FlowStat::RestrictShare(StationID st)
  */
 void FlowStat::ReleaseShare(StationID st)
 {
-	assert(!this->shares.empty());
-	uint flow = 0;
-	uint next_share = 0;
-	bool found = false;
-	for (SharesMap::reverse_iterator it(this->shares.rbegin()); it != this->shares.rend(); ++it) {
-		if (it->first < this->unrestricted) return; // Note: not <= as the share may hit the limit.
-		if (found) {
-			flow = next_share - it->first;
-			this->unrestricted += flow;
-			break;
-		} else {
-			if (it->first == this->unrestricted) return; // !found -> Limit not hit.
-			if (it->second == st) found = true;
-		}
-		next_share = it->first;
-	}
-	if (flow == 0) return;
-	SharesMap new_shares;
-	new_shares[flow] = st;
-	for (SharesMap::iterator it(this->shares.begin()); it != this->shares.end(); ++it) {
-		if (it->second != st) {
-			new_shares[flow + it->first] = it->second;
-		} else {
-			flow = 0;
+	assert(!this->empty());
+	iterator it = this->end() - 1;
+	const iterator start = this->begin();
+	for (; it >= start; --it) {
+		if (it->first < this->unrestricted) return; // Already unrestricted
+		if (it->second == st) {
+			if (it - 1 >= start) {
+				uint flow = it->first - (it - 1)->first;
+				this->unrestricted += flow;
+				if (it->first == this->unrestricted) return; // No further action required
+				for (iterator jt = it; jt != start; --jt) {
+					*jt = { (jt - 1)->first + flow, (jt - 1)->second };
+				}
+				*start = { flow, st };
+			} else {
+				// already at start
+				this->unrestricted = it->first;
+			}
+			return;
 		}
 	}
-	this->shares.swap(new_shares);
-	assert(!this->shares.empty());
 }
 
 /**
@@ -4654,14 +4839,12 @@ void FlowStat::ReleaseShare(StationID st)
 void FlowStat::ScaleToMonthly(uint runtime)
 {
 	assert(runtime > 0);
-	SharesMap new_shares;
 	uint share = 0;
-	for (SharesMap::iterator i = this->shares.begin(); i != this->shares.end(); ++i) {
+	for (iterator i = this->begin(); i != this->end(); ++i) {
 		share = max(share + 1, i->first * 30 / runtime);
-		new_shares[share] = i->second;
 		if (this->unrestricted == i->first) this->unrestricted = share;
+		i->first = share;
 	}
-	this->shares.swap(new_shares);
 }
 
 /**
@@ -4674,10 +4857,10 @@ void FlowStatMap::AddFlow(StationID origin, StationID via, uint flow)
 {
 	FlowStatMap::iterator origin_it = this->find(origin);
 	if (origin_it == this->end()) {
-		this->insert(std::make_pair(origin, FlowStat(via, flow)));
+		this->insert(FlowStat(origin, via, flow));
 	} else {
-		origin_it->second.ChangeShare(via, flow);
-		assert(!origin_it->second.GetShares()->empty());
+		origin_it->ChangeShare(via, flow);
+		assert(!origin_it->empty());
 	}
 }
 
@@ -4693,13 +4876,13 @@ void FlowStatMap::PassOnFlow(StationID origin, StationID via, uint flow)
 {
 	FlowStatMap::iterator prev_it = this->find(origin);
 	if (prev_it == this->end()) {
-		FlowStat fs(via, flow);
+		FlowStat fs(origin, via, flow);
 		fs.AppendShare(INVALID_STATION, flow);
-		this->insert(std::make_pair(origin, fs));
+		this->insert(std::move(fs));
 	} else {
-		prev_it->second.ChangeShare(via, flow);
-		prev_it->second.ChangeShare(INVALID_STATION, flow);
-		assert(!prev_it->second.GetShares()->empty());
+		prev_it->ChangeShare(via, flow);
+		prev_it->ChangeShare(INVALID_STATION, flow);
+		assert(!prev_it->empty());
 	}
 }
 
@@ -4710,7 +4893,7 @@ void FlowStatMap::PassOnFlow(StationID origin, StationID via, uint flow)
 void FlowStatMap::FinalizeLocalConsumption(StationID self)
 {
 	for (FlowStatMap::iterator i = this->begin(); i != this->end(); ++i) {
-		FlowStat &fs = i->second;
+		FlowStat &fs = *i;
 		uint local = fs.GetShare(INVALID_STATION);
 		if (local > INT_MAX) { // make sure it fits in an int
 			fs.ChangeShare(self, -INT_MAX);
@@ -4722,7 +4905,7 @@ void FlowStatMap::FinalizeLocalConsumption(StationID self)
 
 		/* If the local share is used up there must be a share for some
 		 * remote station. */
-		assert(!fs.GetShares()->empty());
+		assert(!fs.empty());
 	}
 }
 
@@ -4736,11 +4919,11 @@ StationIDStack FlowStatMap::DeleteFlows(StationID via)
 {
 	StationIDStack ret;
 	for (FlowStatMap::iterator f_it = this->begin(); f_it != this->end();) {
-		FlowStat &s_flows = f_it->second;
+		FlowStat &s_flows = *f_it;
 		s_flows.ChangeShare(via, INT_MIN);
-		if (s_flows.GetShares()->empty()) {
-			ret.Push(f_it->first);
-			this->erase(f_it++);
+		if (s_flows.empty()) {
+			ret.Push(f_it->GetOrigin());
+			f_it = this->erase(f_it);
 		} else {
 			++f_it;
 		}
@@ -4755,18 +4938,7 @@ StationIDStack FlowStatMap::DeleteFlows(StationID via)
 void FlowStatMap::RestrictFlows(StationID via)
 {
 	for (FlowStatMap::iterator it = this->begin(); it != this->end(); ++it) {
-		it->second.RestrictShare(via);
-	}
-}
-
-/**
- * Release all flows at a station for specific cargo and destination.
- * @param via Remote station of flows to be released.
- */
-void FlowStatMap::ReleaseFlows(StationID via)
-{
-	for (FlowStatMap::iterator it = this->begin(); it != this->end(); ++it) {
-		it->second.ReleaseShare(via);
+		it->RestrictShare(via);
 	}
 }
 
@@ -4778,7 +4950,7 @@ uint FlowStatMap::GetFlow() const
 {
 	uint ret = 0;
 	for (FlowStatMap::const_iterator i = this->begin(); i != this->end(); ++i) {
-		ret += (--(i->second.GetShares()->end()))->first;
+		ret += (i->end() - 1)->first;
 	}
 	return ret;
 }
@@ -4792,7 +4964,7 @@ uint FlowStatMap::GetFlowVia(StationID via) const
 {
 	uint ret = 0;
 	for (FlowStatMap::const_iterator i = this->begin(); i != this->end(); ++i) {
-		ret += i->second.GetShare(via);
+		ret += i->GetShare(via);
 	}
 	return ret;
 }
@@ -4806,7 +4978,7 @@ uint FlowStatMap::GetFlowFrom(StationID from) const
 {
 	FlowStatMap::const_iterator i = this->find(from);
 	if (i == this->end()) return 0;
-	return (--(i->second.GetShares()->end()))->first;
+	return (i->end() - 1)->first;
 }
 
 /**
@@ -4819,7 +4991,38 @@ uint FlowStatMap::GetFlowFromVia(StationID from, StationID via) const
 {
 	FlowStatMap::const_iterator i = this->find(from);
 	if (i == this->end()) return 0;
-	return i->second.GetShare(via);
+	return i->GetShare(via);
+}
+
+void FlowStatMap::SortStorage()
+{
+	assert(this->flows_storage.size() == this->flows_index.size());
+	std::sort(this->flows_storage.begin(), this->flows_storage.end(), [](const FlowStat &a, const FlowStat &b) -> bool {
+		return a.origin < b.origin;
+	});
+	uint16 index = 0;
+	for (auto &it : this->flows_index) {
+		it.second = index;
+		index++;
+	}
+}
+
+void DumpStationFlowStats(char *b, const char *last)
+{
+	btree::btree_map<uint, uint> count_map;
+	const Station *st;
+	FOR_ALL_STATIONS(st) {
+		for (CargoID i = 0; i < NUM_CARGO; i++) {
+			const GoodsEntry &ge = st->goods[i];
+			for (FlowStatMap::const_iterator it(ge.flows.begin()); it != ge.flows.end(); ++it) {
+				count_map[(uint32)it->size()]++;
+			}
+		}
+	}
+	b += seprintf(b, last, "Flow state shares size distribution:\n");
+	for (const auto &it : count_map) {
+		b += seprintf(b, last, "%-5u %-5u\n", it.first, it.second);
+	}
 }
 
 extern const TileTypeProcs _tile_type_station_procs = {

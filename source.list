@@ -30,7 +30,6 @@ dedicated.cpp
 departures.cpp
 depot.cpp
 disaster_vehicle.cpp
-dock.cpp
 driver.cpp
 economy.cpp
 effectvehicle.cpp
@@ -194,7 +193,6 @@ direction_func.h
 direction_type.h
 disaster_vehicle.h
 music/dmusic.h
-dock_base.h
 driver.h
 economy_base.h
 economy_func.h
@@ -293,6 +291,7 @@ newgrf_industrytiles.h
 newgrf_object.h
 newgrf_properties.h
 newgrf_railtype.h
+newgrf_roadtype.h
 newgrf_sound.h
 newgrf_spritegroup.h
 newgrf_station.h
@@ -327,6 +326,7 @@ rail.h
 rail_gui.h
 rail_type.h
 rev.h
+road.h
 road_cmd.h
 road_func.h
 road_gui.h
@@ -339,6 +339,7 @@ scope.h
 screenshot.h
 sound/sdl_s.h
 video/sdl_v.h
+video/sdl2_v.h
 schdispatch.h
 settings_func.h
 settings_gui.h
@@ -725,6 +726,7 @@ table/pricebase.h
 table/railtypes.h
 table/road_land.h
 table/roadveh_movement.h
+table/roadtypes.h
 ../objs/settings/table/settings.h
 table/sprites.h
 table/station_land.h
@@ -881,6 +883,7 @@ script/api/script_order.hpp
 script/api/script_rail.hpp
 script/api/script_railtypelist.hpp
 script/api/script_road.hpp
+script/api/script_roadtypelist.hpp
 script/api/script_sign.hpp
 script/api/script_signlist.hpp
 script/api/script_station.hpp
@@ -949,6 +952,7 @@ script/api/script_order.cpp
 script/api/script_rail.cpp
 script/api/script_railtypelist.cpp
 script/api/script_road.cpp
+script/api/script_roadtypelist.cpp
 script/api/script_sign.cpp
 script/api/script_signlist.cpp
 script/api/script_station.cpp
@@ -1037,6 +1041,7 @@ newgrf_industries.cpp
 newgrf_industrytiles.cpp
 newgrf_object.cpp
 newgrf_railtype.cpp
+newgrf_roadtype.cpp
 newgrf_sound.cpp
 newgrf_spritegroup.cpp
 newgrf_station.cpp
@@ -1151,6 +1156,9 @@ video/null_v.cpp
 	#if SDL
 		video/sdl_v.cpp
 	#end
+	#if SDL2
+		video/sdl2_v.cpp
+	#end
 	#if WIN32
 		video/win32_v.cpp
 	#end
@@ -1195,6 +1203,9 @@ sound/null_s.cpp
 	#end
 	#if SDL
 		sound/sdl_s.cpp
+	#end
+	#if SDL2
+		sound/sdl2_s.cpp
 	#end
 	#if WIN32
 		sound/win32_s.cpp

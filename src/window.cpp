@@ -122,7 +122,7 @@ WindowDesc::~WindowDesc()
 
 /**
  * Determine default width of window.
- * This is either a stored user preferred size, or the build-in default.
+ * This is either a stored user preferred size, or the built-in default.
  * @return Width in pixels.
  */
 int16 WindowDesc::GetDefaultWidth() const
@@ -132,7 +132,7 @@ int16 WindowDesc::GetDefaultWidth() const
 
 /**
  * Determine default height of window.
- * This is either a stored user preferred size, or the build-in default.
+ * This is either a stored user preferred size, or the built-in default.
  * @return Height in pixels.
  */
 int16 WindowDesc::GetDefaultHeight() const
@@ -454,6 +454,21 @@ void SetFocusedWindow(Window *w)
 	if (_focused_window != nullptr) _focused_window->OnFocus(old_focused);
 }
 
+Point GetFocusedWindowCaret()
+{
+	return _focused_window->GetCaretPosition();
+}
+
+Point GetFocusedWindowTopLeft()
+{
+	return { _focused_window->left, _focused_window->top };
+}
+
+bool FocusedWindowIsConsole()
+{
+	return _focused_window && _focused_window->window_class == WC_CONSOLE;
+}
+
 /**
  * Check if an edit box is in global focus. That is if focused window
  * has a edit box as focused widget, or if a console is focused.
@@ -502,11 +517,20 @@ bool Window::SetFocusedWidget(int widget_index)
 		if (this->nested_focus->type == WWT_EDITBOX) VideoDriver::GetInstance()->EditBoxLostFocus();
 	}
 	this->nested_focus = this->GetWidget<NWidgetCore>(widget_index);
+	if (this->nested_focus->type == WWT_EDITBOX) VideoDriver::GetInstance()->EditBoxGainedFocus();
 	return true;
 }
 
 /**
- * Called when window looses focus
+ * Called when window gains focus
+ */
+void Window::OnFocus(Window *previously_focused_window)
+{
+	if (this->nested_focus != nullptr && this->nested_focus->type == WWT_EDITBOX) VideoDriver::GetInstance()->EditBoxGainedFocus();
+}
+
+/**
+ * Called when window loses focus
  */
 void Window::OnFocusLost(Window *newly_focused_window)
 {
@@ -1083,8 +1107,8 @@ Window::~Window()
 
 	/* Make sure we don't try to access this window as the focused window when it doesn't exist anymore. */
 	if (_focused_window == this) {
-		this->OnFocusLost(nullptr);
 		_focused_window = nullptr;
+		this->OnFocusLost(nullptr);
 	}
 
 	this->DeleteChildWindows();
@@ -2739,7 +2763,22 @@ void HandleCtrlChanged()
 	/* Call the event, start with the uppermost window. */
 	Window *w;
 	FOR_ALL_WINDOWS_FROM_FRONT(w) {
-		if (w->OnCTRLStateChange() == ES_HANDLED) return;
+		if (w->OnCTRLStateChange() == ES_HANDLED) break;
+		w->OnCTRLStateChangeAlways();
+	}
+	FOR_ALL_WINDOWS_FROM_FRONT_FROM(w, w) {
+		w->OnCTRLStateChangeAlways();
+	}
+}
+
+/**
+ * State of SHIFT key has changed
+ */
+void HandleShiftChanged()
+{
+	Window *w;
+	FOR_ALL_WINDOWS_FROM_FRONT(w) {
+		w->OnShiftStateChange();
 	}
 }
 

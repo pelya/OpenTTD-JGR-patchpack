@@ -48,6 +48,7 @@
 #include "town.h"
 #include "industry.h"
 #include "string_func_extra.h"
+#include <time.h>
 
 #include "safeguards.h"
 
@@ -256,7 +257,7 @@ DEF_CONSOLE_CMD(ConResetTile)
  * Scroll to a tile on the map.
  * param x tile number or tile x coordinate.
  * param y optional y coordinate.
- * @note When only one argument is given it is intepreted as the tile number.
+ * @note When only one argument is given it is interpreted as the tile number.
  *       When two arguments are given, they are interpreted as the tile's x
  *       and y coordinates.
  * @return True when either console help was shown or a proper amount of parameters given.
@@ -1367,11 +1368,25 @@ DEF_CONSOLE_CMD(ConGetSeed)
 DEF_CONSOLE_CMD(ConGetDate)
 {
 	if (argc == 0) {
-		IConsoleHelp("Returns the current date (day-month-year) of the game. Usage: 'getdate'");
+		IConsoleHelp("Returns the current date (year-month-day) of the game. Usage: 'getdate'");
 		return true;
 	}
 
-	IConsolePrintF(CC_DEFAULT, "Date: %d-%d-%d", _cur_date_ymd.day, _cur_date_ymd.month + 1, _cur_date_ymd.year);
+	IConsolePrintF(CC_DEFAULT, "Date: %04d-%02d-%02d", _cur_date_ymd.year, _cur_date_ymd.month + 1, _cur_date_ymd.day);
+	return true;
+}
+
+DEF_CONSOLE_CMD(ConGetSysDate)
+{
+	if (argc == 0) {
+		IConsoleHelp("Returns the current date (year-month-day) of your system. Usage: 'getsysdate'");
+		return true;
+	}
+
+	time_t t;
+	time(&t);
+	auto timeinfo = localtime(&t);
+	IConsolePrintF(CC_DEFAULT, "System Date: %04d-%02d-%02d %02d:%02d:%02d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
 	return true;
 }
 
@@ -2057,6 +2072,20 @@ DEF_CONSOLE_CMD(ConMapStats)
 	return true;
 }
 
+DEF_CONSOLE_CMD(ConStFlowStats)
+{
+	if (argc == 0) {
+		IConsoleHelp("Dump station flow stats.");
+		return true;
+	}
+
+	extern void DumpStationFlowStats(char *b, const char *last);
+	char buffer[32768];
+	DumpStationFlowStats(buffer, lastof(buffer));
+	PrintLineByLine(buffer);
+	return true;
+}
+
 DEF_CONSOLE_CMD(ConDumpGameEvents)
 {
 	if (argc == 0) {
@@ -2303,6 +2332,7 @@ void IConsoleStdLibRegister()
 	IConsoleCmdRegister("restart",      ConRestart);
 	IConsoleCmdRegister("getseed",      ConGetSeed);
 	IConsoleCmdRegister("getdate",      ConGetDate);
+	IConsoleCmdRegister("getsysdate",   ConGetSysDate);
 	IConsoleCmdRegister("quit",         ConExit);
 	IConsoleCmdRegister("resetengines", ConResetEngines, ConHookNoNetwork);
 	IConsoleCmdRegister("reset_enginepool", ConResetEnginePool, ConHookNoNetwork);
@@ -2426,6 +2456,7 @@ void IConsoleStdLibRegister()
 	IConsoleCmdRegister("dump_cpdp_stats", ConDumpCpdpStats, nullptr, true);
 	IConsoleCmdRegister("dump_veh_stats", ConVehicleStats, nullptr, true);
 	IConsoleCmdRegister("dump_map_stats", ConMapStats, nullptr, true);
+	IConsoleCmdRegister("dump_st_flow_stats", ConStFlowStats, nullptr, true);
 	IConsoleCmdRegister("dump_game_events", ConDumpGameEvents, nullptr, true);
 	IConsoleCmdRegister("dump_load_debug_log", ConDumpLoadDebugLog, nullptr, true);
 	IConsoleCmdRegister("check_caches", ConCheckCaches, nullptr, true);

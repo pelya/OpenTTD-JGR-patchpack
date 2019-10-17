@@ -58,6 +58,8 @@ INSTANTIATE_POOL_METHODS(OrderList)
 btree::btree_map<uint32, uint32> _order_destination_refcount_map;
 bool _order_destination_refcount_map_valid = false;
 
+CommandCost CmdInsertOrderIntl(DoCommandFlag flags, Vehicle *v, VehicleOrderID sel_ord, const Order &new_order, bool allow_load_by_cargo_type);
+
 void IntialiseOrderDestinationRefcountMap()
 {
 	ClearOrderDestinationRefcountMap();
@@ -573,7 +575,7 @@ const Order *OrderList::GetNextDecisionNode(const Order *next, uint hops, CargoT
  * @param CargoTypes cargo_mask Bit-set of the cargo IDs of interest.
  * @param first Order to start searching at or nullptr to start at cur_implicit_order_index + 1.
  * @param hops Number of orders we have already looked at.
- * @return A CargoMaskedStationIDStack of the cargo mask the result is valid for, and the next stoppping station or INVALID_STATION.
+ * @return A CargoMaskedStationIDStack of the cargo mask the result is valid for, and the next stopping station or INVALID_STATION.
  * @pre The vehicle is currently loading and v->last_station_visited is meaningful.
  * @note This function may draw a random number. Don't use it from the GUI.
  */
@@ -942,7 +944,10 @@ CommandCost CmdInsertOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 	VehicleOrderID sel_ord = GB(p1, 20, 8);
 	Order new_order(p2);
 
-	Vehicle *v = Vehicle::GetIfValid(veh);
+	return CmdInsertOrderIntl(flags, Vehicle::GetIfValid(veh), sel_ord, new_order, false);
+}
+
+CommandCost CmdInsertOrderIntl(DoCommandFlag flags, Vehicle *v, VehicleOrderID sel_ord, const Order &new_order, bool allow_load_by_cargo_type) {
 	if (v == nullptr || !v->IsPrimaryVehicle()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
@@ -972,10 +977,16 @@ CommandCost CmdInsertOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 			/* Filter invalid load/unload types. */
 			switch (new_order.GetLoadType()) {
 				case OLF_LOAD_IF_POSSIBLE: case OLFB_FULL_LOAD: case OLF_FULL_LOAD_ANY: case OLFB_NO_LOAD: break;
+				case OLFB_CARGO_TYPE_LOAD:
+					if (allow_load_by_cargo_type) break;
+					return CMD_ERROR;
 				default: return CMD_ERROR;
 			}
 			switch (new_order.GetUnloadType()) {
 				case OUF_UNLOAD_IF_POSSIBLE: case OUFB_UNLOAD: case OUFB_TRANSFER: case OUFB_NO_UNLOAD: break;
+				case OUFB_CARGO_TYPE_UNLOAD:
+					if (allow_load_by_cargo_type) break;
+					return CMD_ERROR;
 				default: return CMD_ERROR;
 			}
 
@@ -1928,6 +1939,17 @@ static void CheckAdvanceVehicleOrdersAfterClone(Vehicle *v, DoCommandFlag flags)
 	DoCommand(v->tile, v->index, skip_to, flags, CMD_SKIP_TO_ORDER);
 }
 
+static bool ShouldResetOrderIndicesOnOrderCopy(const Vehicle *src, const Vehicle *dst)
+{
+	const int num_orders = src->GetNumOrders();
+	if (dst->GetNumOrders() != num_orders) return true;
+
+	for (int i = 0; i < num_orders; i++) {
+		if (!src->GetOrder(i)->Equals(*dst->GetOrder(i))) return true;
+	}
+	return false;
+}
+
 /**
  * Clone/share/copy an order-list of another vehicle.
  * @param tile unused
@@ -1999,9 +2021,9 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 
 			if (flags & DC_EXEC) {
 				/* If the destination vehicle had a OrderList, destroy it.
-				 * We only reset the order indices, if the new orders are obviously different.
+				 * We reset the order indices, if the new orders are different.
 				 * (We mainly do this to keep the order indices valid and in range.) */
-				DeleteVehicleOrders(dst, false, dst->GetNumOrders() != src->GetNumOrders());
+				DeleteVehicleOrders(dst, false, ShouldResetOrderIndicesOnOrderCopy(src, dst));
 
 				dst->orders.list = src->orders.list;
 
@@ -2086,9 +2108,9 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 				Order **order_dst;
 
 				/* If the destination vehicle had an order list, destroy the chain but keep the OrderList.
-				 * We only reset the order indices, if the new orders are obviously different.
+				 * We only the order indices, if the new orders are different.
 				 * (We mainly do this to keep the order indices valid and in range.) */
-				DeleteVehicleOrders(dst, true, dst->GetNumOrders() != src->GetNumOrders());
+				DeleteVehicleOrders(dst, true, ShouldResetOrderIndicesOnOrderCopy(src, dst));
 
 				order_dst = &first;
 				FOR_VEHICLE_ORDERS(src, order) {
@@ -2111,17 +2133,10 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 				if (src->orders.list != nullptr) {
 					dst->orders.list->SetScheduledDispatchDuration(src->orders.list->GetScheduledDispatchDuration());
 					dst->orders.list->SetScheduledDispatchDelay(src->orders.list->GetScheduledDispatchDelay());
-					for (const auto& slot : src->orders.list->GetScheduledDispatch()) {
-						dst->orders.list->AddScheduledDispatch(slot);
-					}
-
-					Date start_date;
-					uint16 start_full_date_fract;
-					SchdispatchConvertToFullDateFract(
-							src->orders.list->GetScheduledDispatchStartTick(),
-							&start_date, &start_full_date_fract);
-					dst->orders.list->SetScheduledDispatchStartDate(start_date, start_full_date_fract);
-					/* Don't copy last dispatch, leave it at 0 (default) */
+					dst->orders.list->SetScheduledDispatchStartDate(src->orders.list->GetScheduledDispatchStartDatePart(),
+							src->orders.list->GetScheduledDispatchStartDateFractPart());
+					dst->orders.list->SetScheduledDispatchLastDispatch(0);
+					dst->orders.list->SetScheduledDispatch(src->orders.list->GetScheduledDispatch());
 				}
 
 				/* Set automation bit if target has it. */
@@ -2856,14 +2871,20 @@ CommandCost CmdMassChangeOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 						Order new_order;
 						new_order.AssignOrder(*order);
 						new_order.SetDestination(to_dest);
+						const bool wait_fixed = new_order.IsWaitFixed();
+						const bool wait_timetabled = wait_fixed && new_order.IsWaitTimetabled();
 						new_order.SetWaitTimetabled(false);
 						new_order.SetTravelTimetabled(false);
-						if (DoCommand(0, v->index | ((index + 1) << 20), new_order.Pack(), flags, CMD_INSERT_ORDER).Succeeded()) {
+						if (CmdInsertOrderIntl(flags, v, index + 1, new_order, true).Succeeded()) {
 							DoCommand(0, v->index, index, flags, CMD_DELETE_ORDER);
 
 							order = v->orders.list->GetOrderAt(index);
 							order->SetRefit(new_order.GetRefitCargo());
 							order->SetMaxSpeed(new_order.GetMaxSpeed());
+							if (wait_fixed) {
+								extern void SetOrderFixedWaitTime(Vehicle *v, VehicleOrderID order_number, uint32 wait_time, bool wait_timetabled);
+								SetOrderFixedWaitTime(v, index, new_order.GetWaitTime(), wait_timetabled);
+							}
 							changed = true;
 						}
 

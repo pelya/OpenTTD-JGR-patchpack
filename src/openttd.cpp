@@ -53,6 +53,7 @@
 #include "engine_func.h"
 #include "core/random_func.hpp"
 #include "rail_gui.h"
+#include "road_gui.h"
 #include "core/backup_type.hpp"
 #include "hotkeys.h"
 #include "newgrf.h"
@@ -231,6 +232,7 @@ static void ShowHelp()
 		"  -c config_file      = Use 'config_file' instead of 'openttd.cfg'\n"
 		"  -x                  = Do not automatically save to config file on exit\n"
 		"  -q savegame         = Write some information about the savegame and exit\n"
+		"  -Z                  = Write detailed version information and exit\n"
 		"\n",
 		lastof(buf)
 	);
@@ -281,7 +283,7 @@ static void WriteSavegameInfo(const char *name)
 
 	GamelogInfo(_load_check_data.gamelog_action, _load_check_data.gamelog_actions, &last_ottd_rev, &ever_modified, &removed_newgrfs);
 
-	char buf[8192];
+	char buf[65536];
 	char *p = buf;
 	p += seprintf(p, lastof(buf), "Name:         %s\n", name);
 	const char *type = "";
@@ -321,6 +323,40 @@ static void WriteSavegameInfo(const char *name)
 #else
 	ShowInfo(buf);
 #endif
+}
+
+static void WriteSavegameDebugData(const char *name)
+{
+	char *buf = MallocT<char>(4096);
+	char *buflast = buf + 4095;
+	char *p = buf;
+	auto bump_size = [&]() {
+		size_t offset = p - buf;
+		size_t new_size = buflast - buf + 1 + 4096;
+		buf = ReallocT<char>(buf, new_size);
+		buflast = buf + new_size - 1;
+		p = buf + offset;
+	};
+	p += seprintf(p, buflast, "Name:         %s\n", name);
+	if (_load_check_data.debug_log_data.size()) {
+		p += seprintf(p, buflast, "%u bytes of debug data in savegame\n", (uint) _load_check_data.debug_log_data.size());
+		std::string buffer = _load_check_data.debug_log_data;
+		ProcessLineByLine(const_cast<char *>(buffer.data()), [&](const char *line) {
+			if (buflast - p <= 1024) bump_size();
+			p += seprintf(p, buflast, "> %s\n", line);
+		});
+	} else {
+		p += seprintf(p, buflast, "No debug data in savegame\n");
+	}
+
+	/* ShowInfo put output to stderr, but version information should go
+	 * to stdout; this is the only exception */
+#if !defined(_WIN32)
+	printf("%s\n", buf);
+#else
+	ShowInfo(buf);
+#endif
+	free(buf);
 }
 
 
@@ -612,8 +648,10 @@ static const OptionData _options[] = {
 	 GETOPT_SHORT_VALUE('c'),
 	 GETOPT_SHORT_NOVAL('x'),
 	 GETOPT_SHORT_VALUE('q'),
+	 GETOPT_SHORT_VALUE('K'),
 	 GETOPT_SHORT_NOVAL('h'),
 	 GETOPT_SHORT_VALUE('J'),
+	 GETOPT_SHORT_NOVAL('Z'),
 	GETOPT_END()
 };
 
@@ -730,7 +768,8 @@ int openttd_main(int argc, char *argv[])
 				scanner->generation_seed = InteractiveRandom();
 			}
 			break;
-		case 'q': {
+		case 'q':
+		case 'K': {
 			DeterminePaths(argv[0]);
 			if (StrEmpty(mgo.opt)) {
 				ret = 1;
@@ -742,10 +781,12 @@ int openttd_main(int argc, char *argv[])
 			FiosGetSavegameListCallback(SLO_LOAD, mgo.opt, strrchr(mgo.opt, '.'), title, lastof(title));
 
 			_load_check_data.Clear();
+			if (i == 'K') _load_check_data.want_debug_log_data = true;
 			SaveOrLoadResult res = SaveOrLoad(mgo.opt, SLO_CHECK, DFT_GAME_FILE, SAVE_DIR, false);
 			if (res != SL_OK || _load_check_data.HasErrors()) {
 				fprintf(stderr, "Failed to open savegame\n");
 				if (_load_check_data.HasErrors()) {
+					InitializeLanguagePacks();
 					char buf[256];
 					SetDParamStr(0, _load_check_data.error_data);
 					GetString(buf, _load_check_data.error, lastof(buf));
@@ -754,7 +795,11 @@ int openttd_main(int argc, char *argv[])
 				goto exit_noshutdown;
 			}
 
-			WriteSavegameInfo(title);
+			if (i == 'q') {
+				WriteSavegameInfo(title);
+			} else {
+				WriteSavegameDebugData(title);
+			}
 
 			goto exit_noshutdown;
 		}
@@ -762,6 +807,10 @@ int openttd_main(int argc, char *argv[])
 		case 'c': free(_config_file); _config_file = stredup(mgo.opt); break;
 		case 'x': scanner->save_config = false; break;
 		case 'J': _quit_after_days = Clamp(atoi(mgo.opt), 0, INT_MAX); break;
+		case 'Z': {
+			CrashLog::VersionInfoLog();
+			goto exit_noshutdown;
+		}
 		case 'h':
 			i = -2; // Force printing of help.
 			break;
@@ -1053,6 +1102,7 @@ static void MakeNewGameDone()
 	SetLocalCompany(COMPANY_FIRST);
 
 	InitializeRailGUI();
+	InitializeRoadGUI();
 
 	/* We are the server, we start a new company (not dedicated),
 	 * so set the default password *if* needed. */
@@ -1334,6 +1384,32 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 	} \
 }
 
+	auto output_veh_info = [&](char *&p, const Vehicle *u, const Vehicle *v, uint length) {
+		p += seprintf(p, lastof(cclog_buffer), ": type %i, vehicle %i (%i), company %i, unit number %i, wagon %i, engine: ",
+				(int)u->type, u->index, v->index, (int)u->owner, v->unitnumber, length);
+		SetDParam(0, u->engine_type);
+		p = GetString(p, STR_ENGINE_NAME, lastof(cclog_buffer));
+		uint32 grfid = u->GetGRFID();
+		if (grfid) {
+			p += seprintf(p, lastof(cclog_buffer), ", GRF: %08X", BSWAP32(grfid));
+			GRFConfig *grfconfig = GetGRFConfig(grfid);
+			if (grfconfig) {
+				p += seprintf(p, lastof(cclog_buffer), ", %s, %s", grfconfig->GetName(), grfconfig->filename);
+			}
+		}
+	};
+
+#define CCLOGV(...) { \
+	char *p = cclog_buffer + seprintf(cclog_buffer, lastof(cclog_buffer), __VA_ARGS__); \
+	output_veh_info(p, u, v, length); \
+	DEBUG(desync, 0, "%s", cclog_buffer); \
+	if (log) { \
+		log(cclog_buffer); \
+	} else { \
+		LogDesyncMsg(cclog_buffer); \
+	} \
+}
+
 	/* Check the town caches. */
 	std::vector<TownCache> old_town_caches;
 	std::vector<CargoTypes> old_town_cargo_accepted_totals;
@@ -1468,13 +1544,13 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 		uint length = 0;
 		for (const Vehicle *u = v; u != nullptr; u = u->Next()) {
 			if (u->IsGroundVehicle() && (HasBit(u->GetGroundVehicleFlags(), GVF_GOINGUP_BIT) || HasBit(u->GetGroundVehicleFlags(), GVF_GOINGDOWN_BIT)) && u->GetGroundVehicleCache()->cached_slope_resistance && HasBit(v->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST)) {
-				CCLOG("VCF_GV_ZERO_SLOPE_RESIST set incorrectly (1): type %i, vehicle %i, company %i, unit number %i, wagon %i", (int)v->type, v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("VCF_GV_ZERO_SLOPE_RESIST set incorrectly (1)");
 			}
 			if (u->type == VEH_TRAIN && u->breakdown_ctr != 0 && !HasBit(Train::From(v)->flags, VRF_CONSIST_BREAKDOWN)) {
-				CCLOG("VRF_CONSIST_BREAKDOWN incorrectly not set: type %i, vehicle %i, company %i, unit number %i, wagon %i", (int)v->type, v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("VRF_CONSIST_BREAKDOWN incorrectly not set");
 			}
 			if (u->type == VEH_TRAIN && ((Train::From(u)->track & TRACK_BIT_WORMHOLE && !(Train::From(u)->vehstatus & VS_HIDDEN)) || Train::From(u)->track == TRACK_BIT_DEPOT) && !HasBit(Train::From(v)->flags, VRF_CONSIST_SPEED_REDUCTION)) {
-				CCLOG("VRF_CONSIST_SPEED_REDUCTION incorrectly not set: type %i, vehicle %i, company %i, unit number %i, wagon %i", (int)v->type, v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("VRF_CONSIST_SPEED_REDUCTION incorrectly not set");
 			}
 			length++;
 		}
@@ -1528,65 +1604,69 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 		for (const Vehicle *u = v; u != nullptr; u = u->Next()) {
 			FillNewGRFVehicleCache(u);
 			if (memcmp(&grf_cache[length], &u->grf_cache, sizeof(NewGRFCache)) != 0) {
-				CCLOG("newgrf cache mismatch: type %i, vehicle %i, company %i, unit number %i, wagon %i", (int)v->type, v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("newgrf cache mismatch");
 			}
 			if (veh_cache[length].cached_max_speed != u->vcache.cached_max_speed || veh_cache[length].cached_cargo_age_period != u->vcache.cached_cargo_age_period ||
 					veh_cache[length].cached_vis_effect != u->vcache.cached_vis_effect || HasBit(veh_cache[length].cached_veh_flags ^ u->vcache.cached_veh_flags, VCF_LAST_VISUAL_EFFECT)) {
-				CCLOG("vehicle cache mismatch: type %i, vehicle %i, company %i, unit number %i, wagon %i", (int)v->type, v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("vehicle cache mismatch: %c%c%c%c",
+						veh_cache[length].cached_max_speed != u->vcache.cached_max_speed ? 'm' : '-',
+						veh_cache[length].cached_cargo_age_period != u->vcache.cached_cargo_age_period ? 'c' : '-',
+						veh_cache[length].cached_vis_effect != u->vcache.cached_vis_effect ? 'v' : '-',
+						HasBit(veh_cache[length].cached_veh_flags ^ u->vcache.cached_veh_flags, VCF_LAST_VISUAL_EFFECT) ? 'l' : '-');
 			}
 			if (u->IsGroundVehicle() && (HasBit(u->GetGroundVehicleFlags(), GVF_GOINGUP_BIT) || HasBit(u->GetGroundVehicleFlags(), GVF_GOINGDOWN_BIT)) && u->GetGroundVehicleCache()->cached_slope_resistance && HasBit(v->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST)) {
-				CCLOG("VCF_GV_ZERO_SLOPE_RESIST set incorrectly (2): type %i, vehicle %i, company %i, unit number %i, wagon %i", (int)v->type, v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("VCF_GV_ZERO_SLOPE_RESIST set incorrectly (2)");
 			}
 			if (veh_old[length]->acceleration != u->acceleration) {
-				CCLOG("acceleration mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("acceleration mismatch");
 			}
 			if (veh_old[length]->breakdown_chance != u->breakdown_chance) {
-				CCLOG("breakdown_chance mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("breakdown_chance mismatch");
 			}
 			if (veh_old[length]->breakdown_ctr != u->breakdown_ctr) {
-				CCLOG("breakdown_ctr mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("breakdown_ctr mismatch");
 			}
 			if (veh_old[length]->breakdown_delay != u->breakdown_delay) {
-				CCLOG("breakdown_delay mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("breakdown_delay mismatch");
 			}
 			if (veh_old[length]->breakdowns_since_last_service != u->breakdowns_since_last_service) {
-				CCLOG("breakdowns_since_last_service mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("breakdowns_since_last_service mismatch");
 			}
 			if (veh_old[length]->breakdown_severity != u->breakdown_severity) {
-				CCLOG("breakdown_severity mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("breakdown_severity mismatch");
 			}
 			if (veh_old[length]->breakdown_type != u->breakdown_type) {
-				CCLOG("breakdown_type mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("breakdown_type mismatch");
 			}
 			if (veh_old[length]->vehicle_flags != u->vehicle_flags) {
-				CCLOG("vehicle_flags mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+				CCLOGV("vehicle_flags mismatch");
 			}
 			switch (u->type) {
 				case VEH_TRAIN:
 					if (memcmp(&gro_cache[length], &Train::From(u)->gcache, sizeof(GroundVehicleCache)) != 0) {
-						CCLOG("train ground vehicle cache mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("train ground vehicle cache mismatch");
 					}
 					if (memcmp(&tra_cache[length], &Train::From(u)->tcache, sizeof(TrainCache)) != 0) {
-						CCLOG("train cache mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("train cache mismatch");
 					}
 					if (Train::From(veh_old[length])->railtype != Train::From(u)->railtype) {
-						CCLOG("railtype mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("railtype mismatch");
 					}
 					if (Train::From(veh_old[length])->compatible_railtypes != Train::From(u)->compatible_railtypes) {
-						CCLOG("compatible_railtypes mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("compatible_railtypes mismatch");
 					}
 					if (Train::From(veh_old[length])->flags != Train::From(u)->flags) {
-						CCLOG("flags mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("train flags mismatch");
 					}
 					break;
 				case VEH_ROAD:
 					if (memcmp(&gro_cache[length], &RoadVehicle::From(u)->gcache, sizeof(GroundVehicleCache)) != 0) {
-						CCLOG("road vehicle ground vehicle cache mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("road vehicle ground vehicle cache mismatch");
 					}
 					break;
 				case VEH_AIRCRAFT:
 					if (memcmp(&air_cache[length], &Aircraft::From(u)->acache, sizeof(AircraftCache)) != 0) {
-						CCLOG("Aircraft vehicle cache mismatch: vehicle %i, company %i, unit number %i, wagon %i", v->index, (int)v->owner, v->unitnumber, length);
+						CCLOGV("Aircraft vehicle cache mismatch");
 					}
 					break;
 				default:
@@ -1646,10 +1726,20 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 
 	if (_order_destination_refcount_map_valid) {
 		btree::btree_map<uint32, uint32> saved_order_destination_refcount_map = std::move(_order_destination_refcount_map);
+		for (auto iter = saved_order_destination_refcount_map.begin(); iter != saved_order_destination_refcount_map.end();) {
+			if (iter->second == 0) {
+				iter = saved_order_destination_refcount_map.erase(iter);
+			} else {
+				++iter;
+			}
+		}
 		IntialiseOrderDestinationRefcountMap();
 		if (saved_order_destination_refcount_map != _order_destination_refcount_map) CCLOG("Order destination refcount map mismatch");
+	} else {
+		CCLOG("Order destination refcount map not valid");
 	}
 
+#undef CCLOGV
 #undef CCLOG
 }
 

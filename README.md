@@ -1,4 +1,4 @@
-## JGR's Patchpack version 0.31.5
+## JGR's Patchpack version 0.32.0
 
 This is a collection of patches applied to [OpenTTD](http://www.openttd.org/)
 
@@ -248,6 +248,8 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
   * Enable vehicle group management actions on other companies' stations. (added in v0.31.1).  
   * Add a password mechanism to change network game settings from a network client. (added in v0.31.4).  
   * Change network protocol to send server/join and rcon passwords in hashed form instead of in clear text. (added in v0.31.4).  
+  * Add modifier key window for toggling shift/ctrl key states using mouse. (added in v0.32-rc4).  
+  * Add IME support on Linux/SDL2 (SDL2-supported IMEs and Fcitx). (added in v0.32.0).  
   * Various minor fixes, see changelog.  
   * [NewGRF specification additions](docs/newgrf-additions.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/newgrf-additions.html)).
   * [Low-level code/performance changes](docs/jgrpp-low-level-changes.md).
@@ -878,32 +880,20 @@ no graphical user interface; you would be building a dedicated server.
 The following compilers are known to compile OpenTTD:
 
 - Microsoft Visual C++ (MSVC) 2015, 2017 and 2019.
-- GNU Compiler Collection (GCC) 3.3 - 4.4, 4.6 - 4.8.
-    - Versions 4.1 and earlier give bogus warnings about uninitialised variables.
-    - Versions 4.4, 4.6 give bogus warnings about freeing non-heap objects.
-    - Versions 4.6 and later give invalid warnings when lto is enabled.
-- Intel C++ Compiler (ICC) 12.0.
-- Clang/LLVM 2.9 - 3.0
-   Version 2.9 gives bogus warnings about code nonconformity.
+- GNU Compiler Collection (GCC) 4.8 - 9.
+- Clang/LLVM 3.9 - 8
 
 The following compilers are known not to compile OpenTTD:
 
-- Microsoft Visual C++ (MSVC) 2013 and earlier.
-   These old versions do not support modern C++ language features.
-- GNU Compiler Collection (GCC) 3.2 and earlier.
-   These old versions fail due to OpenTTD's template usage.
-- GNU Compiler Collection (GCC) 4.5. It optimizes enums too aggressively.
-   See https://github.com/OpenTTD/OpenTTD/issues/5513 and references therein.
-- Intel C++ Compiler (ICC) 11.1 and earlier.
-    - Version 10.0 and earlier fail a configure check and fail with recent
-       system headers.
-    - Version 10.1 fails to compile station_gui.cpp.
-    - Version 11.1 fails with an internal error when compiling network.cpp.
-- Clang/LLVM 2.8 and earlier.
-- (Open) Watcom.
+In general, this is because these old versions do not (fully) support modern
+C++11 language features.
 
-If any of these compilers can compile OpenTTD again, please let us know.
-Patches to support more compilers are welcome.
+- Microsoft Visual C++ (MSVC) 2013 and earlier.
+- GNU Compiler Collection (GCC) 4.7 and earlier.
+- Clang/LLVM 3.8 and earlier.
+
+If any of these, or any other, compilers can compile OpenTTD, let us know.
+Pull requests to support more compilers are welcome.
 
 ### 7.3) Compilation of base sets
 

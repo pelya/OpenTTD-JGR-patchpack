@@ -22,6 +22,7 @@ public:
 	NodeID node_id;
 
 	AnnoSetItem(Tannotation *anno) : anno_ptr(anno), cached_annotation(anno->GetAnnotation()), node_id(anno->GetNode()) {}
+	AnnoSetItem() : anno_ptr(nullptr), cached_annotation(0), node_id(INVALID_NODE) {}
 };
 
 /**
@@ -156,10 +157,10 @@ private:
 	std::vector<NodeID> station_to_node;
 
 	/** Current iterator in the shares map. */
-	FlowStat::SharesMap::const_iterator it;
+	FlowStat::const_iterator it;
 
 	/** End of the shares map. */
-	FlowStat::SharesMap::const_iterator end;
+	FlowStat::const_iterator end;
 public:
 
 	/**
@@ -187,11 +188,11 @@ public:
 		const FlowStatMap &flows = this->job[node].Flows();
 		FlowStatMap::const_iterator it = flows.find(this->job[source].Station());
 		if (it != flows.end()) {
-			this->it = it->second.GetShares()->begin();
-			this->end = it->second.GetShares()->end();
+			this->it = it->begin();
+			this->end = it->end();
 		} else {
-			this->it = FlowStat::empty_sharesmap.begin();
-			this->end = FlowStat::empty_sharesmap.end();
+			this->it = nullptr;
+			this->end = nullptr;
 		}
 	}
 
@@ -263,98 +264,6 @@ bool CapacityAnnotation::IsBetter(const CapacityAnnotation *base, uint cap,
 	}
 }
 
-#ifdef CUSTOM_ALLOCATOR
-/**
- * Storage for AnnoSetAllocator instances
- */
-struct AnnoSetAllocatorStore {
-	std::vector<void *> used_blocks;
-	void *current_block;
-	size_t next_position;
-	void *last_freed;
-
-	AnnoSetAllocatorStore() : current_block(nullptr), next_position(0), last_freed(nullptr) {}
-
-	~AnnoSetAllocatorStore()
-	{
-		for (std::vector<void *>::iterator i = used_blocks.begin(); i != used_blocks.end(); ++i) {
-			free(*i);
-		}
-	}
-};
-
-/**
- * Custom allocator specifically for use with MultiCommodityFlow::Dijkstra::AnnoSet
- * This allocates RB-set nodes in contiguous blocks, and frees all allocated nodes when destructed
- * If a node is deallocated, it is returned in the next allocation, this is so that the same node
- * can be re-used across a call to Path::Fork
- */
-template<class Ttype>
-struct AnnoSetAllocator {
-	static const size_t block_size = 1024;
-
-	AnnoSetAllocatorStore &store;
-
-	void NewBlock()
-	{
-		store.current_block = MallocT<Ttype>(block_size);
-		store.next_position = 0;
-		store.used_blocks.push_back(store.current_block);
-	}
-
-	typedef Ttype value_type;
-
-	template<typename Tother>
-	struct rebind {
-		typedef AnnoSetAllocator<Tother> other;
-	};
-
-	AnnoSetAllocator(AnnoSetAllocatorStore &store) : store(store) {}
-
-	template<typename Tother>
-	AnnoSetAllocator(const AnnoSetAllocator<Tother> &other) : store(other.store) {}
-
-	Ttype* allocate(size_t n)
-	{
-		if (store.current_block == nullptr) NewBlock();
-
-		assert(n == 1);
-		if (store.last_freed != nullptr) {
-			Ttype* out = static_cast<Ttype*>(store.last_freed);
-			store.last_freed = nullptr;
-			return out;
-		}
-
-		if (store.next_position == block_size) NewBlock();
-
-		Ttype* next = static_cast<Ttype*>(store.current_block) + store.next_position;
-		store.next_position++;
-		return next;
-	}
-
-	void deallocate(Ttype* p, size_t n)
-	{
-		store.last_freed = p;
-	}
-};
-#endif
-
-/**
- * Annotation wrapper class which also stores an iterator to the AnnoSet node which points to this annotation
- * This is to enable erasing the AnnoSet node when calling Path::Fork without having to search the set
- */
-template<class Tannotation>
-struct AnnosWrapper : public Tannotation {
-#ifdef CUSTOM_ALLOCATOR
-	typename std::set<AnnoSetItem<Tannotation>, typename Tannotation::Comparator, AnnoSetAllocator<AnnoSetItem<Tannotation> > >::iterator self_iter;
-#else
-	typename std::set<AnnoSetItem<Tannotation>, typename Tannotation::Comparator>::iterator self_iter;
-#endif
-
-
-	AnnosWrapper(NodeID n, bool source = false) : Tannotation(n, source) {}
-};
-
 /**
  * A slightly modified Dijkstra algorithm. Grades the paths not necessarily by
  * distance, but by the value Tannotation computes. It uses the max_saturation
@@ -367,31 +276,27 @@ struct AnnosWrapper : public Tannotation {
 template<class Tannotation, class Tedge_iterator>
 void MultiCommodityFlow::Dijkstra(NodeID source_node, PathVector &paths)
 {
-#ifdef CUSTOM_ALLOCATOR
-	typedef std::set<AnnoSetItem<Tannotation>, typename Tannotation::Comparator, AnnoSetAllocator<AnnoSetItem<Tannotation> > > AnnoSet;
-	AnnoSetAllocatorStore annos_store;
-	AnnoSet annos = AnnoSet(typename Tannotation::Comparator(), AnnoSetAllocator<Tannotation *>(annos_store));
-#else
-	typedef std::set<AnnoSetItem<Tannotation>, typename Tannotation::Comparator> AnnoSet;
+	typedef btree::btree_set<AnnoSetItem<Tannotation>, typename Tannotation::Comparator> AnnoSet;
 	AnnoSet annos = AnnoSet(typename Tannotation::Comparator());
-#endif
 	Tedge_iterator iter(this->job);
 	uint size = this->job.Size();
 	paths.resize(size, nullptr);
 
-	this->job.path_allocator.SetParameters(sizeof(AnnosWrapper<Tannotation>), (8192 - 32) / sizeof(AnnosWrapper<Tannotation>));
+	this->job.path_allocator.SetParameters(sizeof(Tannotation), (8192 - 32) / sizeof(Tannotation));
 
 	for (NodeID node = 0; node < size; ++node) {
-		AnnosWrapper<Tannotation> *anno = new (this->job.path_allocator.Allocate()) AnnosWrapper<Tannotation>(node, node == source_node);
+		Tannotation *anno = new (this->job.path_allocator.Allocate()) Tannotation(node, node == source_node);
 		anno->UpdateAnnotation();
-		anno->self_iter = (node == source_node) ? annos.insert(AnnoSetItem<Tannotation>(anno)).first : annos.end(); // only insert the source node, the other nodes will be added as reached
+		if (node == source_node) {
+			annos.insert(AnnoSetItem<Tannotation>(anno)).first;
+			anno->SetAnnosSetFlag(true);
+		}
 		paths[node] = anno;
 	}
 	while (!annos.empty()) {
 		typename AnnoSet::iterator i = annos.begin();
-		AnnosWrapper<Tannotation> *source = static_cast<AnnosWrapper<Tannotation> *>(i->anno_ptr);
+		Tannotation *source = i->anno_ptr;
 		annos.erase(i);
-		source->self_iter = annos.end();
 		NodeID from = source->GetNode();
 		iter.SetNode(source_node, from);
 		for (NodeID to = iter.Next(); to != INVALID_NODE; to = iter.Next()) {
@@ -405,12 +310,13 @@ void MultiCommodityFlow::Dijkstra(NodeID source_node, PathVector &paths)
 			}
 			/* punish in-between stops a little */
 			uint distance = DistanceMaxPlusManhattan(this->job[from].XY(), this->job[to].XY()) + 1;
-			AnnosWrapper<Tannotation> *dest = static_cast<AnnosWrapper<Tannotation> *>(paths[to]);
+			Tannotation *dest = static_cast<Tannotation *>(paths[to]);
 			if (dest->IsBetter(source, capacity, capacity - edge.Flow(), distance)) {
-				if (dest->self_iter != annos.end()) annos.erase(dest->self_iter);
+				if (dest->GetAnnosSetFlag()) annos.erase(AnnoSetItem<Tannotation>(dest));
 				dest->Fork(source, capacity, capacity - edge.Flow(), distance);
 				dest->UpdateAnnotation();
-				dest->self_iter = annos.insert(AnnoSetItem<Tannotation>(dest)).first;
+				annos.insert(AnnoSetItem<Tannotation>(dest));
+				dest->SetAnnosSetFlag(true);
 			}
 		}
 	}
@@ -617,13 +523,18 @@ MCF1stPass::MCF1stPass(LinkGraphJob &job) : MultiCommodityFlow(job)
 	uint size = job.Size();
 	uint accuracy = job.Settings().accuracy;
 	bool more_loops;
+	std::vector<bool> finished_sources;
+	finished_sources.resize(size);
 
 	do {
 		more_loops = false;
 		for (NodeID source = 0; source < size; ++source) {
+			if (finished_sources[source]) continue;
+
 			/* First saturate the shortest paths. */
 			this->Dijkstra<DistanceAnnotation, GraphEdgeIterator>(source, paths);
 
+			bool source_demand_left = false;
 			for (NodeID dest = 0; dest < size; ++dest) {
 				Edge edge = job[source][dest];
 				if (edge.UnsatisfiedDemand() > 0) {
@@ -641,8 +552,10 @@ MCF1stPass::MCF1stPass(LinkGraphJob &job) : MultiCommodityFlow(job)
 							path->GetFreeCapacity() > INT_MIN) {
 						this->PushFlow(edge, path, accuracy, UINT_MAX);
 					}
+					if (edge.UnsatisfiedDemand() > 0) source_demand_left = true;
 				}
 			}
+			if (!source_demand_left) finished_sources[source] = true;
 			this->CleanupPaths(source, paths);
 		}
 	} while ((more_loops || this->EliminateCycles()) && !job.IsJobAborted());
@@ -660,18 +573,28 @@ MCF2ndPass::MCF2ndPass(LinkGraphJob &job) : MultiCommodityFlow(job)
 	uint size = job.Size();
 	uint accuracy = job.Settings().accuracy;
 	bool demand_left = true;
+	std::vector<bool> finished_sources;
+	finished_sources.resize(size);
 	while (demand_left && !job.IsJobAborted()) {
 		demand_left = false;
 		for (NodeID source = 0; source < size; ++source) {
+			if (finished_sources[source]) continue;
+
 			this->Dijkstra<CapacityAnnotation, FlowEdgeIterator>(source, paths);
+
+			bool source_demand_left = false;
 			for (NodeID dest = 0; dest < size; ++dest) {
 				Edge edge = this->job[source][dest];
 				Path *path = paths[dest];
 				if (edge.UnsatisfiedDemand() > 0 && path->GetFreeCapacity() > INT_MIN) {
 					this->PushFlow(edge, path, accuracy, UINT_MAX);
-					if (edge.UnsatisfiedDemand() > 0) demand_left = true;
+					if (edge.UnsatisfiedDemand() > 0) {
+						demand_left = true;
+						source_demand_left = true;
+					}
 				}
 			}
+			if (!source_demand_left) finished_sources[source] = true;
 			this->CleanupPaths(source, paths);
 		}
 	}

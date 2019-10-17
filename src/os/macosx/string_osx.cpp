@@ -285,7 +285,7 @@ void MacOSSetCurrentLocaleName(const char *iso_code)
 
 	if (_osx_locale != nullptr) CFRelease(_osx_locale);
 
-	CFStringRef iso = CFStringCreateWithCString(kCFAllocatorNull, iso_code, kCFStringEncodingUTF8);
+	CFStringRef iso = CFStringCreateWithCString(kCFAllocatorDefault, iso_code, kCFStringEncodingUTF8);
 	_osx_locale = CFLocaleCreate(kCFAllocatorDefault, iso);
 	CFRelease(iso);
 }
@@ -316,6 +316,13 @@ int MacOSStringCompare(const char *s1, const char *s2)
 	auto guard2 = scope_guard([&]() {
 		CFRelease(cf2);
 	});
+
+	/* If any CFString could not be created (e.g., due to UTF8 invalid chars), return OS unsupported functionality */
+	if (cf1 == nullptr || cf2 == nullptr) {
+		if (cf1 != nullptr) CFRelease(cf1);
+		if (cf2 != nullptr) CFRelease(cf2);
+		return 0;
+	}
 
 	CFComparisonResult res = CFStringCompareWithOptionsAndLocale(cf1, cf2, CFRangeMake(0, CFStringGetLength(cf1)), flags, _osx_locale);
 

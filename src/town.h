@@ -41,7 +41,7 @@ static const TownID INVALID_TOWN = 0xFFFF;
 static const uint TOWN_GROWTH_WINTER = 0xFFFFFFFE; ///< The town only needs this cargo in the winter (any amount)
 static const uint TOWN_GROWTH_DESERT = 0xFFFFFFFF; ///< The town needs the cargo for growth when on desert (any amount)
 static const uint16 TOWN_GROWTH_RATE_NONE = 0xFFFF; ///< Special value for Town::growth_rate to disable town growth.
-static const uint16 MAX_TOWN_GROWTH_TICKS = 930; ///< Max amount of original town ticks that still fit into uint16, about equal to UINT16_MAX / TOWN_GROWTH_TICKS but sligtly less to simplify calculations
+static const uint16 MAX_TOWN_GROWTH_TICKS = 930; ///< Max amount of original town ticks that still fit into uint16, about equal to UINT16_MAX / TOWN_GROWTH_TICKS but slightly less to simplify calculations
 
 typedef Pool<Town, TownID, 64, 64000> TownPool;
 extern TownPool _town_pool;
@@ -107,6 +107,8 @@ struct Town : TownPool::PoolItem<&_town_pool> {
 
 	bool larger_town;                ///< if this is a larger town and should grow more quickly
 	TownLayout layout;               ///< town specific road layout
+
+	bool show_zone;                  ///< NOSAVE: mark town to show the local authority zone in the viewports
 
 	std::list<PersistentStorage *> psa_list;
 
@@ -198,6 +200,12 @@ enum TownRatingCheckType {
 	ROAD_REMOVE         = 0,      ///< Removal of a road owned by the town.
 	TUNNELBRIDGE_REMOVE = 1,      ///< Removal of a tunnel or bridge owned by the towb.
 	TOWN_RATING_CHECK_TYPE_COUNT, ///< Number of town checking action types.
+};
+
+/** Special values for town list window for the data parameter of #InvalidateWindowData. */
+enum TownDirectoryInvalidateWindowData {
+	TDIWD_FORCE_REBUILD,
+	TDIWD_FILTER_CHANGES,        ///< The filename filter has changed (via the editbox)
 };
 
 /**
@@ -341,5 +349,7 @@ static inline uint16 TownTicksToGameTicks(uint16 ticks) {
 
 
 extern CargoTypes _town_cargoes_accepted;
+
+RoadType GetTownRoadType(const Town *t);
 
 #endif /* TOWN_H */

@@ -296,7 +296,7 @@ struct IConsoleWindow : Window
 
 			case WKC_RETURN: case WKC_NUM_ENTER: {
 				/* We always want the ] at the left side; we always force these strings to be left
-				 * aligned anyway. So enforce this in all cases by addding a left-to-right marker,
+				 * aligned anyway. So enforce this in all cases by adding a left-to-right marker,
 				 * otherwise it will be drawn at the wrong side with right-to-left texts. */
 				IConsolePrintF(CC_COMMAND, LRM "] %s", _iconsole_cmdline.buf);
 				const char *cmd = IConsoleHistoryAdd(_iconsole_cmdline.buf);
@@ -387,6 +387,11 @@ struct IConsoleWindow : Window
 	void OnMouseWheel(int wheel) override
 	{
 		this->Scroll(-wheel);
+	}
+
+	virtual void OnFocus(Window *previously_focused_window) override
+	{
+		VideoDriver::GetInstance()->EditBoxGainedFocus();
 	}
 
 	void OnFocusLost(Window *newly_focused_window) override

@@ -2100,6 +2100,7 @@ STR_ROAD_TOOLBAR_TOOLTIP_BUILD_TRAMWAY_TUNNEL                   :{BLACK}ட்�
 STR_ROAD_TOOLBAR_TOOLTIP_TOGGLE_BUILD_REMOVE_FOR_ROAD           :{BLACK}சாலை கட்டுமானம் செய்யவும்/நீக்கவும்
 STR_ROAD_TOOLBAR_TOOLTIP_TOGGLE_BUILD_REMOVE_FOR_TRAMWAYS       :{BLACK}ட்ராம்வே கட்டுமானம் செய்யவும்/நீக்கவும்
 
+
 # Road depot construction window
 STR_BUILD_DEPOT_ROAD_ORIENTATION_CAPTION                        :{WHITE}சாலை வாகன பணிமனை திசையமைப்பு
 STR_BUILD_DEPOT_ROAD_ORIENTATION_SELECT_TOOLTIP                 :{BLACK}சாலை வாகன பணிமனை திசையமைப்பினை தேர்ந்தெடுக்கவும்
@@ -2879,8 +2880,6 @@ STR_COMPANY_INFRASTRUCTURE_VIEW_CAPTION                         :{WHITE}{COMPANY
 STR_COMPANY_INFRASTRUCTURE_VIEW_RAIL_SECT                       :{GOLD}இரயில் பாகங்கள்:
 STR_COMPANY_INFRASTRUCTURE_VIEW_SIGNALS                         :{WHITE}சிக்னல்கள்
 STR_COMPANY_INFRASTRUCTURE_VIEW_ROAD_SECT                       :{GOLD}சாலை பாகங்கள்:
-STR_COMPANY_INFRASTRUCTURE_VIEW_ROAD                            :{WHITE}சாலை
-STR_COMPANY_INFRASTRUCTURE_VIEW_TRAMWAY                         :{WHITE}ட்ராம்வே
 STR_COMPANY_INFRASTRUCTURE_VIEW_WATER_SECT                      :{GOLD}தண்ணீர் வட்டங்கள்:
 STR_COMPANY_INFRASTRUCTURE_VIEW_CANALS                          :{WHITE}கால்வாய்கள்
 STR_COMPANY_INFRASTRUCTURE_VIEW_STATION_SECT                    :{GOLD}நிலையங்கள்:
@@ -2970,10 +2969,13 @@ STR_BUY_VEHICLE_TRAIN_ELRAIL_CAPTION                            :புது �
 STR_BUY_VEHICLE_TRAIN_MONORAIL_CAPTION                          :புது மோனோ இரயில் வாகனங்கள்
 STR_BUY_VEHICLE_TRAIN_MAGLEV_CAPTION                            :புதிய மேக்லெவ் வாகனங்கள்
 
-STR_BUY_VEHICLE_TRAIN_ALL_CAPTION                               :புது இரயில் வாகனங்கள்
 STR_BUY_VEHICLE_ROAD_VEHICLE_CAPTION                            :புது சாலை வாகனங்கள்
+
+############ range for vehicle availability starts
+STR_BUY_VEHICLE_TRAIN_ALL_CAPTION                               :புது இரயில் வாகனங்கள்
 STR_BUY_VEHICLE_SHIP_CAPTION                                    :புது கப்பல்கள்
 STR_BUY_VEHICLE_AIRCRAFT_CAPTION                                :புது விமானம்
+############ range for vehicle availability ends
 
 STR_PURCHASE_INFO_COST_WEIGHT                                   :{BLACK}செலவு: {GOLD}{CURRENCY_LONG}{BLACK} எடை: {GOLD}{WEIGHT_SHORT}
 STR_PURCHASE_INFO_SPEED_POWER                                   :{BLACK}வேகம்: {GOLD}{VELOCITY}{BLACK} திறன்: {GOLD}{POWER}
@@ -3099,12 +3101,15 @@ STR_DEPOT_SELL_CONFIRMATION_TEXT                                :{YELLOW}நீ�
 
 # Engine preview window
 STR_ENGINE_PREVIEW_CAPTION                                      :{WHITE}வாகன உற்பத்தியாலரிடமிருந்து ஓர் தகவல்
+
 STR_ENGINE_PREVIEW_RAILROAD_LOCOMOTIVE                          :இரயில்வே வாகனம்
-STR_ENGINE_PREVIEW_ROAD_VEHICLE                                 :சாலை வாகனம்
-STR_ENGINE_PREVIEW_AIRCRAFT                                     :விமானம்
-STR_ENGINE_PREVIEW_SHIP                                         :கப்பல்
 STR_ENGINE_PREVIEW_MONORAIL_LOCOMOTIVE                          :மோனோ இரயில் வாகனம்
 STR_ENGINE_PREVIEW_MAGLEV_LOCOMOTIVE                            :மேக்லெவ் வாகனம்
+
+STR_ENGINE_PREVIEW_ROAD_VEHICLE                                 :சாலை வாகனம்
+
+STR_ENGINE_PREVIEW_AIRCRAFT                                     :விமானம்
+STR_ENGINE_PREVIEW_SHIP                                         :கப்பல்
 
 STR_ENGINE_PREVIEW_COST_WEIGHT_SPEED_POWER                      :{BLACK}செலவு: {CURRENCY_LONG} எடை: {WEIGHT_SHORT}{}வேகம்: {VELOCITY}  திறன்: {POWER}{}ஓட்டுவதற்கான செலவு: {CURRENCY_LONG}/வரு{}கொள்ளளவு: {CARGO_LONG}
 STR_ENGINE_PREVIEW_COST_WEIGHT_SPEED_POWER_MAX_TE               :{BLACK}செலவு: {CURRENCY_LONG} எடை: {WEIGHT_SHORT}{}வேகம்: {VELOCITY} திறன்: {POWER}  அதி. T.E.: {6:FORCE}{}ஓட்டுவதற்கான செலவு: {4:CURRENCY_LONG}/வரு{}கொள்ளளவு: {5:CARGO_LONG}
@@ -3135,6 +3140,7 @@ STR_REPLACE_RAIL_VEHICLES                                       :இரயில
 STR_REPLACE_ELRAIL_VEHICLES                                     :மின்சார இரயில் வாகனங்கள்
 STR_REPLACE_MONORAIL_VEHICLES                                   :மோனோ இரயில் வாகனங்கள்
 STR_REPLACE_MAGLEV_VEHICLES                                     :மேக்லெவ் வாகனங்கள்
+
 
 STR_REPLACE_REMOVE_WAGON                                        :{BLACK}பெட்டி நீக்கம்: {ORANGE}{STRING}
 
@@ -3821,7 +3827,7 @@ STR_ERROR_MUST_REMOVE_SIGNALS_FIRST                             :{WHITE}மு�
 STR_ERROR_NO_SUITABLE_RAILROAD_TRACK                            :{WHITE}தக்க இரயில் தடம் ஏதும் இல்லை
 STR_ERROR_MUST_REMOVE_RAILROAD_TRACK                            :{WHITE}முதலில் இரயில்வே தடத்தினை எடுக்க வேண்டும்
 STR_ERROR_CROSSING_ON_ONEWAY_ROAD                               :{WHITE}சாலை ஒருவழிப்பாதை அல்லது மறிக்கப்பட்டுள்ளது
-STR_ERROR_CROSSING_DISALLOWED                                   :{WHITE}இந்த வகையிலான இரயில்களுக்கு இருப்புப்பாதை சந்திக் கடவுகள் கிடையாது
+STR_ERROR_CROSSING_DISALLOWED_RAIL                              :{WHITE}இந்த வகையிலான இரயில்களுக்கு இருப்புப்பாதை சந்திக் கடவுகள் கிடையாது
 STR_ERROR_CAN_T_BUILD_SIGNALS_HERE                              :{WHITE}இங்கே சிக்னல்களை நிறுவ இயலாது...
 STR_ERROR_CAN_T_BUILD_RAILROAD_TRACK                            :{WHITE}இங்கே இரயில்வே தடங்களை பதிய முடியாது...
 STR_ERROR_CAN_T_REMOVE_RAILROAD_TRACK                           :{WHITE}இங்கிருந்து இரயில்வே தடங்களை அகற்ற முடியாது...

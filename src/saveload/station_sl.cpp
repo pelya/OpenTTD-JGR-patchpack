@@ -13,7 +13,6 @@
 #include "../station_base.h"
 #include "../waypoint_base.h"
 #include "../roadstop_base.h"
-#include "../dock_base.h"
 #include "../vehicle_base.h"
 #include "../newgrf_station.h"
 
@@ -127,11 +126,6 @@ void AfterLoadStations()
 			Station *sta = Station::From(st);
 			for (const RoadStop *rs = sta->bus_stops; rs != nullptr; rs = rs->next) sta->bus_station.Add(rs->xy);
 			for (const RoadStop *rs = sta->truck_stops; rs != nullptr; rs = rs->next) sta->truck_station.Add(rs->xy);
-
-			for (const Dock *d = sta->docks; d != nullptr; d = d->next) {
-				sta->dock_station.Add(d->sloped);
-				sta->dock_station.Add(d->flat);
-			}
 		}
 
 		StationUpdateCachedTriggers(st);
@@ -175,14 +169,6 @@ static const SaveLoad _roadstop_desc[] = {
 	SLE_END()
 };
 
-static const SaveLoad _dock_desc[] = {
-	SLE_VAR(Dock, sloped,       SLE_UINT32),
-	SLE_VAR(Dock, flat,         SLE_UINT32),
-	SLE_REF(Dock, next,         REF_DOCKS),
-
-	SLE_END()
-};
-
 static const SaveLoad _old_station_desc[] = {
 	SLE_CONDVAR(Station, xy,                         SLE_FILE_U16 | SLE_VAR_U32,  SL_MIN_VERSION, SLV_6),
 	SLE_CONDVAR(Station, xy,                         SLE_UINT32,                  SLV_6, SL_MAX_VERSION),
@@ -191,8 +177,8 @@ static const SaveLoad _old_station_desc[] = {
 	SLE_CONDVAR(Station, train_station.tile,         SLE_UINT32,                  SLV_6, SL_MAX_VERSION),
 	SLE_CONDVAR(Station, airport.tile,               SLE_FILE_U16 | SLE_VAR_U32,  SL_MIN_VERSION, SLV_6),
 	SLE_CONDVAR(Station, airport.tile,               SLE_UINT32,                  SLV_6, SL_MAX_VERSION),
-	SLE_CONDVAR(Station, dock_station.tile,          SLE_FILE_U16 | SLE_VAR_U32,  SL_MIN_VERSION, SLV_6),
-	SLE_CONDVAR(Station, dock_station.tile,          SLE_UINT32,                  SLV_6, SL_MAX_VERSION),
+	SLE_CONDNULL(2, SL_MIN_VERSION, SLV_6),
+	SLE_CONDNULL(4, SLV_6, SLV_MULTITILE_DOCKS),
 	    SLE_REF(Station, town,                       REF_TOWN),
 	    SLE_VAR(Station, train_station.w,            SLE_FILE_U8 | SLE_VAR_U16),
 	SLE_CONDVAR(Station, train_station.h,            SLE_FILE_U8 | SLE_VAR_U16,   SLV_2, SL_MAX_VERSION),
@@ -447,8 +433,15 @@ static const SaveLoad _station_desc[] = {
 
 	      SLE_REF(Station, bus_stops,                  REF_ROADSTOPS),
 	      SLE_REF(Station, truck_stops,                REF_ROADSTOPS),
-    SLE_CONDVAR_X(Station, dock_station.tile,          SLE_UINT32,                  SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MULTIPLE_DOCKS, 0, 0)),
-    SLE_CONDREF_X(Station, docks,                      REF_DOCKS,                   SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MULTIPLE_DOCKS, 1)),
+	SLE_CONDVAR_X(Station, ship_station.tile,          SLE_UINT32,                SL_MIN_VERSION,      SLV_MULTITILE_DOCKS, SlXvFeatureTest(XSLFTO_AND, XSLFI_MULTIPLE_DOCKS, 0, 0)),
+	SLE_CONDNULL_X(4, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MULTIPLE_DOCKS, 1, 1)),
+	  SLE_CONDVAR(Station, ship_station.tile,          SLE_UINT32,                SLV_MULTITILE_DOCKS, SL_MAX_VERSION),
+	  SLE_CONDVAR(Station, ship_station.w,             SLE_FILE_U8 | SLE_VAR_U16, SLV_MULTITILE_DOCKS, SL_MAX_VERSION),
+	  SLE_CONDVAR(Station, ship_station.h,             SLE_FILE_U8 | SLE_VAR_U16, SLV_MULTITILE_DOCKS, SL_MAX_VERSION),
+	  SLE_CONDVAR(Station, docking_station.tile,       SLE_UINT32,                SLV_MULTITILE_DOCKS, SL_MAX_VERSION),
+	  SLE_CONDVAR(Station, docking_station.w,          SLE_FILE_U8 | SLE_VAR_U16, SLV_MULTITILE_DOCKS, SL_MAX_VERSION),
+	  SLE_CONDVAR(Station, docking_station.h,          SLE_FILE_U8 | SLE_VAR_U16, SLV_MULTITILE_DOCKS, SL_MAX_VERSION),
+	SLE_CONDVARVEC_X(Station, docking_tiles,           SLE_UINT32,                     SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MULTIPLE_DOCKS, 2)),
 	      SLE_VAR(Station, airport.tile,               SLE_UINT32),
 	  SLE_CONDVAR(Station, airport.w,                  SLE_FILE_U8 | SLE_VAR_U16, SLV_140, SL_MAX_VERSION),
 	  SLE_CONDVAR(Station, airport.h,                  SLE_FILE_U8 | SLE_VAR_U16, SLV_140, SL_MAX_VERSION),
@@ -496,10 +489,31 @@ const SaveLoad *GetBaseStationDescription()
 	return _base_station_desc;
 }
 
+std::vector<SaveLoad> _filtered_station_desc;
+std::vector<SaveLoad> _filtered_waypoint_desc;
+std::vector<SaveLoad> _filtered_goods_desc;
+std::vector<SaveLoad> _filtered_station_speclist_desc;
+
+static void SetupDescs_STNN()
+{
+	_filtered_station_desc = SlFilterObject(_station_desc);
+	_filtered_waypoint_desc = SlFilterObject(_waypoint_desc);
+	_filtered_goods_desc = SlFilterObject(GetGoodsDesc());
+	_filtered_station_speclist_desc = SlFilterObject(_station_speclist_desc);
+}
+
+std::vector<SaveLoad> _filtered_roadstop_desc;
+
+static void SetupDescs_ROADSTOP()
+{
+	_filtered_roadstop_desc = SlFilterObject(_roadstop_desc);
+}
+
+
 static void RealSave_STNN(BaseStation *bst)
 {
 	bool waypoint = (bst->facilities & FACIL_WAYPOINT) != 0;
-	SlObject(bst, waypoint ? _waypoint_desc : _station_desc);
+	SlObjectSaveFiltered(bst, waypoint ? _filtered_waypoint_desc.data() : _filtered_station_desc.data());
 
 	MemoryDumper *dumper = MemoryDumper::GetCurrent();
 
@@ -509,18 +523,19 @@ static void RealSave_STNN(BaseStation *bst)
 			_num_dests = (uint32)st->goods[i].cargo.Packets()->MapSize();
 			_num_flows = 0;
 			for (FlowStatMap::const_iterator it(st->goods[i].flows.begin()); it != st->goods[i].flows.end(); ++it) {
-				_num_flows += (uint32)it->second.GetShares()->size();
+				_num_flows += (uint32)it->size();
 			}
-			SlObject(&st->goods[i], GetGoodsDesc());
+			SlObjectSaveFiltered(&st->goods[i], _filtered_goods_desc.data());
 			for (FlowStatMap::const_iterator outer_it(st->goods[i].flows.begin()); outer_it != st->goods[i].flows.end(); ++outer_it) {
-				const FlowStat::SharesMap *shares = outer_it->second.GetShares();
 				uint32 sum_shares = 0;
 				FlowSaveLoad flow;
-				flow.source = outer_it->first;
-				for (FlowStat::SharesMap::const_iterator inner_it(shares->begin()); inner_it != shares->end(); ++inner_it) {
+				flow.source = outer_it->GetOrigin();
+				FlowStat::const_iterator inner_it(outer_it->begin());
+				const FlowStat::const_iterator end(outer_it->end());
+				for (; inner_it != end; ++inner_it) {
 					flow.via = inner_it->second;
 					flow.share = inner_it->first - sum_shares;
-					flow.restricted = inner_it->first > outer_it->second.GetUnrestricted();
+					flow.restricted = inner_it->first > outer_it->GetUnrestricted();
 					sum_shares = inner_it->first;
 					assert(flow.share > 0);
 
@@ -533,18 +548,20 @@ static void RealSave_STNN(BaseStation *bst)
 				}
 			}
 			for (StationCargoPacketMap::ConstMapIterator it(st->goods[i].cargo.Packets()->begin()); it != st->goods[i].cargo.Packets()->end(); ++it) {
-				SlObject(const_cast<StationCargoPacketMap::value_type *>(&(*it)), _cargo_list_desc);
+				SlObjectSaveFiltered(const_cast<StationCargoPacketMap::value_type *>(&(*it)), _cargo_list_desc); // _cargo_list_desc has no conditionals
 			}
 		}
 	}
 
 	for (uint i = 0; i < bst->num_specs; i++) {
-		SlObject(&bst->speclist[i], _station_speclist_desc);
+		SlObjectSaveFiltered(&bst->speclist[i], _filtered_station_speclist_desc.data());
 	}
 }
 
 static void Save_STNN()
 {
+	SetupDescs_STNN();
+
 	BaseStation *st;
 	/* Write the stations */
 	FOR_ALL_BASE_STATIONS(st) {
@@ -555,6 +572,8 @@ static void Save_STNN()
 
 static void Load_STNN()
 {
+	SetupDescs_STNN();
+
 	_num_flows = 0;
 
 	const uint num_cargo = IsSavegameVersionBefore(SLV_EXTEND_CARGOTYPES) ? 32 : NUM_CARGO;
@@ -565,7 +584,7 @@ static void Load_STNN()
 		bool waypoint = (SlReadByte() & FACIL_WAYPOINT) != 0;
 
 		BaseStation *bst = waypoint ? (BaseStation *)new (index) Waypoint() : new (index) Station();
-		SlObject(bst, waypoint ? _waypoint_desc : _station_desc);
+		SlObjectLoadFiltered(bst, waypoint ? _filtered_waypoint_desc.data() : _filtered_station_desc.data());
 
 		if (!waypoint) {
 			Station *st = Station::From(bst);
@@ -579,7 +598,7 @@ static void Load_STNN()
 			}
 
 			for (CargoID i = 0; i < num_cargo; i++) {
-				SlObject(&st->goods[i], GetGoodsDesc());
+				SlObjectLoadFiltered(&st->goods[i], _filtered_goods_desc.data());
 				FlowSaveLoad flow;
 				FlowStat *fs = nullptr;
 				StationID prev_source = INVALID_STATION;
@@ -592,7 +611,7 @@ static void Load_STNN()
 					if (!IsSavegameVersionBefore(SLV_187)) flow.restricted = (buffer->ReadByte() != 0);
 
 					if (fs == nullptr || prev_source != flow.source) {
-						fs = &(st->goods[i].flows.insert(std::make_pair(flow.source, FlowStat(flow.via, flow.share, flow.restricted))).first->second);
+						fs = &(*(st->goods[i].flows.insert(st->goods[i].flows.end(), FlowStat(flow.source, flow.via, flow.share, flow.restricted))));
 					} else {
 						fs->AppendShare(flow.via, flow.share, flow.restricted);
 					}
@@ -603,7 +622,7 @@ static void Load_STNN()
 				} else {
 					StationCargoPair pair;
 					for (uint j = 0; j < _num_dests; ++j) {
-						SlObject(&pair, _cargo_list_desc);
+						SlObjectLoadFiltered(&pair, _cargo_list_desc); // _cargo_list_desc has no conditionals
 						const_cast<StationCargoPacketMap &>(*(st->goods[i].cargo.Packets()))[pair.first].swap(pair.second);
 						assert(pair.second.empty());
 					}
@@ -616,7 +635,7 @@ static void Load_STNN()
 			/* Allocate speclist memory when loading a game */
 			bst->speclist = CallocT<StationSpecList>(bst->num_specs);
 			for (uint i = 0; i < bst->num_specs; i++) {
-				SlObject(&bst->speclist[i], _station_speclist_desc);
+				SlObjectLoadFiltered(&bst->speclist[i], _filtered_station_speclist_desc.data());
 			}
 		}
 	}
@@ -627,6 +646,12 @@ static void Ptrs_STNN()
 	/* Don't run when savegame version lower than 123. */
 	if (IsSavegameVersionBefore(SLV_123)) return;
 
+	SetupDescs_STNN();
+
+	if (!IsSavegameVersionBefore(SLV_183)) {
+		assert(_filtered_goods_desc[0].cmd == SL_END);
+	}
+
 	uint num_cargo = IsSavegameVersionBefore(SLV_EXTEND_CARGOTYPES) ? 32 : NUM_CARGO;
 	Station *st;
 	FOR_ALL_STATIONS(st) {
@@ -634,85 +659,63 @@ static void Ptrs_STNN()
 			GoodsEntry *ge = &st->goods[i];
 			if (IsSavegameVersionBefore(SLV_183)) {
 				SwapPackets(ge);
-				SlObject(ge, GetGoodsDesc());
+				SlObjectPtrOrNullFiltered(ge, _filtered_goods_desc.data());
 				SwapPackets(ge);
 			} else {
-				SlObject(ge, GetGoodsDesc());
+				//SlObject(ge, GetGoodsDesc());
 				for (StationCargoPacketMap::ConstMapIterator it = ge->cargo.Packets()->begin(); it != ge->cargo.Packets()->end(); ++it) {
-					SlObject(const_cast<StationCargoPair *>(&(*it)), _cargo_list_desc);
+					SlObjectPtrOrNullFiltered(const_cast<StationCargoPair *>(&(*it)), _cargo_list_desc); // _cargo_list_desc has no conditionals
 				}
 			}
 		}
-		SlObject(st, _station_desc);
+		SlObjectPtrOrNullFiltered(st, _filtered_station_desc.data());
 	}
 
 	Waypoint *wp;
 	FOR_ALL_WAYPOINTS(wp) {
-		SlObject(wp, _waypoint_desc);
+		SlObjectPtrOrNullFiltered(wp, _filtered_waypoint_desc.data());
 	}
 }
 
 static void Save_ROADSTOP()
 {
+	SetupDescs_ROADSTOP();
 	RoadStop *rs;
-
 	FOR_ALL_ROADSTOPS(rs) {
 		SlSetArrayIndex(rs->index);
-		SlObject(rs, _roadstop_desc);
+		SlObjectSaveFiltered(rs, _filtered_roadstop_desc.data());
 	}
 }
 
 static void Load_ROADSTOP()
 {
+	SetupDescs_ROADSTOP();
 	int index;
-
 	while ((index = SlIterateArray()) != -1) {
 		RoadStop *rs = new (index) RoadStop(INVALID_TILE);
 
-		SlObject(rs, _roadstop_desc);
+		SlObjectLoadFiltered(rs, _filtered_roadstop_desc.data());
 	}
 }
 
 static void Ptrs_ROADSTOP()
 {
+	SetupDescs_ROADSTOP();
 	RoadStop *rs;
 	FOR_ALL_ROADSTOPS(rs) {
-		SlObject(rs, _roadstop_desc);
-	}
-}
-
-static void Save_DOCK()
-{
-	Dock *d;
-
-	FOR_ALL_DOCKS(d) {
-		SlSetArrayIndex(d->index);
-		SlObject(d, _dock_desc);
+		SlObjectPtrOrNullFiltered(rs, _filtered_roadstop_desc.data());
 	}
 }
 
 static void Load_DOCK()
 {
-	int index;
-
-	while ((index = SlIterateArray()) != -1) {
-		Dock *d = new (index) Dock();
-
-		SlObject(d, _dock_desc);
-	}
-}
-
-static void Ptrs_DOCK()
-{
-	Dock *d;
-	FOR_ALL_DOCKS(d) {
-		SlObject(d, _dock_desc);
-	}
+	extern void SlSkipArray();
+	SlSkipArray();
 }
 
 extern const ChunkHandler _station_chunk_handlers[] = {
 	{ 'STNS', nullptr,       Load_STNS,     Ptrs_STNS,     nullptr, CH_ARRAY },
 	{ 'STNN', Save_STNN,     Load_STNN,     Ptrs_STNN,     nullptr, CH_ARRAY },
 	{ 'ROAD', Save_ROADSTOP, Load_ROADSTOP, Ptrs_ROADSTOP, nullptr, CH_ARRAY},
-	{ 'DOCK', Save_DOCK,     Load_DOCK,     Ptrs_DOCK,     nullptr, CH_ARRAY | CH_LAST},
+	{ 'DOCK', nullptr,       Load_DOCK,     nullptr,       nullptr, CH_ARRAY | CH_LAST},
 };

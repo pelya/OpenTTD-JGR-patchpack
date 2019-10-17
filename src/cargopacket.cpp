@@ -576,7 +576,7 @@ void VehicleCargoList::AgeCargo()
 }
 
 /**
- * Sets loaded_at_xy to the current station for all cargo to be transfered.
+ * Sets loaded_at_xy to the current station for all cargo to be transferred.
  * This is done when stopping or skipping while the vehicle is unloading. In
  * that case the vehicle will get part of its transfer credits early and it may
  * get more transfer credits than it's entitled to.
@@ -660,13 +660,13 @@ bool VehicleCargoList::Stage(bool accepted, StationID current_station, StationID
 			if (flow_it == ge->flows.end()) {
 				cargo_next = INVALID_STATION;
 			} else {
-				FlowStat new_shares = flow_it->second;
+				FlowStat new_shares = *flow_it;
 				new_shares.ChangeShare(current_station, INT_MIN);
 				StationIDStack excluded = next_station;
-				while (!excluded.IsEmpty() && !new_shares.GetShares()->empty()) {
+				while (!excluded.IsEmpty() && !new_shares.empty()) {
 					new_shares.ChangeShare(excluded.Pop(), INT_MIN);
 				}
-				if (new_shares.GetShares()->empty()) {
+				if (new_shares.empty()) {
 					cargo_next = INVALID_STATION;
 				} else {
 					cargo_next = new_shares.GetVia();
@@ -676,20 +676,20 @@ bool VehicleCargoList::Stage(bool accepted, StationID current_station, StationID
 			/* Rewrite an invalid source station to some random other one to
 			 * avoid keeping the cargo in the vehicle forever. */
 			if (cp->source == INVALID_STATION && !ge->flows.empty()) {
-				cp->source = ge->flows.begin()->first;
+				cp->source = ge->flows.FirstStationID();
 			}
 			bool restricted = false;
 			FlowStatMap::const_iterator flow_it(ge->flows.find(cp->source));
 			if (flow_it == ge->flows.end()) {
 				cargo_next = INVALID_STATION;
 			} else {
-				cargo_next = flow_it->second.GetViaWithRestricted(restricted);
+				cargo_next = flow_it->GetViaWithRestricted(restricted);
 			}
 			action = VehicleCargoList::ChooseAction(cp, cargo_next, current_station, accepted, next_station);
 			if (restricted && action == MTA_TRANSFER) {
 				/* If the flow is restricted we can't transfer to it. Choose an
 				 * unrestricted one instead. */
-				cargo_next = flow_it->second.GetVia();
+				cargo_next = flow_it->GetVia();
 				action = VehicleCargoList::ChooseAction(cp, cargo_next, current_station, accepted, next_station);
 			}
 		}

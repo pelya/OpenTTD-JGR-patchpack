@@ -64,6 +64,7 @@
 #include "../script/api/game/game_rail.hpp.sq"
 #include "../script/api/game/game_railtypelist.hpp.sq"
 #include "../script/api/game/game_road.hpp.sq"
+#include "../script/api/game/game_roadtypelist.hpp.sq"
 #include "../script/api/game/game_sign.hpp.sq"
 #include "../script/api/game/game_signlist.hpp.sq"
 #include "../script/api/game/game_station.hpp.sq"
@@ -174,6 +175,7 @@ void GameInstance::RegisterAPI()
 	SQGSRail_Register(this->engine);
 	SQGSRailTypeList_Register(this->engine);
 	SQGSRoad_Register(this->engine);
+	SQGSRoadTypeList_Register(this->engine);
 	SQGSSign_Register(this->engine);
 	SQGSSignList_Register(this->engine);
 	SQGSStation_Register(this->engine);
@@ -255,11 +257,13 @@ void GameInstance::Died()
  * @param tile The tile on which the command was executed.
  * @param p1 p1 as given to DoCommandPInternal.
  * @param p2 p2 as given to DoCommandPInternal.
+ * @param cmd cmd as given to DoCommandPInternal.
  */
-void CcGame(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2)
+void CcGame(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
 {
-	Game::GetGameInstance()->DoCommandCallback(result, tile, p1, p2);
-	Game::GetGameInstance()->Continue();
+	if (Game::GetGameInstance()->DoCommandCallback(result, tile, p1, p2, cmd)) {
+		Game::GetGameInstance()->Continue();
+	}
 }
 
 CommandCallback *GameInstance::GetDoCommandCallback()

@@ -35,16 +35,16 @@
 #include "safeguards.h"
 
 /** Size of the #Fio data buffer. */
-#define FIO_BUFFER_SIZE 512
+#define FIO_BUFFER_SIZE 8192
 
 /** Structure for keeping several open files with just one data buffer. */
 struct Fio {
+	byte buffer_start[FIO_BUFFER_SIZE];    ///< local buffer when read from file
 	byte *buffer, *buffer_end;             ///< position pointer in local buffer and last valid byte of buffer
 	size_t pos;                            ///< current (system) position in file
 	FILE *cur_fh;                          ///< current file handle
 	const char *filename;                  ///< current filename
 	FILE *handles[MAX_FILE_SLOTS];         ///< array of file handles we can have open
-	byte buffer_start[FIO_BUFFER_SIZE];    ///< local buffer when read from file
 	const char *filenames[MAX_FILE_SLOTS]; ///< array of filenames we (should) have open
 	char *shortnames[MAX_FILE_SLOTS];      ///< array of short names for spriteloader's use
 #if defined(LIMITED_FDS)
@@ -565,18 +565,6 @@ bool AppendPathSeparator(char *buf, const char *last)
 	return true;
 }
 
-/**
- * Find the first directory in a tar archive.
- * @param tarname the name of the tar archive to look in.
- * @param subdir  the subdirectory to look in.
- */
-const char *FioTarFirstDir(const char *tarname, Subdirectory subdir)
-{
-	TarList::iterator it = _tar_list[subdir].find(tarname);
-	if (it == _tar_list[subdir].end()) return nullptr;
-	return (*it).second.dirname;
-}
-
 static void TarAddLink(const std::string &srcParam, const std::string &destParam, Subdirectory subdir)
 {
 	std::string src = srcParam;
@@ -596,11 +584,6 @@ static void TarAddLink(const std::string &srcParam, const std::string &destParam
 		const std::string dst_path = (dest.length() == 0 ? "" : ((*dest.rbegin() == PATHSEPCHAR) ? dest : dest + PATHSEPCHAR));
 		_tar_linklist[subdir].insert(TarLinkList::value_type(src_path, dst_path));
 	}
-}
-
-void FioTarAddLink(const char *src, const char *dest, Subdirectory subdir)
-{
-	TarAddLink(src, dest, subdir);
 }
 
 /**

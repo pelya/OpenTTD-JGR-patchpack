@@ -2,8 +2,43 @@
 
 * * *
 
+### v0.32.0 (2019-10-12)
+* Fix crash when disabling infrastructure sharing with vehicles with go to nearest depot orders.
+* Fix order backup not saving/restoring timetable automation, separation and scheduled dispatch states.
+* Fix modifier key window not always updating.
+* Routing restrictions: Add load percentage conditional.
+* Add support for IMEs on Linux/SDL2 (SDL2-supported IMEs and Fcitx).
+* Various performance improvements.
+* Bump trunk base from commit 1f418555a13b63379e4ce52ec96cbed6e04dca7d to commit e2e112baaabaaeec1f04f13c3759f24c06b42cf2.
+
+### v0.32-rc5 (2019-09-22)
+* Fix crash when using road convert tool on road station tiles.
+* Fix crash when clicking on a station from the order window where the station sign tile is not a station tile.
+* Fix road/tram catenary not being drawn on custom bridge heads.
+* Fix town growth not correctly following custom bridge heads.
+* Fix line heights of fonts on Windows in some circumstances.
+
+### v0.32-rc4 (2019-09-18)
+* Fix crash when removing docking tile adjacent to an industry without an associated station.
+* Fix crash which could occur after copying orders over an order list currently containing conditional orders.
+* Fix incorrect company infrastructure totals and multiplayer desyncs when using the road/tram type conversion tool on road/tram depots.
+* Fix mass order destination change not working with load/unload by cargo orders.
+* Fix mass order destination change not preserving locked waiting times.
+* Fix crash when using -q switch on a savegame which could not be loaded.
+* Add modifier key window for toggling shift/ctrl key states using mouse.
+* Bump trunk base from commit dabccf70b4c02f68ebf51aca807376ca4f2a0e15 to commit 1f418555a13b63379e4ce52ec96cbed6e04dca7d.
+
+### v0.32-rc3 (2019-08-29)
+* Include change from v0.31.5
+
 ### v0.31.5 (2019-08-29)
 * Fix multiplayer desync when when moving newly built wagon
+
+### v0.32-rc2 (2019-08-24)
+* Include changes from v0.31.4
+* Fix crash when using query tool on non-road bridges.
+* Fix road vehicles not being limited by the road type max speed.
+* Bump trunk base from commit a52bbb72a8a2cbcbefb0ff91b559f33c34094239 to commit dabccf70b4c02f68ebf51aca807376ca4f2a0e15.
 
 ### v0.31.4 (2019-08-24)
 * Fix crash when removing signals from tunnel/bridge with trainless reservation.
@@ -13,6 +48,10 @@
 * Change station tile coverage highlight colour to light blue.
 * Change network protocol to send server/join and rcon passwords in hashed form instead of in clear text.
 * Fix various possible sources of non-determinism which could potentially cause multiplayer desyncs.
+
+### v0.32-rc1 (2019-07-13)
+* Include NotRoadTypes (NRT).
+* Bump trunk base from commit 21edf67f89c60351d5a0d84625455aa296b6b950 to commit a52bbb72a8a2cbcbefb0ff91b559f33c34094239.
 
 ### v0.31.3 (2019-07-13)
 * Fix the target order number of conditional order jumps being loaded incorrectly from SpringPP savegames.

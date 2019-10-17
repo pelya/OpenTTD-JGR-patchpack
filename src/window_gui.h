@@ -645,7 +645,7 @@ public:
 	 * Called when window gains focus
 	 * @param previously_focused_window The window that lost the focus.
 	 */
-	virtual void OnFocus(Window *previously_focused_window) {}
+	virtual void OnFocus(Window *previously_focused_window);
 
 	virtual void OnFocusLost(Window *newly_focused_window);
 
@@ -667,6 +667,15 @@ public:
 	 */
 	virtual EventState OnCTRLStateChange() { return ES_NOT_HANDLED; }
 
+	/**
+	 * The state of the control key has changed, this is sent even if an OnCTRLStateChange handler has return ES_HANDLED
+	 */
+	virtual void OnCTRLStateChangeAlways() {}
+
+	/**
+	 * The state of the shift key has changed
+	 */
+	virtual void OnShiftStateChange() {}
 
 	/**
 	 * A click with the left mouse button has been made on the window.

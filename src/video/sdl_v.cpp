@@ -776,10 +776,11 @@ void VideoDriver_SDL::MainLoop()
 			next_tick = cur_ticks + MILLISECONDS_PER_TICK;
 
 			bool old_ctrl_pressed = _ctrl_pressed;
+			bool old_shift_pressed = _shift_pressed;
 
 #ifndef __ANDROID__
-			_ctrl_pressed  = !!(mod & KMOD_CTRL);
-			_shift_pressed = !!(mod & KMOD_SHIFT);
+			_ctrl_pressed  = !!(mod & KMOD_CTRL) != _invert_ctrl;
+			_shift_pressed = !!(mod & KMOD_SHIFT) != _invert_shift;
 #endif
 
 			/* determine which directional keys are down */
@@ -796,6 +797,7 @@ void VideoDriver_SDL::MainLoop()
 				(keys[SDLK_DOWN]  ? 8 : 0);
 #endif
 			if (old_ctrl_pressed != _ctrl_pressed) HandleCtrlChanged();
+			if (old_shift_pressed != _shift_pressed) HandleShiftChanged();
 
 			/* The gameloop is the part that can run asynchronously. The rest
 			 * except sleeping can't. */

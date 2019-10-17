@@ -208,7 +208,7 @@ public:
 		LEErrorCode status = LE_NO_ERROR;
 		/* ParagraphLayout does not copy "buff", so it must stay valid.
 		 * "runs" is copied according to the ICU source, but the documentation does not specify anything, so this might break somewhen. */
-		icu::ParagraphLayout *p = new icu::ParagraphLayout(buff, length, &runs, nullptr, nullptr, nullptr, _current_text_dir == TD_RTL ? UBIDI_DEFAULT_RTL : UBIDI_DEFAULT_LTR, false, status);
+		icu::ParagraphLayout *p = new icu::ParagraphLayout(buff, length, &runs, nullptr, nullptr, nullptr, _current_text_dir == TD_RTL ? 1 : 0, false, status);
 		if (status != LE_NO_ERROR) {
 			delete p;
 			return nullptr;
@@ -512,7 +512,7 @@ std::unique_ptr<const ParagraphLayouter::Line> FallbackParagraphLayout::NextLine
 		/* Only a newline. */
 		this->buffer = nullptr;
 		l->emplace_back(this->runs.front().second, this->buffer, 0, 0);
-		return std::move(l); // Not supposed to be needed, but clang-3.8 barfs otherwise.
+		return l;
 	}
 
 	int offset = this->buffer - this->buffer_begin;
@@ -562,7 +562,7 @@ std::unique_ptr<const ParagraphLayouter::Line> FallbackParagraphLayout::NextLine
 					/* The character is wider than allowed width; don't know
 					 * what to do with this case... bail out! */
 					this->buffer = nullptr;
-					return std::move(l); // Not supposed to be needed, but clang-3.8 barfs otherwise.
+					return l;
 				}
 
 				if (last_space == nullptr) {
@@ -589,7 +589,7 @@ std::unique_ptr<const ParagraphLayouter::Line> FallbackParagraphLayout::NextLine
 		int w = l->GetWidth();
 		l->emplace_back(iter->second, begin, last_char - begin, w);
 	}
-	return std::move(l); // Not supposed to be needed, but clang-3.8 barfs otherwise.
+	return l;
 }
 
 /**

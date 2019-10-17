@@ -25,7 +25,6 @@
 #include "../stdafx.h"
 #include "../debug.h"
 #include "../station_base.h"
-#include "../dock_base.h"
 #include "../thread.h"
 #include "../town.h"
 #include "../network/network.h"
@@ -59,6 +58,14 @@
 
 #include <deque>
 #include <vector>
+
+#include "../thread.h"
+#include <mutex>
+#include <condition_variable>
+#if defined(__MINGW32__)
+#include "../3rdparty/mingw-std-threads/mingw.mutex.h"
+#include "../3rdparty/mingw-std-threads/mingw.condition_variable.h"
+#endif
 
 #include "../safeguards.h"
 
@@ -882,9 +889,10 @@ void WriteValue(void *ptr, VarType conv, int64 val)
  * @param ptr The object being filled/read
  * @param conv VarType type of the current element of the struct
  */
-static void SlSaveLoadConv(void *ptr, VarType conv)
+template <SaveLoadAction action>
+static void SlSaveLoadConvGeneric(void *ptr, VarType conv)
 {
-	switch (_sl.action) {
+	switch (action) {
 		case SLA_SAVE: {
 			int64 x = ReadValue(ptr, conv);
 
@@ -926,6 +934,23 @@ static void SlSaveLoadConv(void *ptr, VarType conv)
 		}
 		case SLA_PTRS: break;
 		case SLA_NULL: break;
+		default: NOT_REACHED();
+	}
+}
+
+void SlSaveLoadConv(void *ptr, VarType conv)
+{
+	switch (_sl.action) {
+		case SLA_SAVE:
+			SlSaveLoadConvGeneric<SLA_SAVE>(ptr, conv);
+			return;
+		case SLA_LOAD_CHECK:
+		case SLA_LOAD:
+			SlSaveLoadConvGeneric<SLA_LOAD>(ptr, conv);
+			return;
+		case SLA_PTRS:
+		case SLA_NULL:
+			return;
 		default: NOT_REACHED();
 	}
 }
@@ -1192,7 +1217,6 @@ static size_t ReferenceToInt(const void *obj, SLRefType rt)
 		case REF_STORAGE:        return ((const PersistentStorage*)obj)->index + 1;
 		case REF_LINK_GRAPH:     return ((const         LinkGraph*)obj)->index + 1;
 		case REF_LINK_GRAPH_JOB: return ((const      LinkGraphJob*)obj)->index + 1;
-		case REF_DOCKS:          return ((const              Dock*)obj)->index + 1;
 		default: NOT_REACHED();
 	}
 }
@@ -1257,10 +1281,6 @@ static void *IntToReference(size_t index, SLRefType rt)
 		case REF_ROADSTOPS:
 			if (RoadStop::IsValidID(index)) return RoadStop::Get(index);
 			SlErrorCorrupt("Referencing invalid RoadStop");
-
-		case REF_DOCKS:
-			if (Dock::IsValidID(index)) return Dock::Get(index);
-			SlErrorCorrupt("Referencing invalid Dock");
 
 		case REF_ENGINE_RENEWS:
 			if (EngineRenew::IsValidID(index)) return EngineRenew::Get(index);
@@ -1677,10 +1697,94 @@ static bool IsVariableSizeRight(const SaveLoad *sld)
 
 #endif /* OTTD_ASSERT */
 
-bool SlObjectMember(void *ptr, const SaveLoad *sld)
+void SlFilterObject(const SaveLoad *sld, std::vector<SaveLoad> &save);
+
+static void SlFilterObjectMember(const SaveLoad *sld, std::vector<SaveLoad> &save)
 {
 #ifdef OTTD_ASSERT
 	assert(IsVariableSizeRight(sld));
+#endif
+
+	switch (sld->cmd) {
+		case SL_VAR:
+		case SL_REF:
+		case SL_ARR:
+		case SL_STR:
+		case SL_LST:
+		case SL_PTRDEQ:
+		case SL_VEC:
+		case SL_DEQUE:
+		case SL_STDSTR:
+		case SL_VARVEC:
+			/* CONDITIONAL saveload types depend on the savegame version */
+			if (!SlIsObjectValidInSavegame(sld)) return;
+			if (SlSkipVariableOnLoad(sld)) return;
+
+			switch (_sl.action) {
+				case SLA_SAVE:
+				case SLA_LOAD_CHECK:
+				case SLA_LOAD:
+					break;
+				case SLA_PTRS:
+				case SLA_NULL:
+					switch (sld->cmd) {
+						case SL_REF:
+						case SL_LST:
+						case SL_PTRDEQ:
+						case SL_VEC:
+							break;
+
+						/* non-ptr types do not require SLA_PTRS or SLA_NULL actions */
+						default:
+							return;
+					}
+					break;
+				default: NOT_REACHED();
+			}
+
+			save.push_back(*sld);
+			break;
+
+		/* SL_WRITEBYTE writes a value to the savegame to identify the type of an object.
+		 * When loading, the value is read explictly with SlReadByte() to determine which
+		 * object description to use. */
+		case SL_WRITEBYTE:
+			if (_sl.action == SLA_SAVE) save.push_back(*sld);
+			break;
+
+		/* SL_VEH_INCLUDE loads common code for vehicles */
+		case SL_VEH_INCLUDE:
+			SlFilterObject(GetVehicleDescription(VEH_END), save);
+			break;
+
+		case SL_ST_INCLUDE:
+			SlFilterObject(GetBaseStationDescription(), save);
+			break;
+
+		default: NOT_REACHED();
+	}
+}
+
+void SlFilterObject(const SaveLoad *sld, std::vector<SaveLoad> &save)
+{
+	for (; sld->cmd != SL_END; sld++) {
+		SlFilterObjectMember(sld, save);
+	}
+}
+
+std::vector<SaveLoad> SlFilterObject(const SaveLoad *sld)
+{
+	std::vector<SaveLoad> save;
+	SlFilterObject(sld, save);
+	save.push_back(SLE_END());
+	return save;
+}
+
+template <SaveLoadAction action, bool check_version>
+bool SlObjectMemberGeneric(void *ptr, const SaveLoad *sld)
+{
+#ifdef OTTD_ASSERT
+	if (check_version) assert(IsVariableSizeRight(sld));
 #endif
 
 	VarType conv = GB(sld->conv, 0, 8);
@@ -1696,13 +1800,15 @@ bool SlObjectMember(void *ptr, const SaveLoad *sld)
 		case SL_STDSTR:
 		case SL_VARVEC:
 			/* CONDITIONAL saveload types depend on the savegame version */
-			if (!SlIsObjectValidInSavegame(sld)) return false;
-			if (SlSkipVariableOnLoad(sld)) return false;
+			if (check_version) {
+				if (!SlIsObjectValidInSavegame(sld)) return false;
+				if (SlSkipVariableOnLoad(sld)) return false;
+			}
 
 			switch (sld->cmd) {
-				case SL_VAR: SlSaveLoadConv(ptr, conv); break;
+				case SL_VAR: SlSaveLoadConvGeneric<action>(ptr, conv); break;
 				case SL_REF: // Reference variable, translate
-					switch (_sl.action) {
+					switch (action) {
 						case SLA_SAVE:
 							SlWriteUint32((uint32)ReferenceToInt(*(void **)ptr, (SLRefType)conv));
 							break;
@@ -1742,10 +1848,10 @@ bool SlObjectMember(void *ptr, const SaveLoad *sld)
 			break;
 
 		/* SL_WRITEBYTE writes a value to the savegame to identify the type of an object.
-		 * When loading, the value is read explictly with SlReadByte() to determine which
+		 * When loading, the value is read explicitly with SlReadByte() to determine which
 		 * object description to use. */
 		case SL_WRITEBYTE:
-			switch (_sl.action) {
+			switch (action) {
 				case SLA_SAVE: SlWriteByte(*(uint8 *)ptr); break;
 				case SLA_LOAD_CHECK:
 				case SLA_LOAD:
@@ -1769,6 +1875,22 @@ bool SlObjectMember(void *ptr, const SaveLoad *sld)
 	return true;
 }
 
+bool SlObjectMember(void *ptr, const SaveLoad *sld)
+{
+	switch (_sl.action) {
+		case SLA_SAVE:
+			return SlObjectMemberGeneric<SLA_SAVE, true>(ptr, sld);
+		case SLA_LOAD_CHECK:
+		case SLA_LOAD:
+			return SlObjectMemberGeneric<SLA_LOAD, true>(ptr, sld);
+		case SLA_PTRS:
+			return SlObjectMemberGeneric<SLA_PTRS, true>(ptr, sld);
+		case SLA_NULL:
+			return SlObjectMemberGeneric<SLA_NULL, true>(ptr, sld);
+		default: NOT_REACHED();
+	}
+}
+
 /**
  * Main SaveLoad function.
  * @param object The object that is being saved or loaded
@@ -1784,6 +1906,48 @@ void SlObject(void *object, const SaveLoad *sld)
 	for (; sld->cmd != SL_END; sld++) {
 		void *ptr = sld->global ? sld->address : GetVariableAddress(object, sld);
 		SlObjectMember(ptr, sld);
+	}
+}
+
+template <SaveLoadAction action, bool check_version>
+void SlObjectIterateBase(void *object, const SaveLoad *sld)
+{
+	for (; sld->cmd != SL_END; sld++) {
+		void *ptr = sld->global ? sld->address : GetVariableAddress(object, sld);
+		SlObjectMemberGeneric<action, check_version>(ptr, sld);
+	}
+}
+
+void SlObjectSaveFiltered(void *object, const SaveLoad *sld)
+{
+	if (_sl.need_length != NL_NONE) {
+		_sl.need_length = NL_NONE;
+		_sl.dumper->StartAutoLength();
+		SlObjectIterateBase<SLA_SAVE, false>(object, sld);
+		auto result = _sl.dumper->StopAutoLength();
+		_sl.need_length = NL_WANTLENGTH;
+		SlSetLength(result.second);
+		_sl.dumper->CopyBytes(result.first, result.second);
+	} else {
+		SlObjectIterateBase<SLA_SAVE, false>(object, sld);
+	}
+}
+
+void SlObjectLoadFiltered(void *object, const SaveLoad *sld)
+{
+	SlObjectIterateBase<SLA_LOAD, false>(object, sld);
+}
+
+void SlObjectPtrOrNullFiltered(void *object, const SaveLoad *sld)
+{
+	switch (_sl.action) {
+		case SLA_PTRS:
+			SlObjectIterateBase<SLA_PTRS, false>(object, sld);
+			return;
+		case SLA_NULL:
+			SlObjectIterateBase<SLA_NULL, false>(object, sld);
+			return;
+		default: NOT_REACHED();
 	}
 }
 
@@ -2824,6 +2988,98 @@ SaveOrLoadResult SaveWithFilter(SaveFilter *writer, bool threaded)
 	}
 }
 
+struct ThreadedLoadFilter : LoadFilter {
+	static const size_t BUFFER_COUNT = 4;
+
+	std::mutex mutex;
+	std::condition_variable full_cv;
+	std::condition_variable empty_cv;
+	uint first_ready = 0;
+	uint count_ready = 0;
+	size_t read_offsets[BUFFER_COUNT];
+	size_t read_counts[BUFFER_COUNT];
+	byte read_buf[MEMORY_CHUNK_SIZE * BUFFER_COUNT]; ///< Buffers for reading from source.
+	bool no_thread = false;
+
+	std::thread read_thread;
+
+	/**
+	 * Initialise this filter.
+	 * @param chain The next filter in this chain.
+	 */
+	ThreadedLoadFilter(LoadFilter *chain) : LoadFilter(chain)
+	{
+		std::unique_lock<std::mutex> lk(this->mutex);
+		if (!StartNewThread(&this->read_thread, "ottd:loadgame", &ThreadedLoadFilter::RunThread, this)) {
+			DEBUG(sl, 1, "Failed to start load read thread, reading non-threaded");
+			this->no_thread = true;
+		} else {
+			DEBUG(sl, 2, "Started load read thread");
+		}
+	}
+
+	/** Clean everything up. */
+	~ThreadedLoadFilter()
+	{
+		std::unique_lock<std::mutex> lk(this->mutex);
+		this->no_thread = true;
+		lk.unlock();
+		this->empty_cv.notify_all();
+		this->full_cv.notify_all();
+		if (this->read_thread.joinable()) {
+			this->read_thread.join();
+			DEBUG(sl, 2, "Joined load read thread");
+		}
+	}
+
+	static void RunThread(ThreadedLoadFilter *self)
+	{
+		std::unique_lock<std::mutex> lk(self->mutex);
+		while (!self->no_thread) {
+			if (self->count_ready == BUFFER_COUNT) {
+				self->full_cv.wait(lk);
+				continue;
+			}
+
+			uint buf = (self->first_ready + self->count_ready) % BUFFER_COUNT;
+			lk.unlock();
+			size_t read = self->chain->Read(self->read_buf + (buf * MEMORY_CHUNK_SIZE), MEMORY_CHUNK_SIZE);
+			lk.lock();
+			self->read_offsets[buf] = 0;
+			self->read_counts[buf] = read;
+			self->count_ready++;
+			if (self->count_ready == 1) self->empty_cv.notify_one();
+		}
+	}
+
+	size_t Read(byte *buf, size_t size) override
+	{
+		if (this->no_thread) return this->chain->Read(buf, size);
+
+		size_t read = 0;
+		std::unique_lock<std::mutex> lk(this->mutex);
+		while (read < size) {
+			if (this->count_ready == 0) {
+				this->empty_cv.wait(lk);
+				continue;
+			}
+
+			size_t to_read = std::min<size_t>(size - read, read_counts[this->first_ready]);
+			if (to_read == 0) break;
+			memcpy(buf + read, this->read_buf + (this->first_ready * MEMORY_CHUNK_SIZE) + read_offsets[this->first_ready], to_read);
+			read += to_read;
+			read_offsets[this->first_ready] += to_read;
+			read_counts[this->first_ready] -= to_read;
+			if (read_counts[this->first_ready] == 0) {
+				this->first_ready = (this->first_ready + 1) % BUFFER_COUNT;
+				this->count_ready--;
+				if (this->count_ready == BUFFER_COUNT - 1) this->full_cv.notify_one();
+			}
+		}
+		return read;
+	}
+};
+
 /**
  * Actually perform the loading of a "non-old" savegame.
  * @param reader     The filter to read the savegame from.
@@ -2903,6 +3159,7 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 	}
 
 	_sl.lf = fmt->init_load(_sl.lf);
+	_sl.lf = new ThreadedLoadFilter(_sl.lf);
 	_sl.reader = new ReadBuffer(_sl.lf);
 	_next_offs = 0;
 

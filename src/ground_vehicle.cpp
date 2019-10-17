@@ -30,7 +30,7 @@ void GroundVehicle<T, Type>::PowerChanged()
 	uint32 total_power = 0;
 	uint32 max_te = 0;
 	uint32 number_of_parts = 0;
-	uint16 max_track_speed = v->GetDisplayMaxSpeed();
+	uint16 max_track_speed = this->vcache.cached_max_speed; // Max track speed in internal units.
 
 	this->CalculatePower(total_power, max_te, false);
 
@@ -140,7 +140,7 @@ int GroundVehicle<T, Type>::GetAcceleration()
 
 	/* Power is stored in HP, we need it in watts.
 	 * Each vehicle can have U16 power, 128 vehicles, HP -> watt
-	 * and km/h to m/s conversion below result in a maxium of
+	 * and km/h to m/s conversion below result in a maximum of
 	 * about 1.1E11, way more than 4.3E9 of int32. */
 	int64 power = this->gcache.cached_power * 746ll;
 

@@ -23,6 +23,7 @@
 #include "station_base.h"
 #include "company_base.h"
 #include "newgrf_railtype.h"
+#include "newgrf_roadtype.h"
 #include "ship.h"
 
 #include "safeguards.h"
@@ -247,7 +248,7 @@ static byte MapAircraftMovementState(const Aircraft *v)
 			return AMS_TTDP_TO_INWAY;
 
 		case HELILANDING:
-		case HELIENDLANDING: // Helicoptor is decending.
+		case HELIENDLANDING: // Helicoptor is descending.
 			if (amdflag & AMED_HELI_LOWER) {
 				return afc->delta_z == 0 ?
 					AMS_TTDP_HELI_LAND_AIRPORT : AMS_TTDP_HELI_LAND_HELIPORT;
@@ -606,12 +607,22 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 		case 0x48: return v->GetEngine()->flags; // Vehicle Type Info
 		case 0x49: return v->build_year;
 
-		case 0x4A: {
-			if (v->type != VEH_TRAIN) return 0;
-			if (Train::From(v)->IsVirtual()) return 0x1FF;
-			RailType rt = GetTileRailTypeByTrackBit(v->tile, Train::From(v)->track);
-			return (HasPowerOnRail(Train::From(v)->railtype, rt) ? 0x100 : 0) | GetReverseRailTypeTranslation(rt, object->ro.grffile);
-		}
+		case 0x4A:
+			switch (v->type) {
+				case VEH_TRAIN: {
+					if (Train::From(v)->IsVirtual()) return 0x1FF;
+					RailType rt = GetTileRailTypeByTrackBit(v->tile, Train::From(v)->track);
+					return (HasPowerOnRail(Train::From(v)->railtype, rt) ? 0x100 : 0) | GetReverseRailTypeTranslation(rt, object->ro.grffile);
+				}
+
+				case VEH_ROAD: {
+					RoadType rt = GetRoadType(v->tile, GetRoadTramType(RoadVehicle::From(v)->roadtype));
+					return 0x100 | GetReverseRoadTypeTranslation(rt, object->ro.grffile);
+				}
+
+				default:
+					return 0;
+			}
 
 		case 0x4B: // Long date of last service
 			return v->date_of_last_service;
@@ -1067,7 +1078,7 @@ bool UsesWagonOverride(const Vehicle *v)
  * @param param1   First parameter of the callback
  * @param param2   Second parameter of the callback
  * @param engine   Engine type of the vehicle to evaluate the callback for
- * @param v        The vehicle to evaluate the callback for, or nullptr if it doesnt exist yet
+ * @param v        The vehicle to evaluate the callback for, or nullptr if it doesn't exist yet
  * @return The value the callback returned, or CALLBACK_FAILED if it failed
  */
 uint16 GetVehicleCallback(CallbackID callback, uint32 param1, uint32 param2, EngineID engine, const Vehicle *v)

@@ -36,6 +36,8 @@ byte _support8bpp;
 CursorVars _cursor;
 bool _ctrl_pressed;   ///< Is Ctrl pressed?
 bool _shift_pressed;  ///< Is Shift pressed?
+bool _invert_ctrl;
+bool _invert_shift;
 byte _fast_forward;
 bool _left_button_down;     ///< Is left mouse button pressed?
 bool _left_button_clicked;  ///< Is left mouse button clicked?
@@ -212,7 +214,7 @@ static inline void GfxDoDrawLine(void *video, int x, int y, int x2, int y2, int 
 	 * work the blitter has to do by shortening the effective line segment.
 	 * However, in order to get that right and prevent the flickering effects
 	 * of rounding errors so much additional code has to be run here that in
-	 * the general case the effect is not noticable. */
+	 * the general case the effect is not noticeable. */
 
 	blitter->DrawLine(video, x, y, x2, y2, screen_width, screen_height, colour, width, dash);
 }
@@ -1672,7 +1674,7 @@ bool CursorVars::UpdateCursorPosition(int x, int y, bool queued_warp)
 		if (this->delta.x != 0 || this->delta.y != 0) {
 			/* Trigger warp.
 			 * Note: We also trigger warping again, if there is already a pending warp.
-			 *       This makes it more tolerant about the OS or other software inbetween
+			 *       This makes it more tolerant about the OS or other software in between
 			 *       botchering the warp. */
 			this->queued_warp = queued_warp;
 			need_warp = true;

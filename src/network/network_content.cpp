@@ -133,7 +133,7 @@ bool ClientNetworkContentSocketHandler::Receive_SERVER_INFO(Packet *p)
 		ci->state = ContentInfo::UNSELECTED;
 	}
 
-	/* Something we don't have and has filesize 0 does not exist in te system */
+	/* Something we don't have and has filesize 0 does not exist in the system */
 	if (ci->state == ContentInfo::UNSELECTED && ci->filesize == 0) ci->state = ContentInfo::DOES_NOT_EXIST;
 
 	/* Do we already have a stub for this? */
@@ -581,7 +581,7 @@ void ClientNetworkContentSocketHandler::OnReceiveData(const char *data, size_t l
 	if (this->http_response_index == -1) {
 		if (data != nullptr) {
 			/* Append the rest of the response. */
-			memcpy(grow(this->http_response, (uint)length), data, length);
+			this->http_response.insert(this->http_response.end(), data, data + length);
 			return;
 		} else {
 			/* Make sure the response is properly terminated. */
@@ -781,7 +781,7 @@ void ClientNetworkContentSocketHandler::SendReceive()
 
 	if (this->CanSendReceive()) {
 		if (this->ReceivePackets()) {
-			/* Only update activity once a packet is received, instead of everytime we try it. */
+			/* Only update activity once a packet is received, instead of every time we try it. */
 			this->lastActivity = _realtime_tick;
 		}
 	}

@@ -728,8 +728,9 @@ public:
 	 * Get the vector of all scheduled dispatch slot
 	 * @return  first scheduled dispatch
 	 */
-	inline const std::vector<uint32> &GetScheduledDispatch() { return this->scheduled_dispatch; }
+	inline const std::vector<uint32> &GetScheduledDispatch() const { return this->scheduled_dispatch; }
 
+	void SetScheduledDispatch(std::vector<uint32> dispatch_list);
 	void AddScheduledDispatch(uint32 offset);
 	void RemoveScheduledDispatch(uint32 offset);
 	void UpdateScheduledDispatch();
@@ -745,7 +746,7 @@ public:
 	 * Get the scheduled dispatch duration, in scaled tick
 	 * @return  scheduled dispatch duration
 	 */
-	inline uint32 GetScheduledDispatchDuration() { return this->scheduled_dispatch_duration; }
+	inline uint32 GetScheduledDispatchDuration() const { return this->scheduled_dispatch_duration; }
 
 	/**
 	 * Set the scheduled dispatch start
@@ -759,16 +760,28 @@ public:
 	}
 
 	/**
+	 * Get the scheduled dispatch start date part
+	 * @return  scheduled dispatch start date part
+	 */
+	inline Date GetScheduledDispatchStartDatePart() const { return this->scheduled_dispatch_start_date; }
+
+	/**
+	 * Get the scheduled dispatch start date fract part
+	 * @return  scheduled dispatch start date fract part
+	 */
+	inline uint16 GetScheduledDispatchStartDateFractPart() const { return this->scheduled_dispatch_start_full_date_fract; }
+
+	/**
 	 * Get the scheduled dispatch start date, in absolute scaled tick
 	 * @return  scheduled dispatch start date
 	 */
-	inline DateTicksScaled GetScheduledDispatchStartTick() { return SchdispatchConvertToScaledTick(this->scheduled_dispatch_start_date, this->scheduled_dispatch_start_full_date_fract); }
+	inline DateTicksScaled GetScheduledDispatchStartTick() const { return SchdispatchConvertToScaledTick(this->scheduled_dispatch_start_date, this->scheduled_dispatch_start_full_date_fract); }
 
 	/**
 	 * Whether the scheduled dispatch setting is valid
 	 * @return  scheduled dispatch start date fraction
 	 */
-	inline bool IsScheduledDispatchValid() { return this->scheduled_dispatch_start_date >= 0 && this->scheduled_dispatch_duration > 0; }
+	inline bool IsScheduledDispatchValid() const { return this->scheduled_dispatch_start_date >= 0 && this->scheduled_dispatch_duration > 0; }
 
 	/**
 	 * Set the scheduled dispatch last dispatch offset, in scaled tick
@@ -780,7 +793,7 @@ public:
 	 * Get the scheduled dispatch last dispatch offset, in scaled tick
 	 * @return  scheduled dispatch last dispatch
 	 */
-	inline int32 GetScheduledDispatchLastDispatch() { return this->scheduled_dispatch_last_dispatch; }
+	inline int32 GetScheduledDispatchLastDispatch() const { return this->scheduled_dispatch_last_dispatch; }
 
 	/**
 	 * Set the scheduled dispatch maximum allowed delay, in scaled tick
@@ -792,7 +805,7 @@ public:
 	 * Get the scheduled dispatch maximum alowed delay, in scaled tick
 	 * @return  scheduled dispatch last dispatch
 	 */
-	inline int32 GetScheduledDispatchDelay() { return this->scheduled_dispatch_max_delay; }
+	inline int32 GetScheduledDispatchDelay() const { return this->scheduled_dispatch_max_delay; }
 
 };
 

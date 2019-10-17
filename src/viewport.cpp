@@ -95,6 +95,7 @@
 #include "window_gui.h"
 #include "linkgraph/linkgraph_gui.h"
 #include "viewport_kdtree.h"
+#include "town_kdtree.h"
 #include "viewport_sprite_sorter.h"
 #include "bridge_map.h"
 #include "company_base.h"
@@ -1167,11 +1168,48 @@ static void DrawTileHighlightType(const TileInfo *ti, TileHighlightType tht)
 }
 
 /**
+ * Highlights tiles insede local authority of selected towns.
+ * @param *ti TileInfo Tile that is being drawn
+ */
+static void HighlightTownLocalAuthorityTiles(const TileInfo *ti)
+{
+	/* Going through cases in order of computational time. */
+
+	if (_town_local_authority_kdtree.Count() == 0) return;
+
+	/* Tile belongs to town regardless of distance from town. */
+	if (GetTileType(ti->tile) == MP_HOUSE) {
+		if (!Town::GetByTile(ti->tile)->show_zone) return;
+
+		DrawTileSelectionRect(ti, PALETTE_CRASH);
+		return;
+	}
+
+	/* If the closest town in the highlighted list is far, we can stop searching. */
+	TownID tid = _town_local_authority_kdtree.FindNearest(TileX(ti->tile), TileY(ti->tile));
+	Town *closest_highlighted_town = Town::Get(tid);
+
+	if (DistanceManhattan(ti->tile, closest_highlighted_town->xy) >= _settings_game.economy.dist_local_authority) return;
+
+	/* Tile is inside of the local autrhority distance of a highlighted town,
+	   but it is possible that a non-highlighted town is even closer. */
+	Town *closest_town = ClosestTownFromTile(ti->tile, _settings_game.economy.dist_local_authority);
+
+	if (closest_town->show_zone) {
+		DrawTileSelectionRect(ti, PALETTE_CRASH);
+	}
+
+}
+
+/**
  * Checks if the specified tile is selected and if so draws selection using correct selectionstyle.
  * @param *ti TileInfo Tile that is being drawn
  */
 static void DrawTileSelection(const TileInfo *ti)
 {
+	/* Highlight tiles insede local authority of selected towns. */
+	HighlightTownLocalAuthorityTiles(ti);
+
 	/* Draw a red error square? */
 	bool is_redsq = _thd.redsq == ti->tile;
 	if (is_redsq) DrawTileSelectionRect(ti, PALETTE_TILE_RED_PULSATING);
@@ -3333,7 +3371,7 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeStation(StationID id)
 	item.id.station = id;
 
 	Station *st = Station::Get(id);
-	Point pt = RemapCoords2(TileX(st->xy) * TILE_SIZE, TileY(st->xy) * TILE_SIZE);
+	Point pt = RemapCoords(TileX(st->xy) * TILE_SIZE, TileY(st->xy) * TILE_SIZE, GetTileMaxZ(st->xy) * TILE_HEIGHT);
 
 	pt.y -= 32 * ZOOM_LVL_BASE;
 	if ((st->facilities & FACIL_AIRPORT) && st->airport.type == AT_OILRIG) pt.y -= 16 * ZOOM_LVL_BASE;
@@ -3366,7 +3404,7 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeWaypoint(StationID id)
 	item.id.station = id;
 
 	Waypoint *st = Waypoint::Get(id);
-	Point pt = RemapCoords2(TileX(st->xy) * TILE_SIZE, TileY(st->xy) * TILE_SIZE);
+	Point pt = RemapCoords(TileX(st->xy) * TILE_SIZE, TileY(st->xy) * TILE_SIZE, GetTileMaxZ(st->xy) * TILE_HEIGHT);
 
 	pt.y -= 32 * ZOOM_LVL_BASE;
 
@@ -3398,7 +3436,9 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeTown(TownID id)
 	item.id.town = id;
 
 	const Town *town = Town::Get(id);
-	Point pt = RemapCoords2(TileX(town->xy) * TILE_SIZE, TileY(town->xy) * TILE_SIZE);
+	/* Avoid using RemapCoords2, it has dependency on the foundations status of the tile, and that can be unavailable during saveload, leading to crashes.
+	 * Instead "fake" foundations by taking the highest Z coordinate of any corner of the tile. */
+	Point pt = RemapCoords(TileX(town->xy) * TILE_SIZE, TileY(town->xy) * TILE_SIZE, GetTileMaxZ(town->xy) * TILE_HEIGHT);
 
 	pt.y -= 24 * ZOOM_LVL_BASE;
 

@@ -45,7 +45,7 @@ INSTANTIATE_POOL_METHODS(StoryPage)
  * @param tile The tile parameter of the DoCommand proc
  * @param reference The reference parameter of the DoCommand proc (p2)
  * @param text The text parameter of the DoCommand proc
- * @return true, if and only if the given parameters are valid for the given page elment type and page id.
+ * @return true, if and only if the given parameters are valid for the given page element type and page id.
  */
 static bool VerifyElementContentParameters(StoryPageID page_id, StoryPageElementType type, TileIndex tile, uint32 reference, const char *text)
 {
@@ -154,7 +154,7 @@ CommandCost CmdCreateStoryPageElement(TileIndex tile, DoCommandFlag flags, uint3
 {
 	if (!StoryPageElement::CanAllocateItem()) return CMD_ERROR;
 
-	StoryPageID page_id = (CompanyID)GB(p1, 0, 16);
+	StoryPageID page_id = (StoryPageID)GB(p1, 0, 16);
 	StoryPageElementType type = Extract<StoryPageElementType, 16, 8>(p1);
 
 	/* Allow at most 128 elements per page. */

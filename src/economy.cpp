@@ -729,8 +729,10 @@ static void CompaniesGenStatistics()
 				if (c->infrastructure.rail[rt] != 0) cost.AddCost(RailMaintenanceCost(rt, c->infrastructure.rail[rt], rail_total));
 			}
 			cost.AddCost(SignalMaintenanceCost(c->infrastructure.signal));
+			uint32 road_total = c->infrastructure.GetRoadTotal();
+			uint32 tram_total = c->infrastructure.GetTramTotal();
 			for (RoadType rt = ROADTYPE_BEGIN; rt < ROADTYPE_END; rt++) {
-				if (c->infrastructure.road[rt] != 0) cost.AddCost(RoadMaintenanceCost(rt, c->infrastructure.road[rt]));
+				if (c->infrastructure.road[rt] != 0) cost.AddCost(RoadMaintenanceCost(rt, c->infrastructure.road[rt], RoadTypeIsRoad(rt) ? road_total : tram_total));
 			}
 			cost.AddCost(CanalMaintenanceCost(c->infrastructure.water));
 			cost.AddCost(StationMaintenanceCost(c->infrastructure.station));
@@ -1914,7 +1916,7 @@ static void LoadUnloadVehicle(Vehicle *front)
 				dirty_station = true;
 
 				if (!ge->HasRating()) {
-					/* Upon transfering cargo, make sure the station has a rating. Fake a pickup for the
+					/* Upon transferring cargo, make sure the station has a rating. Fake a pickup for the
 					 * first unload to prevent the cargo from quickly decaying after the initial drop. */
 					ge->time_since_pickup = 0;
 					SetBit(ge->status, GoodsEntry::GES_RATING);

@@ -231,7 +231,7 @@ struct SoundSettings {
 	bool   news_ticker;                      ///< Play a ticker sound when a news item is published.
 	bool   news_full;                        ///< Play sound effects associated to certain news types.
 	bool   new_year;                         ///< Play sound on new year, summarising the performance during the last year.
-	bool   confirm;                          ///< Play sound effect on succesful constructions or other actions.
+	bool   confirm;                          ///< Play sound effect on successful constructions or other actions.
 	bool   click_beep;                       ///< Beep on a random selection of buttons.
 	bool   disaster;                         ///< Play disaster and accident sounds.
 	bool   vehicle;                          ///< Play vehicle sound effects.
@@ -405,6 +405,7 @@ struct AISettings {
 struct ScriptSettings {
 	uint8  settings_profile;                 ///< difficulty profile to set initial settings of scripts, esp. random AIs
 	uint32 script_max_opcode_till_suspend;   ///< max opcode calls till scripts will suspend
+	uint32 script_max_memory_megabytes;      ///< limit on memory a single script instance may have allocated
 };
 
 /** Settings related to the new pathfinder. */

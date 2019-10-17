@@ -24,7 +24,6 @@
 #include "station_base.h"
 #include "station_kdtree.h"
 #include "roadstop_base.h"
-#include "dock_base.h"
 #include "industry.h"
 #include "town.h"
 #include "core/random_func.hpp"
@@ -75,7 +74,7 @@ Station::Station(TileIndex tile) :
 	SpecializedStation<Station, false>(tile),
 	bus_station(INVALID_TILE, 0, 0),
 	truck_station(INVALID_TILE, 0, 0),
-	dock_station(INVALID_TILE, 0, 0),
+	ship_station(INVALID_TILE, 0, 0),
 	indtype(IT_INVALID),
 	time_since_load(255),
 	time_since_unload(255)
@@ -195,7 +194,7 @@ RoadStop *Station::GetPrimaryRoadStop(const RoadVehicle *v) const
 
 	for (; rs != nullptr; rs = rs->next) {
 		/* The vehicle cannot go to this roadstop (different roadtype) */
-		if ((GetRoadTypes(rs->xy) & v->compatible_roadtypes) == ROADTYPES_NONE) continue;
+		if (!HasTileAnyRoadType(rs->xy, v->compatible_roadtypes)) continue;
 		/* The vehicle is articulated and can therefore not go to a standard road stop. */
 		if (IsStandardRoadStopTile(rs->xy) && v->HasArticulatedPart()) continue;
 
@@ -337,10 +336,10 @@ uint Station::GetCatchmentRadius() const
 		if (this->bus_stops          != nullptr)         ret = max<uint>(ret, CA_BUS);
 		if (this->truck_stops        != nullptr)         ret = max<uint>(ret, CA_TRUCK);
 		if (this->train_station.tile != INVALID_TILE) ret = max<uint>(ret, CA_TRAIN);
-		if (this->docks              != nullptr)         ret = max<uint>(ret, CA_DOCK);
+		if (this->ship_station.tile  != INVALID_TILE) ret = max<uint>(ret, CA_DOCK);
 		if (this->airport.tile       != INVALID_TILE) ret = max<uint>(ret, this->airport.GetSpec()->catchment);
 	} else {
-		if (this->bus_stops != nullptr || this->truck_stops != nullptr || this->train_station.tile != INVALID_TILE || this->docks != nullptr || this->airport.tile != INVALID_TILE) {
+		if (this->bus_stops != nullptr || this->truck_stops != nullptr || this->train_station.tile != INVALID_TILE || this->ship_station.tile != INVALID_TILE || this->airport.tile != INVALID_TILE) {
 			ret = CA_UNMODIFIED;
 		}
 	}
@@ -369,19 +368,11 @@ Rect Station::GetCatchmentRectUsingRadius(uint catchment_radius) const
 	return ret;
 }
 
-bool Station::IsDockingTile(TileIndex tile) const
-{
-	for (const Dock *d = this->docks; d != nullptr; d = d->next) {
-		if (tile == d->GetDockingTile()) return true;
-	}
-	return false;
-}
-
 bool Station::IsWithinRangeOfDockingTile(TileIndex tile, uint max_distance) const
 {
 	if (DistanceManhattan(this->xy, tile) > _settings_game.station.station_spread + max_distance) return false;
-	for (const Dock *d = this->docks; d != nullptr; d = d->next) {
-		if (DistanceManhattan(d->GetDockingTile(), tile) <= max_distance) return true;
+	for (TileIndex dock_tile : this->docking_tiles) {
+		if (DistanceManhattan(dock_tile, tile) <= max_distance) return true;
 	}
 	return false;
 }
@@ -437,10 +428,10 @@ bool Station::CatchmentCoversTown(TownID t) const
  * Recompute tiles covered in our catchment area.
  * This will additionally recompute nearby towns and industries.
  */
-void Station::RecomputeCatchment()
+void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 {
 	this->industries_near.clear();
-	this->RemoveFromAllNearbyLists();
+	if (!no_clear_nearby_lists) this->RemoveFromAllNearbyLists();
 
 	if (this->rect.IsEmpty()) {
 		this->catchment_tiles.Reset();
@@ -507,8 +498,12 @@ void Station::RecomputeCatchment()
  */
 /* static */ void Station::RecomputeCatchmentForAll()
 {
+	Town *t;
+	FOR_ALL_TOWNS(t) { t->stations_near.clear(); }
+	Industry *i;
+	FOR_ALL_INDUSTRIES(i) { i->stations_near.clear(); }
 	Station *st;
-	FOR_ALL_STATIONS(st) { st->RecomputeCatchment(); }
+	FOR_ALL_STATIONS(st) { st->RecomputeCatchment(true); }
 }
 
 /************************************************************************/

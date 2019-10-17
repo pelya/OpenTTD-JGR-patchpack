@@ -106,15 +106,18 @@ void SetLocalCompany(CompanyID new_company)
 	/* company could also be COMPANY_SPECTATOR or OWNER_NONE */
 	assert(Company::IsValidID(new_company) || new_company == COMPANY_SPECTATOR || new_company == OWNER_NONE);
 
+	/* If actually changing to another company, several windows need closing */
+	bool switching_company = _local_company != new_company;
+
 	/* Delete the chat window, if you were team chatting. */
-	InvalidateWindowData(WC_SEND_NETWORK_MSG, DESTTYPE_TEAM, _local_company);
+	if (switching_company) InvalidateWindowData(WC_SEND_NETWORK_MSG, DESTTYPE_TEAM, _local_company);
 
 	assert(IsLocalCompany());
 
 	_current_company = _local_company = new_company;
 
 	/* Delete any construction windows... */
-	DeleteConstructionWindows();
+	if (switching_company) DeleteConstructionWindows();
 
 	/* ... and redraw the whole screen. */
 	MarkWholeScreenDirty();
@@ -568,7 +571,7 @@ Company *DoStartupNewCompany(bool is_ai, CompanyID company = INVALID_COMPANY)
 	c->share_owners[0] = c->share_owners[1] = c->share_owners[2] = c->share_owners[3] = INVALID_OWNER;
 
 	c->avail_railtypes = GetCompanyRailtypes(c->index);
-	c->avail_roadtypes = GetCompanyRoadtypes(c->index);
+	c->avail_roadtypes = GetCompanyRoadTypes(c->index);
 	c->inaugurated_year = _cur_year;
 	RandomCompanyManagerFaceBits(c->face, (GenderEthnicity)Random(), false, false); // create a random company manager face
 
@@ -1183,14 +1186,46 @@ int CompanyServiceInterval(const Company *c, VehicleType type)
 	}
 }
 
+/**
+ * Get total sum of all owned road bits.
+ * @return Combined total road road bits.
+ */
+uint32 CompanyInfrastructure::GetRoadTotal() const
+{
+	uint32 total = 0;
+	for (RoadType rt = ROADTYPE_BEGIN; rt != ROADTYPE_END; rt++) {
+		if (RoadTypeIsRoad(rt)) total += this->road[rt];
+	}
+	return total;
+}
+
+/**
+ * Get total sum of all owned tram bits.
+ * @return Combined total of tram road bits.
+ */
+uint32 CompanyInfrastructure::GetTramTotal() const
+{
+	uint32 total = 0;
+	for (RoadType rt = ROADTYPE_BEGIN; rt != ROADTYPE_END; rt++) {
+		if (RoadTypeIsTram(rt)) total += this->road[rt];
+	}
+	return total;
+}
+
 char *CompanyInfrastructure::Dump(char *buffer, const char *last) const
 {
+	uint rail_total = 0;
 	for (RailType rt = RAILTYPE_BEGIN; rt != RAILTYPE_END; rt++) {
 		if (rail[rt]) buffer += seprintf(buffer, last, "Rail: %s: %u\n", GetStringPtr(GetRailTypeInfo(rt)->strings.name), rail[rt]);
+		rail_total += rail[rt];
 	}
+	buffer += seprintf(buffer, last, "Total Rail: %u\n", rail_total);
 	buffer += seprintf(buffer, last, "Signal: %u\n", signal);
-	buffer += seprintf(buffer, last, "Road: %u\n", road[ROADTYPE_ROAD]);
-	buffer += seprintf(buffer, last, "Tram: %u\n", road[ROADTYPE_TRAM]);
+	for (RoadType rt = ROADTYPE_BEGIN; rt != ROADTYPE_END; rt++) {
+		if (road[rt]) buffer += seprintf(buffer, last, "%s: %s: %u\n", RoadTypeIsTram(rt) ? "Tram" : "Road", GetStringPtr(GetRoadTypeInfo(rt)->strings.name), road[rt]);
+	}
+	buffer += seprintf(buffer, last, "Total Road: %u\n", this->GetRoadTotal());
+	buffer += seprintf(buffer, last, "Total Tram: %u\n", this->GetTramTotal());
 	buffer += seprintf(buffer, last, "Water: %u\n", water);
 	buffer += seprintf(buffer, last, "Station: %u\n", station);
 	buffer += seprintf(buffer, last, "Airport: %u\n", airport);

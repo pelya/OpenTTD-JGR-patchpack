@@ -72,6 +72,7 @@ set_default() {
 	with_lzma="1"
 	with_lzo2="1"
 	with_xdg_basedir="1"
+	with_fcitx="1"
 	with_png="1"
 	enable_builtin_depend="1"
 	with_makedepend="0"
@@ -153,6 +154,7 @@ set_default() {
 		with_lzma
 		with_lzo2
 		with_xdg_basedir
+		with_fcitx
 		with_png
 		enable_builtin_depend
 		with_makedepend
@@ -366,6 +368,10 @@ detect_params() {
 			--without-libxdg-basedir)     with_xdg_basedir="0";;
 			--with-libxdg-basedir=*)      with_xdg_basedir="$optarg";;
 
+			--with-fcitx)                 with_fcitx="2";;
+			--without-fcitx)              with_fcitx="0";;
+			--with-fcitx=*)               with_fcitx="$optarg";;
+
 			--with-png)                   with_png="2";;
 			--without-png)                with_png="0";;
 			--with-png=*)                 with_png="$optarg";;
@@ -574,8 +580,8 @@ check_params() {
 
 	# Export some variables to be used by pkg-config
 	#
-	# PKG_CONFIG_LIBDIR variable musn't be set if we are not willing to
-	# override the default pkg-config search path, it musn't be an empty
+	# PKG_CONFIG_LIBDIR variable mustn't be set if we are not willing to
+	# override the default pkg-config search path, it mustn't be an empty
 	# string. If the variable is empty (e.g. when an empty string comes
 	# from config.cache) then unset it. This way the "don't override" state
 	# will be properly preserved when (re)configuring.
@@ -787,7 +793,7 @@ check_params() {
 			log 1 "checking GDI video driver... not Windows, skipping"
 		fi
 
-		if [ -z "$allegro_config" ] && [ -z "$sdl_config" ] && [ "$with_cocoa" = 0 ] && [ "$os" != "MINGW" ] && [ "$os" != "CYGWIN" ]; then
+		if [ -z "$allegro_config" ] && [ -z "$sdl2_config" ] && [ -z "$sdl_config" ] && [ "$with_cocoa" = 0 ] && [ "$os" != "MINGW" ] && [ "$os" != "CYGWIN" ]; then
 			log 1 "configure: error: no video driver development files found"
 			log 1 " If you want a dedicated server use --enable-dedicated as parameter"
 			exit 1
@@ -901,6 +907,7 @@ check_params() {
 	fi
 
 	detect_xdg_basedir
+	detect_fcitx
 	detect_png
 	detect_freetype
 	detect_fontconfig
@@ -1096,20 +1103,10 @@ check_params() {
 		fi
 	fi
 
-	if [ -d "$ROOT_DIR/.git" ] && [ -n "`git help 2>/dev/null`" ]; then
+	if { [ -d "$ROOT_DIR/.git" ] || [ -f "$ROOT_DIR/.git" ]; } && [ -n "`git help 2>/dev/null`" ]; then
 		log 1 "checking revision... git detection"
 	elif [ -f "$ROOT_DIR/.ottdrev-vc" ]; then
 		log 1 "checking revision... source release version"
-	elif [ -d "$ROOT_DIR/.svn" ] && [ -n "`svn help 2>/dev/null`" ]; then
-		log 1 "checking revision... svn detection"
-	elif [ -d "$ROOT_DIR/../.svn" ] && [ -n "`svn help 2>/dev/null`" ] && [ -n "`LC_ALL=C svn info $ROOT_DIR/.. | grep '^URL:.*tags$'`" ]; then
-		# subversion changed its behaviour; now not all folders have a .svn folder,
-		# but only the root folder. Since making tags requires a (sparse) checkout
-		# of the tags folder, the folder of the tag does not have a .svn folder
-		# anymore and this fails to detect the subversion repository checkout.
-		log 1 "checking revision... svn detection (tag)"
-	elif [ -d "$ROOT_DIR/.hg" ] && [ -n "`HGPLAIN= hg help 2>/dev/null`" ]; then
-		log 1 "checking revision... hg detection"
 	elif [ -f "$ROOT_DIR/.ottdrev" ]; then
 		log 1 "checking revision... source tarball"
 	else
@@ -1396,10 +1393,7 @@ make_compiler_cflags() {
 			flags="$flags -Wno-unused-variable"
 		fi
 
-		if [ "$cc_version" -ge "303" ]; then
-			# clang completed C++11 support in version 3.3
-			flags="$flags -DCUSTOM_ALLOCATOR"
-		else
+		if [ "$cc_version" -lt "303" ]; then
 			log 1 "configure: error: clang version is too old: `$1 -v 2>&1 | grep -i version | head -n 1`, minumum: 3.3"
 			exit 1
 		fi
@@ -1454,7 +1448,7 @@ make_compiler_cflags() {
 
 		if [ $cc_version -ge 402 ]; then
 			# GCC 4.2+ automatically assumes that signed overflows do
-			# not occur in signed arithmetics, whereas we are not
+			# not occur in signed arithmetic, whereas we are not
 			# sure that they will not happen. It furthermore complains
 			# about its own optimized code in some places.
 			flags="$flags -fno-strict-overflow"
@@ -1482,11 +1476,6 @@ make_compiler_cflags() {
 		else
 			log 1 "configure: error: GCC version is too old: `$1 -dumpversion`, minumum: 4.7"
 			exit 1
-		fi
-
-		if [ $cc_version -ge 409 ]; then
-			# Enable use of C++11 custom allocators
-			CFLAGS="$CFLAGS -DCUSTOM_ALLOCATOR"
 		fi
 
 		if [ $cc_version -ge 600 ]; then
@@ -1670,7 +1659,7 @@ make_cflags_and_ldflags() {
 				LDFLAGS="$LDFLAGS -Wl,--subsystem,windows"
 			fi
 
-			LIBS="$LIBS -lws2_32 -lwinmm -lgdi32 -ldxguid -lole32 -limm32"
+			LIBS="$LIBS -lws2_32 -lwinmm -lusp10 -lgdi32 -ldxguid -lole32 -limm32"
 
 			if [ $cc_version -ge 404 ]; then
 				LDFLAGS_BUILD="$LDFLAGS_BUILD -static-libgcc -static-libstdc++"
@@ -2049,7 +2038,16 @@ EOL
 		fi
 	fi
 
-	if [ -n "$sdl_config" ]; then
+	if [ -n "$sdl2_config" ]; then
+		CFLAGS="$CFLAGS -DWITH_SDL2"
+		# SDL must not add _GNU_SOURCE as it breaks many platforms
+		CFLAGS="$CFLAGS `$sdl2_config --cflags | sed 's@-D_GNU_SOURCE[^ ]*@@'`"
+		if [ "$enable_static" != "0" ]; then
+			LIBS="$LIBS `$sdl2_config --static --libs`"
+		else
+			LIBS="$LIBS `$sdl2_config --libs`"
+		fi
+	elif [ -n "$sdl_config" ]; then
 		CFLAGS="$CFLAGS -DWITH_SDL"
 		# SDL must not add _GNU_SOURCE as it breaks many platforms
 		CFLAGS="$CFLAGS `$sdl_config --cflags | sed 's@-D_GNU_SOURCE[^ ]*@@'`"
@@ -2112,6 +2110,39 @@ EOL
 			LIBS="$LIBS `$xdg_basedir_config --libs --static | tr '\n\r' '  '`"
 		else
 			LIBS="$LIBS `$xdg_basedir_config --libs | tr '\n\r' '  '`"
+		fi
+	fi
+
+	if [ -n "$dbus_config" ]; then
+		CFLAGS="$CFLAGS -DWITH_DBUS"
+		CFLAGS="$CFLAGS `$dbus_config --cflags | tr '\n\r' '  '`"
+
+		if [ "$enable_static" != "0" ]; then
+			LIBS="$LIBS `$dbus_config --libs --static | tr '\n\r' '  '`"
+		else
+			LIBS="$LIBS `$dbus_config --libs | tr '\n\r' '  '`"
+		fi
+	fi
+
+	if [ -n "$x11_config" ]; then
+		CFLAGS="$CFLAGS -DWITH_X11"
+		CFLAGS="$CFLAGS `$x11_config --cflags | tr '\n\r' '  '`"
+
+		if [ "$enable_static" != "0" ]; then
+			LIBS="$LIBS `$x11_config --libs --static | tr '\n\r' '  '`"
+		else
+			LIBS="$LIBS `$x11_config --libs | tr '\n\r' '  '`"
+		fi
+	fi
+
+	if [ -n "$fcitx_config" ]; then
+		CFLAGS="$CFLAGS -DWITH_FCITX"
+		CFLAGS="$CFLAGS `$fcitx_config --cflags | tr '\n\r' '  '`"
+
+		if [ "$enable_static" != "0" ]; then
+			LIBS="$LIBS `$fcitx_config --libs --static | tr '\n\r' '  '`"
+		else
+			LIBS="$LIBS `$fcitx_config --libs | tr '\n\r' '  '`"
 		fi
 	fi
 
@@ -2875,7 +2906,13 @@ detect_sdl() {
 		sleep 5
 	fi
 
-	detect_pkg_config "$with_sdl" "sdl" "sdl_config" "1.2"
+	if [ $with_sdl = "sdl1" ]; then
+		detect_pkg_config "2" "sdl" "sdl_config" "1.2"
+	elif [ $with_sdl = "sdl2" ] || [ -x `which sdl2-config` ]; then
+		detect_pkg_config "2" "sdl2" "sdl2_config" "2.0"
+	else
+		detect_pkg_config "$with_sdl" "sdl" "sdl_config" "1.2"
+	fi
 }
 
 detect_osx_sdk() {
@@ -3224,11 +3261,38 @@ detect_xdg_basedir() {
 	detect_pkg_config "$with_xdg_basedir" "libxdg-basedir" "xdg_basedir_config" "1.2"
 }
 
+detect_fcitx() {
+	if ([ "$with_fcitx" = "1" ] && [ "$enable_dedicated" = "0" ]) || [ "$with_fcitx" = "2" ]; then
+		detect_pkg_config "$with_fcitx" "dbus-1" "dbus_config" "1.0" "1"
+		detect_pkg_config "$with_fcitx" "x11" "x11_config" "1.0" "1"
+		if [ -z "$dbus_config" ]; then
+			log 1 "checking fcitx... no dbus, skipping"
+			fcitx_config=""
+			dbus_config=""
+			x11_config=""
+			return 0
+		elif [ -z "$x11_config" ]; then
+			log 1 "checking fcitx... no x11, skipping"
+			fcitx_config=""
+			dbus_config=""
+			x11_config=""
+			return 0
+		fi
+	fi
+	detect_pkg_config "$with_fcitx" "fcitx" "fcitx_config" "4.0" "1"
+}
+
 detect_png() {
 	detect_pkg_config "$with_png" "libpng" "png_config" "1.2"
 }
 
 detect_freetype() {
+	if  [ "$with_freetype" = "1" ] && ([ "$os" = "MINGW" ] || [ "$os" = "CYGWIN" ]); then
+		log 1 "checking freetype2... WIN32, skipping"
+		freetype_config=""
+		return 0
+	fi
+
 	detect_pkg_config "$with_freetype" "freetype2" "freetype_config" "2.2" "1"
 }
 
@@ -3584,7 +3648,7 @@ detect_sse_capable_architecture() {
 	else
 		# It was forced, so it should be found.
 		if [ "$with_sse" != "1" ]; then
-			log 1 "configure: error: SSE couln't be found"
+			log 1 "configure: error: SSE couldn't be found"
 			log 1 "configure: error: you force enabled SSE, but it seems unavailable"
 			exit 1
 		fi
@@ -3964,7 +4028,7 @@ showhelp() {
 	echo "  --with-allegro[=\"pkg-config allegro\"]"
 	echo "                                 enables Allegro video driver support"
 	echo "  --with-cocoa                   enables COCOA video driver (OSX ONLY)"
-	echo "  --with-sdl[=\"pkg-config sdl\"]  enables SDL video driver support"
+	echo "  --with-sdl[=\"sdl1|sdl2\"]       enables SDL video driver support"
 	echo "  --with-zlib[=\"pkg-config zlib\"]"
 	echo "                                 enables zlib support"
 	echo "  --with-liblzma[=\"pkg-config liblzma\"]"

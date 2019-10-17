@@ -31,7 +31,7 @@
  * VideoDriver::MakeDirty and it is truncated back to an empty rectangle. At some
  * later point (which is uninteresting, too) the video driver
  * repaints all these saved rectangle instead of the whole screen and drop the
- * rectangle informations. Then a new round begins by marking objects "dirty".
+ * rectangle information. Then a new round begins by marking objects "dirty".
  *
  * @see VideoDriver::MakeDirty
  * @see _invalid_rect
@@ -56,6 +56,8 @@ extern byte _support8bpp;
 extern CursorVars _cursor;
 extern bool _ctrl_pressed;   ///< Is Ctrl pressed?
 extern bool _shift_pressed;  ///< Is Shift pressed?
+extern bool _invert_ctrl;
+extern bool _invert_shift;
 extern byte _fast_forward;
 
 extern bool _left_button_down;
@@ -73,6 +75,7 @@ extern Palette _cur_palette; ///< Current palette
 void HandleKeypress(uint keycode, WChar key);
 void HandleTextInput(const char *str, bool marked = false, const char *caret = nullptr, const char *insert_location = nullptr, const char *replacement_end = nullptr);
 void HandleCtrlChanged();
+void HandleShiftChanged();
 void HandleMouseEvents();
 void UpdateWindows();
 

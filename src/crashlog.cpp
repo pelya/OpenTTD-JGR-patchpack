@@ -65,9 +65,9 @@
 #ifdef WITH_LZO
 #include <lzo/lzo1x.h>
 #endif
-#ifdef WITH_SDL
+#if defined(WITH_SDL) || defined(WITH_SDL2)
 #	include <SDL.h>
-#endif /* WITH_SDL */
+#endif /* WITH_SDL || WITH_SDL2 */
 #ifdef WITH_ZLIB
 # include <zlib.h>
 #endif
@@ -146,7 +146,8 @@ char *CrashLog::LogOpenTTDVersion(char *buffer, const char *last) const
 			" Endian:     %s\n"
 			" Dedicated:  %s\n"
 			" Build date: %s\n"
-			" Configure:  %s\n\n",
+			" Configure:  %s\n"
+			" Defines:    %s\n\n",
 			_openttd_revision,
 			_openttd_revision_modified,
 			_openttd_newgrf_version,
@@ -166,7 +167,8 @@ char *CrashLog::LogOpenTTDVersion(char *buffer, const char *last) const
 			"no",
 #endif
 			_openttd_build_date,
-			_openttd_build_configure
+			_openttd_build_configure,
+			_openttd_build_configure_defines
 	);
 }
 
@@ -304,9 +306,29 @@ char *CrashLog::LogLibraries(char *buffer, const char *last) const
 #endif /* WITH_PNG */
 
 #ifdef WITH_SDL
-	const SDL_version *v = SDL_Linked_Version();
-	buffer += seprintf(buffer, last, " SDL:        %d.%d.%d\n", v->major, v->minor, v->patch);
-#endif /* WITH_SDL */
+	const SDL_version *sdl_v = SDL_Linked_Version();
+	buffer += seprintf(buffer, last, " SDL1:       %d.%d.%d\n", sdl_v->major, sdl_v->minor, sdl_v->patch);
+#elif defined(WITH_SDL2)
+	SDL_version sdl2_v;
+	SDL_GetVersion(&sdl2_v);
+	buffer += seprintf(buffer, last, " SDL2:       %d.%d.%d", sdl2_v.major, sdl2_v.minor, sdl2_v.patch);
+#if defined(SDL_USE_IME)
+	buffer += seprintf(buffer, last, " IME?");
+#endif
+#if defined(HAVE_FCITX_FRONTEND_H)
+	buffer += seprintf(buffer, last, " FCITX?");
+#endif
+#if defined(HAVE_IBUS_IBUS_H)
+	buffer += seprintf(buffer, last, " IBUS?");
+#endif
+#if !(defined(_WIN32) || defined(__APPLE__))
+	const char *sdl_im_module = getenv("SDL_IM_MODULE");
+	if (sdl_im_module != nullptr) buffer += seprintf(buffer, last, " (SDL_IM_MODULE=%s)", sdl_im_module);
+	const char *xmod = getenv("XMODIFIERS");
+	if (xmod != nullptr && strstr(xmod, "@im=fcitx") != nullptr) buffer += seprintf(buffer, last, " (XMODIFIERS has @im=fcitx)");
+#endif
+	buffer += seprintf(buffer, last, "\n");
+#endif
 
 #ifdef WITH_ZLIB
 	buffer += seprintf(buffer, last, " Zlib:       %s\n", zlibVersion());
@@ -505,6 +527,26 @@ char *CrashLog::FillDesyncCrashLog(char *buffer, const char *last, const DesyncE
 }
 
 /**
+ * Fill the version info log buffer.
+ * @param buffer The begin where to write at.
+ * @param last   The last position in the buffer to write to.
+ * @return the position of the \c '\0' character after the buffer.
+ */
+char *CrashLog::FillVersionInfoLog(char *buffer, const char *last) const
+{
+	buffer += seprintf(buffer, last, "*** OpenTTD Version Info Report ***\n\n");
+
+	buffer = this->LogOpenTTDVersion(buffer, last);
+	buffer = this->LogOSVersion(buffer, last);
+	buffer = this->LogCompiler(buffer, last);
+	buffer = this->LogOSVersionDetail(buffer, last);
+	buffer = this->LogLibraries(buffer, last);
+
+	buffer += seprintf(buffer, last, "*** End of OpenTTD Version Info Report ***\n");
+	return buffer;
+}
+
+/**
  * Write the crash log to a file.
  * @note On success the filename will be filled with the full path of the
  *       crash log file. Make sure filename is at least \c MAX_PATH big.
@@ -699,6 +741,19 @@ bool CrashLog::MakeDesyncCrashLog(const std::string *log_in, std::string *log_ou
 	}
 
 	return ret;
+}
+
+/**
+ * Makes a version info log, writes it to a file. It uses DEBUG to write
+ * information like paths to the console.
+ * @return true when everything is made successfully.
+ */
+bool CrashLog::MakeVersionInfoLog() const
+{
+	char buffer[65536];
+	this->FillVersionInfoLog(buffer, lastof(buffer));
+	printf("%s\n", buffer);
+	return true;
 }
 
 /**

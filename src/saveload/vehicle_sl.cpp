@@ -428,6 +428,14 @@ void AfterLoadVehicles(bool part_of_load)
 				RoadVehicle *rv = RoadVehicle::From(v);
 				if (rv->IsFrontEngine()) {
 					rv->gcache.last_speed = rv->cur_speed; // update displayed road vehicle speed
+
+					rv->roadtype = Engine::Get(rv->engine_type)->u.road.roadtype;
+					rv->compatible_roadtypes = GetRoadTypeInfo(rv->roadtype)->powered_roadtypes;
+					for (RoadVehicle *u = rv; u != nullptr; u = u->Next()) {
+						u->roadtype = rv->roadtype;
+						u->compatible_roadtypes = rv->compatible_roadtypes;
+					}
+
 					RoadVehUpdateCache(rv);
 					if (_settings_game.vehicle.roadveh_acceleration_model != AM_ORIGINAL) {
 						rv->CargoChanged();
@@ -466,13 +474,7 @@ void AfterLoadVehicles(bool part_of_load)
 
 	FOR_ALL_VEHICLES(v) {
 		switch (v->type) {
-			case VEH_ROAD: {
-				RoadVehicle *rv = RoadVehicle::From(v);
-				rv->roadtype = HasBit(EngInfo(v->First()->engine_type)->misc_flags, EF_ROAD_TRAM) ? ROADTYPE_TRAM : ROADTYPE_ROAD;
-				rv->compatible_roadtypes = RoadTypeToRoadTypes(rv->roadtype);
-				FALLTHROUGH;
-			}
-
+			case VEH_ROAD:
 			case VEH_TRAIN:
 			case VEH_SHIP:
 				v->GetImage(v->direction, EIT_ON_MAP, &v->sprite_seq);
@@ -949,20 +951,51 @@ const SaveLoad *GetVehicleDescription(VehicleType vt)
 	return _veh_descs[vt];
 }
 
+static std::vector<SaveLoad> _filtered_train_desc;
+static std::vector<SaveLoad> _filtered_roadveh_desc;
+static std::vector<SaveLoad> _filtered_ship_desc;
+static std::vector<SaveLoad> _filtered_aircraft_desc;
+static std::vector<SaveLoad> _filtered_special_desc;
+static std::vector<SaveLoad> _filtered_disaster_desc;
+
+static std::vector<SaveLoad> * const _filtered_veh_descs[] = {
+	&_filtered_train_desc,
+	&_filtered_roadveh_desc,
+	&_filtered_ship_desc,
+	&_filtered_aircraft_desc,
+	&_filtered_special_desc,
+	&_filtered_disaster_desc,
+};
+
+const SaveLoad *GetVehicleDescriptionFiltered(VehicleType vt)
+{
+	return _filtered_veh_descs[vt]->data();
+}
+
+static void SetupDescs_VEHS()
+{
+	for (size_t i = 0; i < lengthof(_filtered_veh_descs); i++) {
+		*(_filtered_veh_descs[i]) = SlFilterObject(GetVehicleDescription((VehicleType) i));
+	}
+}
+
 /** Will be called when the vehicles need to be saved. */
 static void Save_VEHS()
 {
+	SetupDescs_VEHS();
 	Vehicle *v;
 	/* Write the vehicles */
 	FOR_ALL_VEHICLES(v) {
 		SlSetArrayIndex(v->index);
-		SlObject(v, GetVehicleDescription(v->type));
+		SlObjectSaveFiltered(v, GetVehicleDescriptionFiltered(v->type));
 	}
 }
 
 /** Will be called when vehicles need to be loaded. */
 void Load_VEHS()
 {
+	SetupDescs_VEHS();
+
 	int index;
 
 	_cargo_count = 0;
@@ -982,7 +1015,7 @@ void Load_VEHS()
 			default: SlErrorCorrupt("Invalid vehicle type");
 		}
 
-		SlObject(v, GetVehicleDescription(vtype));
+		SlObjectLoadFiltered(v, GetVehicleDescriptionFiltered(vtype));
 
 		if (_cargo_count != 0 && IsCompanyBuildableVehicleType(v) && CargoPacket::CanAllocateItem()) {
 			/* Don't construct the packet with station here, because that'll fail with old savegames */
@@ -1011,9 +1044,11 @@ void Load_VEHS()
 
 static void Ptrs_VEHS()
 {
+	SetupDescs_VEHS();
+
 	Vehicle *v;
 	FOR_ALL_VEHICLES(v) {
-		SlObject(v, GetVehicleDescription(v->type));
+		SlObjectPtrOrNullFiltered(v, GetVehicleDescriptionFiltered(v->type));
 	}
 }
 

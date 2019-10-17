@@ -18,6 +18,7 @@
 #include "vehicle_type.h"
 #include "economy_func.h"
 #include "rail.h"
+#include "road.h"
 #include "linkgraph/linkgraph_type.h"
 #include "industry_type.h"
 
@@ -40,6 +41,10 @@ void StationPickerDrawSprite(int x, int y, StationType st, RailType railtype, Ro
 bool HasStationInUse(StationID station, bool include_company, CompanyID company);
 
 void DeleteOilRig(TileIndex t);
+void UpdateStationDockingTiles(Station *st);
+void RemoveDockingTile(TileIndex t);
+void ClearDockingTilesCheckingNeighbours(TileIndex tile);
+bool IsValidDockingDirectionForDock(TileIndex t, DiagDirection d);
 
 /* Check if a rail station tile is traversable. */
 bool IsStationTileBlocked(TileIndex tile);
