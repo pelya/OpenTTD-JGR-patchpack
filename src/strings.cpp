@@ -2268,7 +2268,7 @@ const char *GetCurrentLanguageIsoCode()
  * @return If glyphs are missing, return \c true, else return \c false.
  * @post If \c true is returned and str is not nullptr, *str points to a string that is found to contain at least one missing glyph.
  */
-bool MissingGlyphSearcher::FindMissingGlyphs(const char **str)
+int MissingGlyphSearcher::FindMissingGlyphs(const char **str)
 {
 	InitFreeType(this->Monospace());
 	const Sprite *question_mark[FS_END];
@@ -2278,6 +2278,7 @@ bool MissingGlyphSearcher::FindMissingGlyphs(const char **str)
 	}
 
 	this->Reset();
+	int missing = 0;
 	for (const char *text = this->NextString(); text != nullptr; text = this->NextString()) {
 		FontSize size = this->DefaultSize();
 		if (str != nullptr) *str = text;
@@ -2286,11 +2287,11 @@ bool MissingGlyphSearcher::FindMissingGlyphs(const char **str)
 				size = (FontSize)(c - SCC_FIRST_FONT);
 			} else if (!IsInsideMM(c, SCC_SPRITE_START, SCC_SPRITE_END) && IsPrintable(c) && !IsTextDirectionChar(c) && c != '?' && GetGlyph(size, c) == question_mark[size]) {
 				/* The character is printable, but not in the normal font. This is the case we were testing for. */
-				return true;
+				missing++;
 			}
 		}
 	}
-	return false;
+	return missing;
 }
 
 /** Helper for searching through the language pack. */
