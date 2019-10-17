@@ -53,7 +53,11 @@ public:
 		uint32 first;
 #endif
 		StationID second;
-	};
+	}
+#if (defined(__GNUC__) || defined(__clang__))
+	__attribute__((packed))
+#endif
+	;
 	static_assert(sizeof(ShareEntry) == 6, "");
 
 	friend bool operator<(const ShareEntry &a, const ShareEntry &b) noexcept
