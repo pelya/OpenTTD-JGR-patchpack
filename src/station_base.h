@@ -59,6 +59,7 @@ public:
 #endif
 	;
 	static_assert(sizeof(ShareEntry) == 6, "");
+// #endif
 
 	friend bool operator<(const ShareEntry &a, const ShareEntry &b) noexcept
 	{
@@ -95,6 +96,7 @@ public:
 		this->unrestricted = restricted ? 0 : flow;
 		this->count = 1;
 		this->origin = origin;
+		this->flags = 0;
 	}
 
 private:
@@ -119,6 +121,7 @@ private:
 			free(this->storage.ptr_shares.buffer);
 		}
 		this->count = 0;
+		this->flags = 0;
 	}
 
 	iterator erase_item(iterator iter, uint flow_reduction);
@@ -133,6 +136,7 @@ private:
 		MemCpyT(this->data(), other.data(), this->count);
 		this->unrestricted = other.unrestricted;
 		this->origin = other.origin;
+		this->flags = other.flags;
 	}
 
 public:
@@ -236,6 +240,7 @@ public:
 		std::swap(this->storage, other.storage);
 		std::swap(this->unrestricted, other.unrestricted);
 		std::swap(this->count, other.count);
+		std::swap(this->flags, other.flags);
 	}
 
 	/**
@@ -271,11 +276,37 @@ public:
 
 	StationID GetVia(StationID excluded, StationID excluded2 = INVALID_STATION) const;
 
-	void Invalidate();
+	/**
+	 * Mark this flow stat as invalid, such that it is not included in link statistics.
+	 * @return True if the flow stat should be deleted.
+	 */
+	inline bool Invalidate()
+	{
+		if ((this->flags & 0x1F) == 0x1F) return true;
+		this->flags++;
+		return false;
+	}
 
 	inline StationID GetOrigin() const
 	{
 		return this->origin;
+	}
+
+	inline bool IsInvalid() const
+	{
+		return (this->flags & 0x1F) != 0;
+	}
+
+	/* for save/load use only */
+	inline uint16 GetRawFlags() const
+	{
+		return this->flags;
+	}
+
+	/* for save/load use only */
+	inline void SetRawFlags(uint16 flags)
+	{
+		this->flags = flags;;
 	}
 
 private:
@@ -304,10 +335,11 @@ private:
 	uint unrestricted; ///< Limit for unrestricted shares.
 	uint16 count;
 	StationID origin;
+	uint16 flags;
 };
 static_assert(std::is_nothrow_move_constructible<FlowStat>::value, "FlowStat must be nothrow move constructible");
 #if OTTD_ALIGNMENT == 0 && (defined(__GNUC__) || defined(__clang__))
-static_assert(sizeof(FlowStat) == 20, "");
+static_assert(sizeof(FlowStat) == 24, "");
 #endif
 
 template<typename cv_value, typename cv_container, typename cv_index_iter>
@@ -399,7 +431,12 @@ public:
 
 	bool empty() const
 	{
-		return this->flows_index.empty();
+		return this->flows_storage.empty();
+	}
+
+	size_t size() const
+	{
+		return this->flows_storage.size();
 	}
 
 	void erase(StationID st)
