@@ -2804,10 +2804,8 @@ void RemoveDockingTile(TileIndex t)
 		if (IsTileType(tile, MP_STATION)) {
 			UpdateStationDockingTiles(Station::GetByTile(tile));
 		} else if (IsTileType(tile, MP_INDUSTRY)) {
-			Station *st = Industry::GetByTile(tile)->neutral_station;
-			if (st != nullptr) {
-				UpdateStationDockingTiles(Industry::GetByTile(tile)->neutral_station);
-			}
+			Station *neutral = Industry::GetByTile(tile)->neutral_station;
+			if (neutral != nullptr) UpdateStationDockingTiles(neutral);
 		}
 	}
 }
@@ -4390,45 +4388,11 @@ void DeleteOilRig(TileIndex tile)
 	MakeWaterKeepingClass(tile, OWNER_NONE);
 
 	assert(st->facilities == (FACIL_AIRPORT | FACIL_DOCK) && st->airport.type == AT_OILRIG);
+	if (st->industry != nullptr && st->industry->neutral_station == st) {
+		/* Don't leave dangling neutral station pointer */
+		st->industry->neutral_station = nullptr;
+	}
 	delete st;
-	return;
-
-	MakeShipStationAreaSmaller(st);
-	if (st->ship_station.tile == INVALID_TILE) {
-		st->ship_station.Clear();
-		st->docking_station.Clear();
-		st->docking_tiles.clear();
-		st->facilities &= ~FACIL_DOCK;
-	}
-	st->airport.Clear();
-	st->facilities &= ~FACIL_AIRPORT;
-	st->airport.flags = 0;
-
-	st->rect.AfterRemoveTile(st, tile);
-
-	st->UpdateVirtCoord();
-	st->RecomputeCatchment();
-	if (!st->IsInUse()) {
-		delete st;
-	} else {
-		st->industry = nullptr;
-		/* All ships that were going to our station, can't go to it anymore.
-		 * Just clear the order, then automatically the next appropriate order
-		 * will be selected and in case of no appropriate order it will just
-		 * wander around the world. */
-		if (!(st->facilities & FACIL_DOCK)) {
-			Ship *s;
-			FOR_ALL_SHIPS(s) {
-				if (s->current_order.IsType(OT_LOADING) && s->current_order.GetDestination() == st->index) {
-					s->LeaveStation();
-				}
-
-				if (s->current_order.IsType(OT_GOTO_STATION) && s->current_order.GetDestination() == st->index) {
-					s->SetDestTile(s->GetOrderStationLocation(st->index));
-				}
-			}
-		}
-	}
 }
 
 static void ChangeTileOwner_Station(TileIndex tile, Owner old_owner, Owner new_owner)
