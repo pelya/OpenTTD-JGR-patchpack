@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -364,6 +362,11 @@ static void SlNullPointers()
 	assert(_sl.action == SLA_NULL);
 }
 
+struct ThreadSlErrorException {
+	StringID string;
+	const char *extra_msg;
+};
+
 /**
  * Error handler. Sets everything up to show an error message and to clean
  * up the mess of a partial savegame load.
@@ -377,6 +380,10 @@ void NORETURN SlError(StringID string, const char *extra_msg, bool already_mallo
 	char *str = nullptr;
 	if (extra_msg != nullptr) {
 		str = already_malloced ? const_cast<char *>(extra_msg) : stredup(extra_msg);
+	}
+
+	if (IsNonMainThread()) {
+		throw ThreadSlErrorException{ string, extra_msg };
 	}
 
 	/* Distinguish between loading into _load_check_data vs. normal save/load. */
@@ -2736,25 +2743,26 @@ struct SaveLoadFormat {
 	byte min_compression;                 ///< the minimum compression level of this format
 	byte default_compression;             ///< the default compression level of this format
 	byte max_compression;                 ///< the maximum compression level of this format
+	bool no_threaded_load;                ///< unsuitable for threaded loading
 };
 
 /** The different saveload formats known/understood by OpenTTD. */
 static const SaveLoadFormat _saveload_formats[] = {
 #if defined(WITH_LZO)
 	/* Roughly 75% larger than zlib level 6 at only ~7% of the CPU usage. */
-	{"lzo",    TO_BE32X('OTTD'), CreateLoadFilter<LZOLoadFilter>,    CreateSaveFilter<LZOSaveFilter>,    0, 0, 0},
+	{"lzo",    TO_BE32X('OTTD'), CreateLoadFilter<LZOLoadFilter>,    CreateSaveFilter<LZOSaveFilter>,    0, 0, 0, true},
 #else
-	{"lzo",    TO_BE32X('OTTD'), nullptr,                            nullptr,                            0, 0, 0},
+	{"lzo",    TO_BE32X('OTTD'), nullptr,                            nullptr,                            0, 0, 0, false},
 #endif
 	/* Roughly 5 times larger at only 1% of the CPU usage over zlib level 6. */
-	{"none",   TO_BE32X('OTTN'), CreateLoadFilter<NoCompLoadFilter>, CreateSaveFilter<NoCompSaveFilter>, 0, 0, 0},
+	{"none",   TO_BE32X('OTTN'), CreateLoadFilter<NoCompLoadFilter>, CreateSaveFilter<NoCompSaveFilter>, 0, 0, 0, false},
 #if defined(WITH_ZLIB)
 	/* After level 6 the speed reduction is significant (1.5x to 2.5x slower per level), but the reduction in filesize is
 	 * fairly insignificant (~1% for each step). Lower levels become ~5-10% bigger by each level than level 6 while level
 	 * 1 is "only" 3 times as fast. Level 0 results in uncompressed savegames at about 8 times the cost of "none". */
-	{"zlib",   TO_BE32X('OTTZ'), CreateLoadFilter<ZlibLoadFilter>,   CreateSaveFilter<ZlibSaveFilter>,   0, 6, 9},
+	{"zlib",   TO_BE32X('OTTZ'), CreateLoadFilter<ZlibLoadFilter>,   CreateSaveFilter<ZlibSaveFilter>,   0, 6, 9, false},
 #else
-	{"zlib",   TO_BE32X('OTTZ'), nullptr,                            nullptr,                            0, 0, 0},
+	{"zlib",   TO_BE32X('OTTZ'), nullptr,                            nullptr,                            0, 0, 0, false},
 #endif
 #if defined(WITH_LIBLZMA)
 	/* Level 2 compression is speed wise as fast as zlib level 6 compression (old default), but results in ~10% smaller saves.
@@ -2762,9 +2770,9 @@ static const SaveLoadFormat _saveload_formats[] = {
 	 * The next significant reduction in file size is at level 4, but that is already 4 times slower. Level 3 is primarily 50%
 	 * slower while not improving the filesize, while level 0 and 1 are faster, but don't reduce savegame size much.
 	 * It's OTTX and not e.g. OTTL because liblzma is part of xz-utils and .tar.xz is preferred over .tar.lzma. */
-	{"lzma",   TO_BE32X('OTTX'), CreateLoadFilter<LZMALoadFilter>,   CreateSaveFilter<LZMASaveFilter>,   0, 2, 9},
+	{"lzma",   TO_BE32X('OTTX'), CreateLoadFilter<LZMALoadFilter>,   CreateSaveFilter<LZMASaveFilter>,   0, 2, 9, false},
 #else
-	{"lzma",   TO_BE32X('OTTX'), nullptr,                            nullptr,                            0, 0, 0},
+	{"lzma",   TO_BE32X('OTTX'), nullptr,                            nullptr,                            0, 0, 0, false},
 #endif
 };
 
@@ -3017,6 +3025,9 @@ struct ThreadedLoadFilter : LoadFilter {
 	byte read_buf[MEMORY_CHUNK_SIZE * BUFFER_COUNT]; ///< Buffers for reading from source.
 	bool no_thread = false;
 
+	bool have_exception = false;
+	ThreadSlErrorException caught_exception;
+
 	std::thread read_thread;
 
 	/**
@@ -3050,21 +3061,28 @@ struct ThreadedLoadFilter : LoadFilter {
 
 	static void RunThread(ThreadedLoadFilter *self)
 	{
-		std::unique_lock<std::mutex> lk(self->mutex);
-		while (!self->no_thread) {
-			if (self->count_ready == BUFFER_COUNT) {
-				self->full_cv.wait(lk);
-				continue;
-			}
+		try {
+			std::unique_lock<std::mutex> lk(self->mutex);
+			while (!self->no_thread) {
+				if (self->count_ready == BUFFER_COUNT) {
+					self->full_cv.wait(lk);
+					continue;
+				}
 
-			uint buf = (self->first_ready + self->count_ready) % BUFFER_COUNT;
-			lk.unlock();
-			size_t read = self->chain->Read(self->read_buf + (buf * MEMORY_CHUNK_SIZE), MEMORY_CHUNK_SIZE);
-			lk.lock();
-			self->read_offsets[buf] = 0;
-			self->read_counts[buf] = read;
-			self->count_ready++;
-			if (self->count_ready == 1) self->empty_cv.notify_one();
+				uint buf = (self->first_ready + self->count_ready) % BUFFER_COUNT;
+				lk.unlock();
+				size_t read = self->chain->Read(self->read_buf + (buf * MEMORY_CHUNK_SIZE), MEMORY_CHUNK_SIZE);
+				lk.lock();
+				self->read_offsets[buf] = 0;
+				self->read_counts[buf] = read;
+				self->count_ready++;
+				if (self->count_ready == 1) self->empty_cv.notify_one();
+			}
+		} catch (const ThreadSlErrorException &ex) {
+			std::unique_lock<std::mutex> lk(self->mutex);
+			self->caught_exception = ex;
+			self->have_exception = true;
+			self->empty_cv.notify_one();
 		}
 	}
 
@@ -3074,7 +3092,11 @@ struct ThreadedLoadFilter : LoadFilter {
 
 		size_t read = 0;
 		std::unique_lock<std::mutex> lk(this->mutex);
-		while (read < size) {
+		while (read < size || this->have_exception) {
+			if (this->have_exception) {
+				this->have_exception = false;
+				SlError(this->caught_exception.string, this->caught_exception.extra_msg);
+			}
 			if (this->count_ready == 0) {
 				this->empty_cv.wait(lk);
 				continue;
@@ -3176,7 +3198,9 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 	}
 
 	_sl.lf = fmt->init_load(_sl.lf);
-	_sl.lf = new ThreadedLoadFilter(_sl.lf);
+	if (!fmt->no_threaded_load) {
+		_sl.lf = new ThreadedLoadFilter(_sl.lf);
+	}
 	_sl.reader = new ReadBuffer(_sl.lf);
 	_next_offs = 0;
 

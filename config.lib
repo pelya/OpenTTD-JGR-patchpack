@@ -1,5 +1,3 @@
-# $Id$
-
 # This file is part of OpenTTD.
 # OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
 # OpenTTD is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -2916,11 +2914,11 @@ detect_sdl() {
 	if [ $with_sdl = "sdl1" ]; then
 		detect_pkg_config "2" "sdl" "sdl_config" "1.2"
 	elif [ $with_sdl = "sdl2" ]; then
-		detect_pkg_config "2" "sdl2" "sdl2_config" "2.0.5"
+		detect_pkg_config "2" "sdl2" "sdl2_config" "2.0"
 	else
 		sdl2_config=""
 		if [ -x `which sdl2-config` ]; then
-			detect_pkg_config "$with_sdl" "sdl2" "sdl2_config" "2.0.5"
+			detect_pkg_config "$with_sdl" "sdl2" "sdl2_config" "2.0"
 		fi
 		if [ -z "$sdl2_config" ]; then
 			detect_pkg_config "$with_sdl" "sdl" "sdl_config" "1.2"
