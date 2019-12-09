@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -1680,11 +1678,8 @@ bool AfterLoadGame()
 	/* from version 38 we have optional elrails, since we cannot know the
 	 * preference of a user, let elrails enabled; it can be disabled manually */
 	if (IsSavegameVersionBefore(SLV_38)) _settings_game.vehicle.disable_elrails = false;
-	if (IsSavegameVersionBefore(SLV_38) || _settings_game.vehicle.disable_elrails) {
-		SettingsDisableElrail(_settings_game.vehicle.disable_elrails);
-	} else {
-		ReinitGuiAfterToggleElrail(_settings_game.vehicle.disable_elrails);
-	}
+	/* do the same as when elrails were enabled/disabled manually just now */
+	SettingsDisableElrail(_settings_game.vehicle.disable_elrails);
 	InitializeRailGUI();
 
 	/* From version 53, the map array was changed for house tiles to allow

@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -854,7 +852,7 @@ CommandCost IsRailStationBridgeAboveOk(TileIndex tile, const StationSpec *statsp
 	BridgePiecePillarFlags disallowed_pillar_flags;
 	if (statspec && HasBit(statspec->internal_flags, SSIF_BRIDGE_DISALLOWED_PILLARS_SET)) {
 		// pillar flags set by NewGRF
-		disallowed_pillar_flags = (BridgePiecePillarFlags) statspec->bridge_height[layout];
+		disallowed_pillar_flags = (BridgePiecePillarFlags) statspec->bridge_disallowed_pillars[layout];
 	} else if (!statspec) {
 		// default stations/waypoints
 		static const uint8 st_flags[8] = { 0x50, 0xA0, 0x50, 0xA0, 0x50 | 0x26, 0xA0 | 0x1C, 0x50 | 0x89, 0xA0 | 0x43 };
@@ -883,6 +881,29 @@ CommandCost IsRailStationBridgeAboveOk(TileIndex tile, const StationSpec *statsp
 	TileIndex northern_bridge_end = GetNorthernBridgeEnd(tile);
 	return IsRailStationBridgeAboveOk(tile, statspec, layout, northern_bridge_end, southern_bridge_end, GetBridgeHeight(southern_bridge_end),
 			GetBridgeType(southern_bridge_end), GetTunnelBridgeTransportType(southern_bridge_end));
+}
+
+CommandCost IsRoadStopBridgeAboveOK(TileIndex tile, bool drive_through, DiagDirection entrance,
+		TileIndex northern_bridge_end, TileIndex southern_bridge_end, int bridge_height,
+		BridgeType bridge_type, TransportType bridge_transport_type)
+{
+	if (!_settings_game.construction.allow_road_stops_under_bridges) return CommandCost(INVALID_STRING_ID);
+
+	if (GetTileMaxZ(tile) + (drive_through ? 1 : 2) > bridge_height) {
+		return CommandCost(STR_ERROR_BRIDGE_TOO_LOW_FOR_STATION);
+	}
+
+	BridgePiecePillarFlags disallowed_pillar_flags = (BridgePiecePillarFlags) 0;
+	if (drive_through) {
+		disallowed_pillar_flags = (BridgePiecePillarFlags) (DiagDirToAxis(entrance) == AXIS_X ? 0x50 : 0xA0);
+	} else {
+		SetBit(disallowed_pillar_flags, 4 + entrance);
+	}
+	if ((GetBridgeTilePillarFlags(tile, northern_bridge_end, southern_bridge_end, bridge_type, bridge_transport_type) & disallowed_pillar_flags) == 0) {
+		return CommandCost();
+	} else {
+		return CommandCost(STR_ERROR_BRIDGE_PILLARS_OBSTRUCT_STATION);
+	}
 }
 
 /**
@@ -991,9 +1012,18 @@ static CommandCost CheckFlatLandRoadStop(TileArea tile_area, DoCommandFlag flags
 	int allowed_z = -1;
 
 	TILE_AREA_LOOP(cur_tile, tile_area) {
-		CommandCost ret = CheckBuildableTile(cur_tile, invalid_dirs, allowed_z, !is_drive_through, !_settings_game.construction.allow_stations_under_bridges);
+		CommandCost ret = CheckBuildableTile(cur_tile, invalid_dirs, allowed_z, !is_drive_through, !_settings_game.construction.allow_road_stops_under_bridges);
 		if (ret.Failed()) return ret;
 		cost.AddCost(ret);
+
+		if (_settings_game.construction.allow_road_stops_under_bridges && IsBridgeAbove(cur_tile)) {
+			TileIndex southern_bridge_end = GetSouthernBridgeEnd(cur_tile);
+			TileIndex northern_bridge_end = GetNorthernBridgeEnd(cur_tile);
+			CommandCost bridge_ret = IsRoadStopBridgeAboveOK(cur_tile, is_drive_through, (DiagDirection) FindFirstBit(invalid_dirs),
+					northern_bridge_end, southern_bridge_end, GetBridgeHeight(southern_bridge_end),
+					GetBridgeType(southern_bridge_end), GetTunnelBridgeTransportType(southern_bridge_end));
+			if (bridge_ret.Failed()) return bridge_ret;
+		}
 
 		/* If station is set, then we have special handling to allow building on top of already existing stations.
 		 * Station points to INVALID_STATION if we can build on any station.
@@ -2735,7 +2765,7 @@ CommandCost CmdBuildDock(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 	CommandCost ret = CheckIfAuthorityAllowsNewStation(slope_tile, flags);
 	if (ret.Failed()) return ret;
 
-	if (IsBridgeAbove(slope_tile) && !_settings_game.construction.allow_stations_under_bridges) return_cmd_error(STR_ERROR_MUST_DEMOLISH_BRIDGE_FIRST);
+	if (IsBridgeAbove(slope_tile) && !_settings_game.construction.allow_docks_under_bridges) return_cmd_error(STR_ERROR_MUST_DEMOLISH_BRIDGE_FIRST);
 
 	ret = DoCommand(slope_tile, 0, 0, flags, CMD_LANDSCAPE_CLEAR);
 	if (ret.Failed()) return ret;
@@ -2744,7 +2774,7 @@ CommandCost CmdBuildDock(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 		return_cmd_error(STR_ERROR_SITE_UNSUITABLE);
 	}
 
-	if (IsBridgeAbove(flat_tile) && !_settings_game.construction.allow_stations_under_bridges) return_cmd_error(STR_ERROR_MUST_DEMOLISH_BRIDGE_FIRST);
+	if (IsBridgeAbove(flat_tile) && !_settings_game.construction.allow_docks_under_bridges) return_cmd_error(STR_ERROR_MUST_DEMOLISH_BRIDGE_FIRST);
 
 	/* Get the water class of the water tile before it is cleared.*/
 	WaterClass wc = GetWaterClass(flat_tile);

@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -448,6 +446,9 @@ Train *GetTrainForReservation(TileIndex tile, Track track)
 TileIndex VehiclePosTraceRestrictPreviousSignalCallback(const Train *v, const void *)
 {
 	if (IsRailDepotTile(v->tile)) {
+		return v->tile;
+	}
+	if (v->track & TRACK_BIT_WORMHOLE && IsTileType(v->tile, MP_TUNNELBRIDGE) && IsTunnelBridgeSignalSimulationExit(v->tile) && IsTunnelBridgePBS(v->tile)) {
 		return v->tile;
 	}
 
