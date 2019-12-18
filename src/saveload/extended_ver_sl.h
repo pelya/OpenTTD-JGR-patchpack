@@ -26,7 +26,7 @@ enum SlXvFeatureIndex {
 	XSLFI_TRACE_RESTRICT_ORDRCND,                 ///< Trace restrict: slot conditional order
 	XSLFI_TRACE_RESTRICT_STATUSCND,               ///< Trace restrict: train status condition
 	XSLFI_TRACE_RESTRICT_REVERSE,                 ///< Trace restrict: reverse
-	XSLFI_PROG_SIGS,                              ///< programmable signals patch
+	XSLFI_PROG_SIGS,                              ///< programmable pre-signals patch
 	XSLFI_ADJACENT_CROSSINGS,                     ///< Adjacent level crossings closure patch
 	XSLFI_SAFER_CROSSINGS,                        ///< Safer level crossings
 	XSLFI_DEPARTURE_BOARDS,                       ///< Departure boards patch, in ticks mode
@@ -76,6 +76,7 @@ enum SlXvFeatureIndex {
 	XSLFI_STATE_CHECKSUM,                         ///< State checksum
 	XSLFI_DEBUG,                                  ///< Debugging info
 	XSLFI_FLOW_STAT_FLAGS,                        ///< FlowStat flags
+	XSLFI_SPEED_RESTRICTION,                      ///< Train speed restrictions
 
 	XSLFI_RIFF_HEADER_60_BIT,                     ///< Size field in RIFF chunk header is 60 bit
 	XSLFI_HEIGHT_8_BIT,                           ///< Map tile height is 8 bit instead of 4 bit, but savegame version may be before this became true in trunk

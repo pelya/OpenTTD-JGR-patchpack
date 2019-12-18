@@ -385,6 +385,7 @@ CommandCost CopyHeadSpecificThings(Vehicle *old_head, Vehicle *new_head, DoComma
 		ChangeVehicleNews(old_head->index, new_head->index);
 
 		if (old_head->type == VEH_TRAIN) {
+			Train::From(new_head)->speed_restriction = Train::From(old_head)->speed_restriction;
 			/* Transfer any acquired trace restrict slots to the new vehicle */
 			if (HasBit(Train::From(old_head)->flags, VRF_HAVE_SLOT)) {
 				TraceRestrictTransferVehicleOccupantInAllSlots(old_head->index, new_head->index);
@@ -598,10 +599,6 @@ static CommandCost ReplaceChain(Vehicle **chain, DoCommandFlag flags, bool wagon
 
 					if ((flags & DC_EXEC) != 0) TransferCargo(w, new_head, true);
 
-					/* Sell the vehicle.
-					 * Note: This might temporarily construct new trains, so use DC_AUTOREPLACE to prevent
-					 *       it from failing due to engine limits. */
-					cost.AddCost(DoCommand(0, w->index, 0, flags | DC_AUTOREPLACE, GetCmdSellVeh(w)));
 					if ((flags & DC_EXEC) != 0) {
 						old_vehs[i] = nullptr;
 						if (i == 0) {
@@ -609,6 +606,10 @@ static CommandCost ReplaceChain(Vehicle **chain, DoCommandFlag flags, bool wagon
 							old_head = nullptr;
 						}
 					}
+					/* Sell the vehicle.
+					 * Note: This might temporarily construct new trains, so use DC_AUTOREPLACE to prevent
+					 *       it from failing due to engine limits. */
+					cost.AddCost(DoCommand(0, w->index, 0, flags | DC_AUTOREPLACE, GetCmdSellVeh(w)));
 				}
 
 				if ((flags & DC_EXEC) != 0) CheckCargoCapacity(new_head);
