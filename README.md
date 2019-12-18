@@ -1,4 +1,4 @@
-## JGR's Patchpack version 0.32.3
+## JGR's Patchpack version 0.32.4
 
 This is a collection of patches applied to [OpenTTD](http://www.openttd.org/)
 
@@ -27,7 +27,7 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
   As of v0.11.0 this includes the Long Reserve feature from [here](http://www.tt-forums.net/viewtopic.php?f=33&t=74365).  
   A version of this feature rebased onto [Cirdan's new map features branch](http://repo.or.cz/w/openttd/fttd.git) is in the *tracerestrict-cirdan* branch, see [this thread](http://www.tt-forums.net/viewtopic.php?f=33&t=58420)
 
-* Programmable signals: [imported](http://www.tt-forums.net/viewtopic.php?f=33&t=47690)  
+* Programmable pre-signals: [imported](http://www.tt-forums.net/viewtopic.php?f=33&t=47690)  
   This includes additions to the patch from the [Spring 2013 Patch Pack](http://www.tt-forums.net/viewtopic.php?f=33&t=66892)  
   These are not shown in the build signal window by default.
 
@@ -250,6 +250,7 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
   * Change network protocol to send server/join and rcon passwords in hashed form instead of in clear text. (added in v0.31.4).  
   * Add modifier key window for toggling shift/ctrl key states using mouse. (added in v0.32-rc4).  
   * Add IME support on Linux/SDL2 (SDL2-supported IMEs and Fcitx). (added in v0.32.0).  
+  * Add patch: show the name of the NewGRF in the build vehicle window. (added in v0.32.4).  
   * Various minor fixes, see changelog.  
   * [NewGRF specification additions](docs/newgrf-additions.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/newgrf-additions.html)).
   * [Low-level code/performance changes](docs/jgrpp-low-level-changes.md).
