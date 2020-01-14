@@ -61,8 +61,7 @@ CommandCost CmdInsertOrderIntl(DoCommandFlag flags, Vehicle *v, VehicleOrderID s
 void IntialiseOrderDestinationRefcountMap()
 {
 	ClearOrderDestinationRefcountMap();
-	const Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (const Vehicle *v : Vehicle::Iterate()) {
 		if (v != v->FirstShared()) continue;
 		const Order *order;
 		FOR_VEHICLE_ORDERS(v, order) {
@@ -448,6 +447,20 @@ void OrderList::Initialize(Order *chain, Vehicle *v)
 	}
 
 	for (const Vehicle *u = v->NextShared(); u != nullptr; u = u->NextShared()) ++this->num_vehicles;
+}
+
+/**
+ * Recomputes Timetable duration.
+ * Split out into a separate function so it can be used by afterload.
+ */
+void OrderList::RecalculateTimetableDuration()
+{
+	this->timetable_duration = 0;
+	for (Order *o = this->first; o != nullptr; o = o->next) {
+		if (!o->IsType(OT_CONDITIONAL)) {
+			this->timetable_duration += o->GetTimetabledWait() + o->GetTimetabledTravel();
+		}
+	}
 }
 
 /**
@@ -1228,6 +1241,7 @@ void InsertOrder(Vehicle *v, Order *new_o, VehicleOrderID sel_ord)
 
 	/* Make sure to rebuild the whole list */
 	InvalidateWindowClassesData(GetWindowClassForVehicleType(v->type), 0);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 }
 
 /**
@@ -1246,6 +1260,7 @@ static CommandCost DecloneOrder(Vehicle *dst, DoCommandFlag flags)
 		DeleteVehicleOrders(dst);
 		InvalidateVehicleOrder(dst, VIWD_REMOVE_ALL_ORDERS);
 		InvalidateWindowClassesData(GetWindowClassForVehicleType(dst->type), 0);
+		InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 		CheckMarkDirtyFocusedRoutePaths(dst);
 	}
 	return CommandCost();
@@ -1383,6 +1398,7 @@ void DeleteOrder(Vehicle *v, VehicleOrderID sel_ord)
 	}
 
 	InvalidateWindowClassesData(GetWindowClassForVehicleType(v->type), 0);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 }
 
 /**
@@ -2056,6 +2072,7 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 
 
 				InvalidateWindowClassesData(GetWindowClassForVehicleType(dst->type), 0);
+				InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 				CheckMarkDirtyFocusedRoutePaths(dst);
 
 				CheckAdvanceVehicleOrdersAfterClone(dst, flags);
@@ -2159,6 +2176,7 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 				InvalidateVehicleOrder(dst, VIWD_REMOVE_ALL_ORDERS);
 
 				InvalidateWindowClassesData(GetWindowClassForVehicleType(dst->type), 0);
+				InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 				CheckMarkDirtyFocusedRoutePaths(dst);
 
 				CheckAdvanceVehicleOrdersAfterClone(dst, flags);
@@ -2322,14 +2340,12 @@ void CheckOrders(const Vehicle *v)
  */
 void RemoveOrderFromAllVehicles(OrderType type, DestinationID destination, bool hangar)
 {
-	Vehicle *v;
-
 	/* Aircraft have StationIDs for depot orders and never use DepotIDs
 	 * This fact is handled specially below
 	 */
 
 	/* Go through all vehicles */
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		Order *order = &v->current_order;
 		if ((v->type == VEH_AIRCRAFT && order->IsType(OT_GOTO_DEPOT) && !hangar ? OT_GOTO_STATION : order->GetType()) == type &&
 				(!hangar || v->type == VEH_AIRCRAFT) && v->current_order.GetDestination() == destination) {
@@ -2854,8 +2870,7 @@ CommandCost CmdMassChangeOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 	DestinationID to_dest = GB(p2, 0, 16);
 
 	if (flags & DC_EXEC) {
-		Vehicle *v;
-		FOR_ALL_VEHICLES(v) {
+		for (Vehicle *v : Vehicle::Iterate()) {
 			if (v->type == vehtype && v->IsPrimaryVehicle() && CheckOwnership(v->owner).Succeeded()) {
 				Order *order;
 				int index = 0;
