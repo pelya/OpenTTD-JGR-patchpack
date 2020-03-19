@@ -1017,7 +1017,7 @@ bool FloodHalftile(TileIndex t)
 			if (IsSteepSlope(tileh) || IsSlopeWithThreeCornersRaised(tileh)) {
 				flooded = true;
 				SetRailGroundType(t, RAIL_GROUND_WATER);
-				MarkTileDirtyByTile(t);
+				MarkTileDirtyByTile(t, ZOOM_LVL_DRAW_MAP);
 			}
 		}
 	}
@@ -1979,7 +1979,9 @@ CommandCost CmdRemoveSingleSignal(TileIndex tile, DoCommandFlag flags, uint32 p1
 
 		AddTrackToSignalBuffer(tile, track, GetTileOwner(tile));
 		YapfNotifyTrackLayoutChange(tile, track);
-		if (v != nullptr) TryPathReserve(v, false);
+		if (v != nullptr && !(v->track & TRACK_BIT_WORMHOLE && IsTunnelBridgeWithSignalSimulation(v->tile))) {
+			TryPathReserve(v, false);
+		}
 
 		MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
 	}
@@ -3325,7 +3327,7 @@ static void TileLoop_Track(TileIndex tile)
 set_ground:
 	if (old_ground != new_ground) {
 		SetRailGroundType(tile, new_ground);
-		MarkTileDirtyByTile(tile);
+		MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
 	}
 }
 
@@ -3671,6 +3673,7 @@ static VehicleEnterTileStatus VehicleEnter_Track(Vehicle *u, TileIndex tile, int
 
 			v->track = TRACK_BIT_DEPOT,
 			v->vehstatus |= VS_HIDDEN; // hide it
+			v->UpdateIsDrawn();
 			v->direction = ReverseDir(v->direction);
 			if (v->Next() == nullptr) VehicleEnterDepot(v->First());
 			v->tile = tile;
@@ -3684,6 +3687,7 @@ static VehicleEnterTileStatus VehicleEnter_Track(Vehicle *u, TileIndex tile, int
 			if ((v = v->Next()) != nullptr) {
 				v->vehstatus &= ~VS_HIDDEN;
 				v->track = (DiagDirToAxis(dir) == AXIS_X ? TRACK_BIT_X : TRACK_BIT_Y);
+				v->UpdateIsDrawn();
 			}
 		}
 	}

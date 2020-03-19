@@ -1708,8 +1708,6 @@ STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Minimum company
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES_HELPTEXT                :Set the minimum age of a company for others to be able to buy and sell shares from them.
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :Percentage of leg profit to pay in feeder systems: {STRING2}
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE_HELPTEXT                :Percentage of income given to the intermediate legs in feeder systems, giving more control over the income
-STR_CONFIG_SETTING_FEEDER_PAYMENT_SRC_STATION                   :Calculate leg profit relative to source station in feeder systems: {STRING2}
-STR_CONFIG_SETTING_FEEDER_PAYMENT_SRC_STATION_HELPTEXT          :When enabled, the calculation of leg profit in feeder systems is from the source station to the current point, minus any previous transfer payments, instead of calculating the current leg profit as an independent journey
 STR_CONFIG_SETTING_SIMULATE_SIGNALS                             :Simulate signals in tunnels, bridges every: {STRING2}
 STR_CONFIG_SETTING_SIMULATE_SIGNALS_VALUE                       :{COMMA} tile{P 0 "" s}
 STR_CONFIG_SETTING_DAY_LENGTH_FACTOR                            :Day length factor: {STRING2}
@@ -2404,6 +2402,7 @@ STR_NETWORK_ERROR_WRONG_PASSWORD                                :{WHITE}Wrong pa
 STR_NETWORK_ERROR_SERVER_FULL                                   :{WHITE}The server is full
 STR_NETWORK_ERROR_SERVER_BANNED                                 :{WHITE}You are banned from this server
 STR_NETWORK_ERROR_KICKED                                        :{WHITE}You were kicked out of the game
+STR_NETWORK_ERROR_KICK_MESSAGE                                  :{WHITE}Reason: {RAW_STRING}
 STR_NETWORK_ERROR_CHEATER                                       :{WHITE}Cheating is not allowed on this server
 STR_NETWORK_ERROR_TOO_MANY_COMMANDS                             :{WHITE}You were sending too many commands to the server
 STR_NETWORK_ERROR_TIMEOUT_PASSWORD                              :{WHITE}You took too long to enter the password
@@ -2467,6 +2466,7 @@ STR_NETWORK_MESSAGE_MONEY_GIVEN                                 :*** {RAW_STRING
 STR_NETWORK_MESSAGE_MONEY_GIVE_SRC_DESCRIPTION                  :{RAW_STRING} ({COMPANY})
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}The server closed the session
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}The server is restarting...{}Please wait...
+STR_NETWORK_MESSAGE_KICKED                                      :*** {RAW_STRING} was kicked. Reason: ({RAW_STRING})
 
 # Content downloading window
 STR_CONTENT_TITLE                                               :{WHITE}Content downloading
@@ -4648,7 +4648,7 @@ STR_ORDERS_TIMETABLE_VIEW_TOOLTIP                               :{BLACK}Switch t
 
 STR_ORDERS_LIST_TOOLTIP                                         :{BLACK}Order list - click on an order to highlight it. Ctrl+Click scrolls to the order's destination
 STR_ORDER_INDEX                                                 :{COMMA}:{NBSP}
-STR_ORDER_TEXT                                                  :{STRING4} {STRING4} {STRING}
+STR_ORDER_TEXT                                                  :{STRING5} {STRING4} {STRING}
 
 STR_ORDERS_END_OF_ORDERS                                        :- - End of Orders - -
 STR_ORDERS_END_OF_SHARED_ORDERS                                 :- - End of Shared Orders - -
@@ -4711,6 +4711,8 @@ STR_ORDER_CONDITIONAL_FREE_PLATFORMS                            :Free platforms
 STR_ORDER_CONDITIONAL_PERCENT                                   :Percent of times
 STR_ORDER_CONDITIONAL_SLOT_OCCUPANCY                            :Slot occupancy
 STR_ORDER_CONDITIONAL_TRAIN_IN_SLOT                             :Train in slot
+STR_ORDER_CONDITIONAL_CARGO_LOAD_PERCENTAGE                     :Cargo load percentage
+STR_ORDER_CONDITIONAL_CARGO_WAITING_AMOUNT                      :Waiting cargo amount
 
 STR_ORDER_CONDITIONAL_REQUIRES_SERVICE_ORDER                    :Requires service {STRING}
 STR_ORDER_CONDITIONAL_CARGO_WAITING_ORDER                       :Next station {STRING} {STRING} waiting
@@ -4862,6 +4864,8 @@ STR_ORDER_CONDITIONAL_INVALID_SLOT                              :Jump to order {
 STR_ORDER_CONDITIONAL_IN_SLOT                                   :Jump to order {COMMA} when {STRING} slot: {TRSLOT}
 STR_ORDER_CONDITIONAL_IN_INVALID_SLOT                           :Jump to order {COMMA} when {STRING} {PUSH_COLOUR}{RED}{STRING} {POP_COLOUR}
 STR_ORDER_CONDITIONAL_TRUE_FALSE                                :Jump to order {COMMA} when {STRING} {STRING}
+STR_ORDER_CONDITIONAL_LOAD_PERCENTAGE_DISPLAY                   :Jump to order {COMMA} when Load percentage of {STRING} {STRING} {COMMA}
+STR_ORDER_CONDITIONAL_CARGO_WAITING_AMOUNT_DISPLAY              :Jump to order {COMMA} when {STRING} at next station {STRING} {CARGO_SHORT}
 
 STR_INVALID_ORDER                                               :{RED} (Invalid Order)
 
@@ -4928,6 +4932,8 @@ STR_TIMETABLE_AUTO_SEPARATION_TOOLTIP                           :{BLACK}Automati
 
 STR_TIMETABLE_SCHEDULED_DISPATCH                                :{BLACK}Scheduled Dispatch
 STR_TIMETABLE_SCHEDULED_DISPATCH_TOOLTIP                        :{BLACK}Open scheduled dispatch windows for automatic setting of timetable start time
+STR_TIMETABLE_SCHEDULED_DISPATCH_ORDER                          :[scheduled dispatch]
+STR_TIMETABLE_SCHEDULED_DISPATCH_ORDER_NO_WAIT_TIME             :{PUSH_COLOUR}{RED}[scheduled dispatch - no wait time timetabled]{POP_COLOUR}
 
 STR_TIMETABLE_EXPECTED                                          :{BLACK}Expected
 STR_TIMETABLE_SCHEDULED                                         :{BLACK}Scheduled
@@ -4953,7 +4959,8 @@ STR_TIMETABLE_WARNING_AUTOSEP_MISSING_TIMINGS                   :{BLACK}Cannot a
 STR_TIMETABLE_WARNING_FULL_LOAD                                 :{BLACK}Timetabling full-load orders is not recommended
 STR_TIMETABLE_WARNING_AUTOFILL_CONDITIONAL                      :{BLACK}Autofill will only update taken branch of conditional orders.
 STR_TIMETABLE_NON_TIMETABLED_BRANCH                             :{BLACK}Not all conditional order branch-taken travel times are timetabled.
-
+STR_TIMETABLE_WARNING_NO_SCHEDULED_DISPATCH_ORDER               :{BLACK}No order is suitable for use with scheduled dispatch.
+STR_TIMETABLE_WARNING_SCHEDULED_DISPATCH_ORDER_NO_WAIT_TIME     :{BLACK}The scheduled dispatch order should have a timetabled wait time.
 
 # Date window (for timetable)
 STR_DATE_CAPTION                                                :{WHITE}Set date
@@ -6152,6 +6159,7 @@ STR_TMPL_WARNING_FREE_WAGON                                     :{RED}Free Chain
 STR_TMPL_WARNING_VEH_UNAVAILABLE                                :{RED}Train not buildable: vehicle unavailable!
 STR_TMPL_GROUP_USES_TEMPLATE                                    :{BLACK}Template in use: {NUM}
 STR_TMP_TEMPLATE_IN_USE                                         :Template is in use
+STR_TMP_TEMPLATE_FROM_PARENT_GROUP                              :Using template from parent group
 STR_TMPL_GROUP_NUM_TRAINS                                       :{BLACK}{NUM}
 STR_TMPL_CREATEGUI_TITLE                                        :{WHITE}Create/Edit Template Vehicle
 STR_TMPL_MAINGUI_DEFINEDGROUPS                                  :{BLACK}Defined Groups for Company
@@ -6212,9 +6220,11 @@ STR_SCHDISPATCH_RESET_LAST_DISPATCH_TOOLTIP                     :{BLACK}Reset th
 STR_SCHDISPATCH_SUMMARY_LAST_DEPARTURE_PAST                     :{BLACK}Last departure at {DATE_WALLCLOCK_TINY}.
 STR_SCHDISPATCH_SUMMARY_LAST_DEPARTURE_FUTURE                   :{BLACK}Last departure has not left yet, it will depart at {DATE_WALLCLOCK_TINY}.
 STR_SCHDISPATCH_SUMMARY_L1                                      :{BLACK}This schedule requires {COMMA} vehicle{P "" s}.
-STR_SCHDISPATCH_SUMMARY_L2                                      :{BLACK}This schedule repeats every {STRING3} and began on {DATE_WALLCLOCK_TINY}.
+STR_SCHDISPATCH_SUMMARY_L2                                      :{BLACK}This schedule repeats every {STRING3}, began at {DATE_WALLCLOCK_TINY}, and ends at {DATE_WALLCLOCK_TINY}.
 STR_SCHDISPATCH_SUMMARY_L3                                      :{BLACK}Maximum delay of {STRING3} is allowed before the slot is skipped.
 STR_SCHDISPATCH_SUMMARY_NOT_ENABLED                             :{BLACK}This schedule is not active.
+
+STR_SCHDISPATCH_SLOT_OUTSIDE_SCHEDULE                           :{BLACK}One or more departure slots are outside the schedule duration.
 
 # Modifier key toggle window
 STR_MODIFIER_KEY_TOGGLE_CAPTION                                 :{WHITE}Modifier keys

@@ -247,6 +247,29 @@ bool Vehicle::NeedsServicing() const
 		return true;
 	}
 
+	if (this->type == VEH_TRAIN) {
+		TemplateVehicle *tv = GetTemplateVehicleByGroupIDRecursive(this->group_id);
+		if (tv != nullptr) {
+			if (tv->IsReplaceOldOnly() && !this->NeedsAutorenewing(c, false)) return false;
+			Money needed_money = c->settings.engine_renew_money;
+			if (needed_money > c->money) return false;
+			bool need_replacement = !TrainMatchesTemplate(Train::From(this), tv);
+			if (need_replacement) {
+				/* Check money.
+				 * We want 2*(the price of the whole template) without looking at the value of the vehicle(s) we are going to sell, or not need to buy. */
+				for (const TemplateVehicle *tv_unit = tv; tv_unit != nullptr; tv_unit = tv_unit->GetNextUnit()) {
+					if (!HasBit(Engine::Get(tv->engine_type)->company_avail, this->owner)) return false;
+					needed_money += 2 * Engine::Get(tv->engine_type)->GetCost();
+				}
+				return needed_money <= c->money;
+			} else if (!TrainMatchesTemplateRefit(Train::From(this), tv) && tv->refit_as_template) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
+
 	/* Test whether there is some pending autoreplace.
 	 * Note: We do this after the service-interval test.
 	 * There are a lot more reasons for autoreplace to fail than we can test here reasonably. */
@@ -335,15 +358,22 @@ uint Vehicle::Crash(bool flooded)
 }
 
 /**
- * Get whether a the vehicle should be drawn (i.e. if it isn't hidden, or it is in a tunnel but being shown transparently)
+ * Update cache of whether the vehicle should be drawn (i.e. if it isn't hidden, or it is in a tunnel but being shown transparently)
  * @return whether to show vehicle
  */
-bool Vehicle::IsDrawn() const
+void Vehicle::UpdateIsDrawn()
 {
-	return !(HasBit(this->subtype, GVSF_VIRTUAL)) && (!(this->vehstatus & VS_HIDDEN) ||
+	bool drawn = !(HasBit(this->subtype, GVSF_VIRTUAL)) && (!(this->vehstatus & VS_HIDDEN) ||
 			(IsTransparencySet(TO_TUNNELS) &&
 				((this->type == VEH_TRAIN && Train::From(this)->track == TRACK_BIT_WORMHOLE) ||
 				(this->type == VEH_ROAD && RoadVehicle::From(this)->state == RVSB_WORMHOLE))));
+
+	SB(this->vcache.cached_veh_flags, VCF_IS_DRAWN, 1, drawn ? 1 : 0);
+}
+
+void UpdateAllVehiclesIsDrawn()
+{
+	for (Vehicle *v : Vehicle::Iterate()) { v->UpdateIsDrawn(); }
 }
 
 /**
@@ -1069,8 +1099,7 @@ void Vehicle::PreCleanPool()
 void VehicleEnteredDepotThisTick(Vehicle *v)
 {
 	/* Template Replacement Setup stuff */
-	TemplateReplacement *tr = GetTemplateReplacementByGroupID(v->group_id);
-	if (tr != nullptr) {
+	if (GetTemplateIDByGroupIDRecursive(v->group_id) != INVALID_TEMPLATE) {
 		/* Vehicle should stop in the depot if it was in 'stopping' state */
 		_vehicles_to_templatereplace.insert(v->index);
 	}
@@ -2136,6 +2165,31 @@ uint8 CalcPercentVehicleFilled(const Vehicle *front, StringID *colour)
 	}
 }
 
+uint8 CalcPercentVehicleFilledOfCargo(const Vehicle *front, CargoID cargo)
+{
+	int count = 0;
+	int max = 0;
+
+	/* Count up max and used */
+	for (const Vehicle *v = front; v != nullptr; v = v->Next()) {
+		if (v->cargo_type != cargo) continue;
+		count += v->cargo.StoredCount();
+		max += v->cargo_cap;
+	}
+
+	/* Train without capacity */
+	if (max == 0) return 0;
+
+	/* Return the percentage */
+	if (count * 2 < max) {
+		/* Less than 50%; round up, so that 0% means really empty. */
+		return CeilDiv(count * 100, max);
+	} else {
+		/* More than 50%; round down, so that 100% means really full. */
+		return (count * 100) / max;
+	}
+}
+
 /**
  * Vehicle entirely entered the depot, update its status, orders, vehicle windows, service it, etc.
  * @param v Vehicle that entered a depot.
@@ -2193,6 +2247,7 @@ void VehicleEnterDepot(Vehicle *v)
 	SetWindowDirty(WC_VEHICLE_DEPOT, v->tile);
 
 	v->vehstatus |= VS_HIDDEN;
+	v->UpdateIsDrawn();
 	v->cur_speed = 0;
 
 	VehicleServiceInDepot(v);
@@ -2338,6 +2393,21 @@ void Vehicle::UpdatePositionAndViewport()
 void Vehicle::MarkAllViewportsDirty() const
 {
 	::MarkAllViewportsDirty(this->coord.left, this->coord.top, this->coord.right, this->coord.bottom);
+}
+
+VehicleOrderID Vehicle::GetFirstWaitingLocation(bool require_wait_timetabled) const
+{
+	for (int i = 0; i < this->GetNumOrders(); ++i) {
+		const Order* order = this->GetOrder(i);
+
+		if (order->IsWaitTimetabled() && !order->IsType(OT_IMPLICIT) && !order->IsType(OT_CONDITIONAL)) {
+			return i;
+		}
+		if (order->IsType(OT_GOTO_STATION)) {
+			return (order->IsWaitTimetabled() || !require_wait_timetabled) ? i : INVALID_VEH_ORDER_ID;
+		}
+	}
+	return INVALID_VEH_ORDER_ID;
 }
 
 /**
@@ -3785,6 +3855,7 @@ char *Vehicle::DumpVehicleFlags(char *b, const char *last) const
 	b += seprintf(b, last, ", vcf:");
 	dump('l', HasBit(this->vcache.cached_veh_flags, VCF_LAST_VISUAL_EFFECT));
 	dump('z', HasBit(this->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST));
+	dump('d', HasBit(this->vcache.cached_veh_flags, VCF_IS_DRAWN));
 	if (this->IsGroundVehicle()) {
 		uint16 gv_flags = this->GetGroundVehicleFlags();
 		b += seprintf(b, last, ", gvf:");

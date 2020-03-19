@@ -18,6 +18,7 @@
 #include "rail_gui.h"
 #include "linkgraph/linkgraph.h"
 #include "saveload/saveload.h"
+#include "newgrf_profiling.h"
 #include "console_func.h"
 #include "debug.h"
 
@@ -266,12 +267,18 @@ static void OnNewMonth()
  */
 static void OnNewDay()
 {
+	if (!_newgrf_profilers.empty() && _newgrf_profile_end_date <= _date) {
+		NewGRFProfiler::FinishAll();
+	}
+
 	if (_network_server) NetworkServerDailyLoop();
 
 	DisasterDailyLoop();
 	IndustryDailyLoop();
 
-	SetWindowWidgetDirty(WC_STATUS_BAR, 0, 0);
+	if (!_settings_client.gui.time_in_minutes || _settings_client.gui.date_with_time > 0) {
+		SetWindowWidgetDirty(WC_STATUS_BAR, 0, 0);
+	}
 	EnginesDailyLoop();
 
 	/* Refresh after possible snowline change */

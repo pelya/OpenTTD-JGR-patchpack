@@ -1835,6 +1835,8 @@ static void UpdateStatusAfterSwap(Train *v)
 	/* Reverse the direction. */
 	if (v->track != TRACK_BIT_DEPOT) v->direction = ReverseDir(v->direction);
 
+	v->UpdateIsDrawn();
+
 	/* Call the proper EnterTile function unless we are in a wormhole. */
 	if (!(v->track & TRACK_BIT_WORMHOLE)) {
 		VehicleEnterTile(v, v->tile, v->x_pos, v->y_pos);
@@ -2642,6 +2644,7 @@ static bool CheckTrainStayInDepot(Train *v)
 	if (v->direction & 2) v->track = TRACK_BIT_Y;
 
 	v->vehstatus &= ~VS_HIDDEN;
+	v->UpdateIsDrawn();
 	v->cur_speed = 0;
 
 	v->UpdateViewport(true, true);
@@ -5494,7 +5497,7 @@ CommandCost CmdTemplateReplaceVehicle(TileIndex tile, DoCommandFlag flags, uint3
 	Train *new_chain = nullptr;
 	Train *remainder_chain = nullptr;
 	Train *tmp_chain = nullptr;
-	TemplateVehicle *tv = GetTemplateVehicleByGroupID(incoming->group_id);
+	TemplateVehicle *tv = GetTemplateVehicleByGroupIDRecursive(incoming->group_id);
 	if (tv == nullptr) {
 		if (leaveDepot) incoming->vehstatus &= ~VS_STOPPED;
 		return CMD_ERROR;
@@ -5659,7 +5662,7 @@ CommandCost CmdTemplateReplaceVehicle(TileIndex tile, DoCommandFlag flags, uint3
 
 	// refit, only if the template option is set so
 	if (use_refit && (need_refit || need_replacement)) {
-		CmdRefitTrainFromTemplate(new_chain, tv, flags);
+		buy.AddCost(CmdRefitTrainFromTemplate(new_chain, tv, flags));
 	}
 
 	if (new_chain && remainder_chain) {

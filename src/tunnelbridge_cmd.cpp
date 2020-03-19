@@ -1413,6 +1413,32 @@ static void DrawBridgePillars(const PalSpriteID *psid, const TileInfo *ti, Axis 
 }
 
 /**
+ * Retrieve the sprites required for catenary on a road/tram bridge.
+ * @param rti              RoadTypeInfo for the road or tram type to get catenary for
+ * @param head_tile        Bridge head tile with roadtype information
+ * @param offset           Sprite offset identifying flat to sloped bridge tiles
+ * @param head             Are we drawing bridge head?
+ * @param[out] spr_back    Back catenary sprite to use
+ * @param[out] spr_front   Front catenary sprite to use
+ */
+static void GetBridgeRoadCatenary(const RoadTypeInfo *rti, TileIndex head_tile, int offset, bool head, SpriteID &spr_back, SpriteID &spr_front)
+{
+	static const SpriteID back_offsets[6]  = { 95,  96,  99, 102, 100, 101 };
+	static const SpriteID front_offsets[6] = { 97,  98, 103, 106, 104, 105 };
+
+	/* Simplified from DrawRoadTypeCatenary() to remove all the special cases required for regular ground road */
+	spr_back = GetCustomRoadSprite(rti, head_tile, ROTSG_CATENARY_BACK, head ? TCX_NORMAL : TCX_ON_BRIDGE);
+	spr_front = GetCustomRoadSprite(rti, head_tile, ROTSG_CATENARY_FRONT, head ? TCX_NORMAL : TCX_ON_BRIDGE);
+	if (spr_back == 0 && spr_front == 0) {
+		spr_back = SPR_TRAMWAY_BASE + back_offsets[offset];
+		spr_front = SPR_TRAMWAY_BASE + front_offsets[offset];
+	} else {
+		if (spr_back != 0) spr_back += 23 + offset;
+		if (spr_front != 0) spr_front += 23 + offset;
+	}
+}
+
+/**
  * Draws the road and trambits over an already drawn (lower end) of a bridge.
  * @param head_tile    bridge head tile with roadtype information
  * @param x            the x of the bridge
@@ -1439,9 +1465,6 @@ static void DrawBridgeRoadBits(TileIndex head_tile, int x, int y, int z, int off
 	bool trans_front[4] = { false };
 
 	static const SpriteID overlay_offsets[6] = {   0,   1,  11,  12,  13,  14 };
-	static const SpriteID back_offsets[6]    = {  95,  96,  99, 102, 100, 101 };
-	static const SpriteID front_offsets[6]   = {  97,  98, 103, 106, 104, 105 };
-
 	if (head || !IsInvisibilitySet(TO_BRIDGES)) {
 		/* Road underlay takes precedence over tram */
 		trans_back[0] = !head && IsTransparencySet(TO_BRIDGES);
@@ -1481,25 +1504,9 @@ static void DrawBridgeRoadBits(TileIndex head_tile, int x, int y, int z, int off
 		trans_back[3] = IsTransparencySet(TO_CATENARY);
 		trans_front[0] = IsTransparencySet(TO_CATENARY);
 		if (road_rti != nullptr && HasRoadCatenaryDrawn(road_rt)) {
-			seq_back[3] = GetCustomRoadSprite(road_rti, head_tile, ROTSG_CATENARY_BACK, head ? TCX_NORMAL : TCX_ON_BRIDGE);
-			seq_front[0] = GetCustomRoadSprite(road_rti, head_tile, ROTSG_CATENARY_FRONT, head ? TCX_NORMAL : TCX_ON_BRIDGE);
-			if (seq_back[3] == 0 || seq_front[0] == 0) {
-				seq_back[3] = SPR_TRAMWAY_BASE + back_offsets[offset];
-				seq_front[0] = SPR_TRAMWAY_BASE + front_offsets[offset];
-			} else {
-				seq_back[3] += 23 + offset;
-				seq_front[0] += 23 + offset;
-			}
+			GetBridgeRoadCatenary(road_rti, head_tile, offset, head, seq_back[3], seq_front[0]);
 		} else if (tram_rti != nullptr && HasRoadCatenaryDrawn(tram_rt)) {
-			seq_back[3] = GetCustomRoadSprite(tram_rti, head_tile, ROTSG_CATENARY_BACK, head ? TCX_NORMAL : TCX_ON_BRIDGE);
-			seq_front[0] = GetCustomRoadSprite(tram_rti, head_tile, ROTSG_CATENARY_FRONT, head ? TCX_NORMAL : TCX_ON_BRIDGE);
-			if (seq_back[3] == 0 || seq_front[0] == 0) {
-				seq_back[3] = SPR_TRAMWAY_BASE + back_offsets[offset];
-				seq_front[0] = SPR_TRAMWAY_BASE + front_offsets[offset];
-			} else {
-				seq_back[3] += 23 + offset;
-				seq_front[0] += 23 + offset;
-			}
+			GetBridgeRoadCatenary(tram_rti, head_tile, offset, head, seq_back[3], seq_front[0]);
 		}
 	}
 
@@ -2566,6 +2573,7 @@ static VehicleEnterTileStatus VehicleEnter_TunnelBridge(Vehicle *v, TileIndex ti
 					t->track = TRACK_BIT_WORMHOLE;
 					if (Tunnel::GetByTile(tile)->is_chunnel) SetBit(t->gv_flags, GVF_CHUNNEL_BIT);
 					t->vehstatus |= VS_HIDDEN;
+					t->UpdateIsDrawn();
 					return VETSB_ENTERED_WORMHOLE;
 				}
 			}
@@ -2577,6 +2585,7 @@ static VehicleEnterTileStatus VehicleEnter_TunnelBridge(Vehicle *v, TileIndex ti
 				t->track = DiagDirToDiagTrackBits(vdir);
 				assert(t->track);
 				t->vehstatus &= ~VS_HIDDEN;
+				t->UpdateIsDrawn();
 				return VETSB_ENTERED_WORMHOLE;
 			}
 		} else if (v->type == VEH_ROAD) {
@@ -2593,6 +2602,7 @@ static VehicleEnterTileStatus VehicleEnter_TunnelBridge(Vehicle *v, TileIndex ti
 					rv->state = RVSB_WORMHOLE;
 					if (Tunnel::GetByTile(tile)->is_chunnel) SetBit(rv->gv_flags, GVF_CHUNNEL_BIT);
 					rv->vehstatus |= VS_HIDDEN;
+					rv->UpdateIsDrawn();
 					return VETSB_ENTERED_WORMHOLE;
 				} else {
 					return VETSB_CONTINUE;
@@ -2607,6 +2617,7 @@ static VehicleEnterTileStatus VehicleEnter_TunnelBridge(Vehicle *v, TileIndex ti
 				rv->state = DiagDirToDiagTrackdir(vdir);
 				rv->frame = TILE_SIZE - (frame + 1);
 				rv->vehstatus &= ~VS_HIDDEN;
+				rv->UpdateIsDrawn();
 				return VETSB_ENTERED_WORMHOLE;
 			}
 		}

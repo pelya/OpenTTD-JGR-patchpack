@@ -134,7 +134,8 @@ enum GroundVehicleSubtypeFlags {
  */
 enum VehicleCacheFlags {
 	VCF_LAST_VISUAL_EFFECT      = 0, ///< Last vehicle in the consist with a visual effect.
-	VCF_GV_ZERO_SLOPE_RESIST    = 1, ///< GrounVehicle: Consist has zero slope resistance (valid only for the first engine), may be false negative.
+	VCF_GV_ZERO_SLOPE_RESIST    = 1, ///< GroundVehicle: Consist has zero slope resistance (valid only for the first engine), may be false negative.
+	VCF_IS_DRAWN                = 2, ///< Vehicle is currently drawn
 };
 
 /** Cached often queried values common to all vehicles. */
@@ -880,6 +881,8 @@ public:
 
 	inline void SetServiceIntervalIsPercent(bool on) { SB(this->vehicle_flags, VF_SERVINT_IS_PERCENT, 1, on); }
 
+	VehicleOrderID GetFirstWaitingLocation(bool require_wait_timetabled) const;
+
 private:
 	/**
 	 * Advance cur_real_order_index to the next real order.
@@ -1091,7 +1094,12 @@ public:
 		return v;
 	}
 
-	bool IsDrawn() const;
+	bool IsDrawn() const
+	{
+		return HasBit(this->vcache.cached_veh_flags, VCF_IS_DRAWN);
+	}
+
+	void UpdateIsDrawn();
 
 	inline void UpdateSpriteSeqBound()
 	{
@@ -1309,5 +1317,6 @@ inline void InvalidateVehicleTickCaches()
 
 void ClearVehicleTickCaches();
 void RemoveFromOtherVehicleTickCache(const Vehicle *v);
+void UpdateAllVehiclesIsDrawn();
 
 #endif /* VEHICLE_BASE_H */
