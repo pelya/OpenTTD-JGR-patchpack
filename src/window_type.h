@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -717,6 +715,11 @@ enum WindowClass {
 	 *   - 0 = #FrametimeGraphWindowWidgets
 	 */
 	WC_FRAMETIME_GRAPH,
+	/**
+	 * Screenshot window; %Window numbers:
+	 *   - 0 = #ScreenshotWidgets
+	 */
+	WC_SCREENSHOT,
 
 	/**
 	 * Trace restrict programme window; %Window numbers:
@@ -731,7 +734,7 @@ enum WindowClass {
 	WC_TRACE_RESTRICT_SLOTS,
 
 	/**
-	 * Programmable signals window
+	 * Programmable pre-signals window
 	 */
 	WC_SIGNAL_PROGRAM,
 

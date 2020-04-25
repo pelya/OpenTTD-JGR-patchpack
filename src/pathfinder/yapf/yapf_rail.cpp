@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -19,6 +17,7 @@
 #include "../../viewport_func.h"
 #include "../../newgrf_station.h"
 #include "../../tracerestrict.h"
+#include "../../debug.h"
 
 #include "../../safeguards.h"
 
@@ -682,29 +681,31 @@ bool YapfTrainCheckReverse(const Train *v)
 		/* front in tunnel / on bridge */
 		DiagDirection dir_into_wormhole = GetTunnelBridgeDirection(tile);
 
-		if (TrackdirToExitdir(td) == dir_into_wormhole) tile = GetOtherTunnelBridgeEnd(tile);
-		/* Now 'tile' is the tunnel entry/bridge ramp the train will reach when driving forward */
-
 		/* Current position of the train in the wormhole */
 		TileIndex cur_tile = TileVirtXY(v->x_pos, v->y_pos);
 
 		/* Add distance to drive in the wormhole as penalty for the forward path, i.e. bonus for the reverse path
 		 * Note: Negative penalties are ok for the start tile. */
-		reverse_penalty -= DistanceManhattan(cur_tile, tile) * YAPF_TILE_LENGTH;
+		if (TrackdirToExitdir(td) == dir_into_wormhole) {
+			reverse_penalty += DistanceManhattan(cur_tile, tile) * YAPF_TILE_LENGTH;
+		} else {
+			reverse_penalty -= DistanceManhattan(cur_tile, tile) * YAPF_TILE_LENGTH;
+		}
 	}
 
 	if (last_veh->track & TRACK_BIT_WORMHOLE) {
 		/* back in tunnel / on bridge */
 		DiagDirection dir_into_wormhole = GetTunnelBridgeDirection(tile_rev);
 
-		if (TrackdirToExitdir(td_rev) == dir_into_wormhole) tile_rev = GetOtherTunnelBridgeEnd(tile_rev);
-		/* Now 'tile_rev' is the tunnel entry/bridge ramp the train will reach when reversing */
-
 		/* Current position of the last wagon in the wormhole */
 		TileIndex cur_tile = TileVirtXY(last_veh->x_pos, last_veh->y_pos);
 
 		/* Add distance to drive in the wormhole as penalty for the revere path. */
-		reverse_penalty += DistanceManhattan(cur_tile, tile_rev) * YAPF_TILE_LENGTH;
+		if (TrackdirToExitdir(td_rev) == dir_into_wormhole) {
+			reverse_penalty -= DistanceManhattan(cur_tile, tile_rev) * YAPF_TILE_LENGTH;
+		} else {
+			reverse_penalty += DistanceManhattan(cur_tile, tile_rev) * YAPF_TILE_LENGTH;
+		}
 	}
 
 	typedef bool (*PfnCheckReverseTrain)(const Train*, TileIndex, Trackdir, TileIndex, Trackdir, int);
@@ -761,4 +762,19 @@ int CSegmentCostCacheBase::s_rail_change_counter = 0;
 void YapfNotifyTrackLayoutChange(TileIndex tile, Track track)
 {
 	CSegmentCostCacheBase::NotifyTrackLayoutChange(tile, track);
+}
+
+void YapfCheckRailSignalPenalties()
+{
+	bool negative = false;
+	int p0 = _settings_game.pf.yapf.rail_look_ahead_signal_p0;
+	int p1 = _settings_game.pf.yapf.rail_look_ahead_signal_p1;
+	int p2 = _settings_game.pf.yapf.rail_look_ahead_signal_p2;
+	for (int i = 0; i < (int) _settings_game.pf.yapf.rail_look_ahead_max_signals; i++) {
+		if (p0 + i * (p1 + i * p2) < 0) negative = true;
+	}
+	if (negative) {
+		DEBUG(misc, 0, "Settings: pf.yapf.rail_look_ahead_signal_p0, pf.yapf.rail_look_ahead_signal_p1, pf.yapf.rail_look_ahead_signal_p2 and pf.yapf.rail_look_ahead_max_signal "
+				"are set to incorrect values (i.e. resulting in hegative penalties), negative penalties will be truncated");
+	}
 }

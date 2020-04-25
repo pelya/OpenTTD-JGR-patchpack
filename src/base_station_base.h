@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -17,7 +15,6 @@
 #include "viewport_type.h"
 #include "station_map.h"
 #include "core/geometry_type.hpp"
-#include "core/alloc_type.hpp"
 #include <memory>
 
 typedef Pool<BaseStation, StationID, 32, 64000> StationPool;
@@ -56,12 +53,12 @@ struct StationRect : public Rect {
 /** Base class for all station-ish types */
 struct BaseStation : StationPool::PoolItem<&_station_pool> {
 	TileIndex xy;                   ///< Base tile of the station
-	ViewportSign sign;              ///< NOSAVE: Dimensions of sign
+	TrackedViewportSign sign;       ///< NOSAVE: Dimensions of sign
 	byte delete_ctr;                ///< Delete counter. If greater than 0 then it is decremented until it reaches 0; the waypoint is then is deleted.
 
 	char *name;                     ///< Custom name
 	StringID string_id;             ///< Default name (town area) of station
-	std::unique_ptr<const char, FreeDeleter> cached_name; ///< NOSAVE: Cache of the resolved name of the station, if not using a custom name
+	mutable std::string cached_name; ///< NOSAVE: Cache of the resolved name of the station, if not using a custom name
 
 	Town *town;                     ///< The town this station is associated with
 	Owner owner;                    ///< The owner of this station
@@ -79,8 +76,6 @@ struct BaseStation : StationPool::PoolItem<&_station_pool> {
 
 	TileArea train_station;         ///< Tile area the train 'station' part covers
 	StationRect rect;               ///< NOSAVE: Station spread out rectangle maintained by StationRect::xxx() functions
-
-	Point viewport_sign_kdtree_pt;  ///< NOSAVE: Viewport sign kd tree: saved point (for tree removals)
 
 	/**
 	 * Initialize the base station.
@@ -119,8 +114,8 @@ struct BaseStation : StationPool::PoolItem<&_station_pool> {
 	inline const char *GetCachedName() const
 	{
 		if (this->name != nullptr) return this->name;
-		if (!this->cached_name) const_cast<BaseStation *>(this)->FillCachedName();
-		return this->cached_name.get();
+		if (this->cached_name.empty()) this->FillCachedName();
+		return this->cached_name.c_str();
 	}
 
 	virtual void MoveSign(TileIndex new_xy)
@@ -187,11 +182,9 @@ struct BaseStation : StationPool::PoolItem<&_station_pool> {
 
 	static void PostDestructor(size_t index);
 
-	private:
-	void FillCachedName();
+private:
+	void FillCachedName() const;
 };
-
-#define FOR_ALL_BASE_STATIONS(var) FOR_ALL_ITEMS_FROM(BaseStation, station_index, var, 0)
 
 /**
  * Class defining several overloaded accessors so we don't
@@ -280,10 +273,13 @@ struct SpecializedStation : public BaseStation {
 		assert(IsExpected(st));
 		return (const T *)st;
 	}
-};
 
-#define FOR_ALL_BASE_STATIONS_OF_TYPE(name, var) \
-	for (size_t station_index = 0; var = nullptr, station_index < name::GetPoolSize(); station_index++) \
-		if ((var = name::GetIfValid(station_index)) != nullptr)
+	/**
+	 * Returns an iterable ensemble of all valid stations of type T
+	 * @param from index of the first station to consider
+	 * @return an iterable ensemble of all valid stations of type T
+	 */
+	static Pool::IterateWrapper<T> Iterate(size_t from = 0) { return Pool::IterateWrapper<T>(from); }
+};
 
 #endif /* BASE_STATION_BASE_H */

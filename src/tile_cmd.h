@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -72,11 +70,16 @@ struct TileDesc {
 	uint16 tram_speed;          ///< Speed limit of tram (bridges and track)
 };
 
+struct DrawTileProcParams {
+	int min_visible_height;
+	bool no_ground_tiles;
+};
+
 /**
  * Tile callback function signature for drawing a tile and its contents to the screen
  * @param ti Information about the tile to draw
  */
-typedef void DrawTileProc(TileInfo *ti);
+typedef void DrawTileProc(TileInfo *ti, DrawTileProcParams params);
 typedef int GetSlopeZProc(TileIndex tile, uint x, uint y);
 typedef CommandCost ClearTileProc(TileIndex tile, DoCommandFlag flags);
 

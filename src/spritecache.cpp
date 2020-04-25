@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -196,6 +194,17 @@ uint GetOriginFileSlot(SpriteID sprite)
 {
 	if (!SpriteExists(sprite)) return 0;
 	return GetSpriteCache(sprite)->file_slot;
+}
+
+/**
+ * Get the GRF-local sprite id of a given sprite.
+ * @param sprite The sprite to look at.
+ * @return The GRF-local sprite id.
+ */
+uint32 GetSpriteLocalID(SpriteID sprite)
+{
+	if (!SpriteExists(sprite)) return 0;
+	return GetSpriteCache(sprite)->id;
 }
 
 /**

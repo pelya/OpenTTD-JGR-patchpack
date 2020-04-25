@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -25,6 +23,10 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <signal.h>
+
+#ifdef WITH_SDL2
+#include <SDL.h>
+#endif
 
 #ifdef __APPLE__
 	#include <sys/mount.h>
@@ -280,6 +282,19 @@ int CDECL main(int argc, char *argv[])
 #ifndef WITH_COCOA
 bool GetClipboardContents(char *buffer, const char *last)
 {
+#ifdef WITH_SDL2
+	if (SDL_HasClipboardText() == SDL_FALSE) {
+		return false;
+	}
+
+	char *clip = SDL_GetClipboardText();
+	if (clip != NULL) {
+		strecpy(buffer, clip, last);
+		SDL_free(clip);
+		return true;
+	}
+#endif
+
 	return false;
 }
 #endif

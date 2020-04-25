@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -94,7 +92,7 @@ static const uint GEN_HASHY_BUCKET_BITS = 6;
 //static const uint GEN_HASHY_MASK = ((1 << GEN_HASHY_BITS) - 1) << GEN_HASHX_BITS;
 
 VehicleID _new_vehicle_id;
-uint16 _returned_refit_capacity;      ///< Stores the capacity after a refit operation.
+uint _returned_refit_capacity;        ///< Stores the capacity after a refit operation.
 uint16 _returned_mail_refit_capacity; ///< Stores the mail capacity after a refit operation (Aircraft only).
 
 
@@ -104,6 +102,8 @@ INSTANTIATE_POOL_METHODS(Vehicle)
 
 static btree::btree_set<VehicleID> _vehicles_to_pay_repair;
 static btree::btree_set<VehicleID> _vehicles_to_sell;
+
+std::unordered_multimap<VehicleID, PendingSpeedRestrictionChange> pending_speed_restriction_change_map;
 
 /**
  * Determine shared bounds of all sprites.
@@ -247,6 +247,29 @@ bool Vehicle::NeedsServicing() const
 		return true;
 	}
 
+	if (this->type == VEH_TRAIN) {
+		TemplateVehicle *tv = GetTemplateVehicleByGroupIDRecursive(this->group_id);
+		if (tv != nullptr) {
+			if (tv->IsReplaceOldOnly() && !this->NeedsAutorenewing(c, false)) return false;
+			Money needed_money = c->settings.engine_renew_money;
+			if (needed_money > c->money) return false;
+			bool need_replacement = !TrainMatchesTemplate(Train::From(this), tv);
+			if (need_replacement) {
+				/* Check money.
+				 * We want 2*(the price of the whole template) without looking at the value of the vehicle(s) we are going to sell, or not need to buy. */
+				for (const TemplateVehicle *tv_unit = tv; tv_unit != nullptr; tv_unit = tv_unit->GetNextUnit()) {
+					if (!HasBit(Engine::Get(tv->engine_type)->company_avail, this->owner)) return false;
+					needed_money += 2 * Engine::Get(tv->engine_type)->GetCost();
+				}
+				return needed_money <= c->money;
+			} else if (!TrainMatchesTemplateRefit(Train::From(this), tv) && tv->refit_as_template) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+	}
+
 	/* Test whether there is some pending autoreplace.
 	 * Note: We do this after the service-interval test.
 	 * There are a lot more reasons for autoreplace to fail than we can test here reasonably. */
@@ -327,6 +350,7 @@ uint Vehicle::Crash(bool flooded)
 	SetWindowWidgetDirty(WC_VEHICLE_VIEW, this->index, WID_VV_START_STOP);
 	SetWindowDirty(WC_VEHICLE_DETAILS, this->index);
 	SetWindowDirty(WC_VEHICLE_DEPOT, this->tile);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 
 	delete this->cargo_payment;
 	assert(this->cargo_payment == nullptr); // cleared by ~CargoPayment
@@ -335,15 +359,22 @@ uint Vehicle::Crash(bool flooded)
 }
 
 /**
- * Get whether a the vehicle should be drawn (i.e. if it isn't hidden, or it is in a tunnel but being shown transparently)
+ * Update cache of whether the vehicle should be drawn (i.e. if it isn't hidden, or it is in a tunnel but being shown transparently)
  * @return whether to show vehicle
  */
-bool Vehicle::IsDrawn() const
+void Vehicle::UpdateIsDrawn()
 {
-	return !(HasBit(this->subtype, GVSF_VIRTUAL)) && (!(this->vehstatus & VS_HIDDEN) ||
+	bool drawn = !(HasBit(this->subtype, GVSF_VIRTUAL)) && (!(this->vehstatus & VS_HIDDEN) ||
 			(IsTransparencySet(TO_TUNNELS) &&
 				((this->type == VEH_TRAIN && Train::From(this)->track == TRACK_BIT_WORMHOLE) ||
 				(this->type == VEH_ROAD && RoadVehicle::From(this)->state == RVSB_WORMHOLE))));
+
+	SB(this->vcache.cached_veh_flags, VCF_IS_DRAWN, 1, drawn ? 1 : 0);
+}
+
+void UpdateAllVehiclesIsDrawn()
+{
+	for (Vehicle *v : Vehicle::Iterate()) { v->UpdateIsDrawn(); }
 }
 
 /**
@@ -438,13 +469,13 @@ const int TOTAL_HASH_MASK = TOTAL_HASH_SIZE - 1;
  * Profiling results show that 0 is fastest. */
 const int HASH_RES = 0;
 
-static Vehicle *_vehicle_tile_hash[TOTAL_HASH_SIZE];
+static Vehicle *_vehicle_tile_hash[TOTAL_HASH_SIZE * 4];
 
-static Vehicle *VehicleFromTileHash(int xl, int yl, int xu, int yu, void *data, VehicleFromPosProc *proc, bool find_first)
+static Vehicle *VehicleFromTileHash(int xl, int yl, int xu, int yu, VehicleType type, void *data, VehicleFromPosProc *proc, bool find_first)
 {
 	for (int y = yl; ; y = (y + (1 << HASH_BITS)) & (HASH_MASK << HASH_BITS)) {
 		for (int x = xl; ; x = (x + 1) & HASH_MASK) {
-			Vehicle *v = _vehicle_tile_hash[(x + y) & TOTAL_HASH_MASK];
+			Vehicle *v = _vehicle_tile_hash[((x + y) & TOTAL_HASH_MASK) + (TOTAL_HASH_SIZE * type)];
 			for (; v != nullptr; v = v->hash_tile_next) {
 				Vehicle *a = proc(v, data);
 				if (find_first && a != nullptr) return a;
@@ -469,7 +500,7 @@ static Vehicle *VehicleFromTileHash(int xl, int yl, int xu, int yu, void *data, 
  *                   all vehicles
  * @return the best matching or first vehicle (depending on find_first).
  */
-static Vehicle *VehicleFromPosXY(int x, int y, void *data, VehicleFromPosProc *proc, bool find_first)
+Vehicle *VehicleFromPosXY(int x, int y, VehicleType type, void *data, VehicleFromPosProc *proc, bool find_first)
 {
 	const int COLL_DIST = 6;
 
@@ -479,42 +510,7 @@ static Vehicle *VehicleFromPosXY(int x, int y, void *data, VehicleFromPosProc *p
 	int yl = GB((y - COLL_DIST) / TILE_SIZE, HASH_RES, HASH_BITS) << HASH_BITS;
 	int yu = GB((y + COLL_DIST) / TILE_SIZE, HASH_RES, HASH_BITS) << HASH_BITS;
 
-	return VehicleFromTileHash(xl, yl, xu, yu, data, proc, find_first);
-}
-
-/**
- * Find a vehicle from a specific location. It will call proc for ALL vehicles
- * on the tile and YOU must make SURE that the "best one" is stored in the
- * data value and is ALWAYS the same regardless of the order of the vehicles
- * where proc was called on!
- * When you fail to do this properly you create an almost untraceable DESYNC!
- * @note The return value of proc will be ignored.
- * @note Use this when you have the intention that all vehicles
- *       should be iterated over.
- * @param x    The X location on the map
- * @param y    The Y location on the map
- * @param data Arbitrary data passed to proc
- * @param proc The proc that determines whether a vehicle will be "found".
- */
-void FindVehicleOnPosXY(int x, int y, void *data, VehicleFromPosProc *proc)
-{
-	VehicleFromPosXY(x, y, data, proc, false);
-}
-
-/**
- * Checks whether a vehicle in on a specific location. It will call proc for
- * vehicles until it returns non-nullptr.
- * @note Use FindVehicleOnPosXY when you have the intention that all vehicles
- *       should be iterated over.
- * @param x    The X location on the map
- * @param y    The Y location on the map
- * @param data Arbitrary data passed to proc
- * @param proc The proc that determines whether a vehicle will be "found".
- * @return True if proc returned non-nullptr.
- */
-bool HasVehicleOnPosXY(int x, int y, void *data, VehicleFromPosProc *proc)
-{
-	return VehicleFromPosXY(x, y, data, proc, true) != nullptr;
+	return VehicleFromTileHash(xl, yl, xu, yu, type, data, proc, find_first);
 }
 
 /**
@@ -527,12 +523,12 @@ bool HasVehicleOnPosXY(int x, int y, void *data, VehicleFromPosProc *proc)
  *                   all vehicles
  * @return the best matching or first vehicle (depending on find_first).
  */
-static Vehicle *VehicleFromPos(TileIndex tile, void *data, VehicleFromPosProc *proc, bool find_first)
+Vehicle *VehicleFromPos(TileIndex tile, VehicleType type, void *data, VehicleFromPosProc *proc, bool find_first)
 {
 	int x = GB(TileX(tile), HASH_RES, HASH_BITS);
 	int y = GB(TileY(tile), HASH_RES, HASH_BITS) << HASH_BITS;
 
-	Vehicle *v = _vehicle_tile_hash[(x + y) & TOTAL_HASH_MASK];
+	Vehicle *v = _vehicle_tile_hash[((x + y) & TOTAL_HASH_MASK) + (TOTAL_HASH_SIZE * type)];
 	for (; v != nullptr; v = v->hash_tile_next) {
 		if (v->tile != tile) continue;
 
@@ -544,36 +540,18 @@ static Vehicle *VehicleFromPos(TileIndex tile, void *data, VehicleFromPosProc *p
 }
 
 /**
- * Find a vehicle from a specific location. It will call \a proc for ALL vehicles
- * on the tile and YOU must make SURE that the "best one" is stored in the
- * data value and is ALWAYS the same regardless of the order of the vehicles
- * where proc was called on!
- * When you fail to do this properly you create an almost untraceable DESYNC!
- * @note The return value of \a proc will be ignored.
- * @note Use this function when you have the intention that all vehicles
- *       should be iterated over.
- * @param tile The location on the map
- * @param data Arbitrary data passed to \a proc.
- * @param proc The proc that determines whether a vehicle will be "found".
+ * Callback that returns 'real' vehicles lower or at height \c *(int*)data .
+ * @param v Vehicle to examine.
+ * @param data Pointer to height data.
+ * @return \a v if conditions are met, else \c nullptr.
  */
-void FindVehicleOnPos(TileIndex tile, void *data, VehicleFromPosProc *proc)
+static Vehicle *EnsureNoVehicleProcZ(Vehicle *v, void *data)
 {
-	VehicleFromPos(tile, data, proc, false);
-}
+	int z = static_cast<int>(reinterpret_cast<intptr_t>(data));
 
-/**
- * Checks whether a vehicle is on a specific location. It will call \a proc for
- * vehicles until it returns non-nullptr.
- * @note Use #FindVehicleOnPos when you have the intention that all vehicles
- *       should be iterated over.
- * @param tile The location on the map
- * @param data Arbitrary data passed to \a proc.
- * @param proc The \a proc that determines whether a vehicle will be "found".
- * @return True if proc returned non-nullptr.
- */
-bool HasVehicleOnPos(TileIndex tile, void *data, VehicleFromPosProc *proc)
-{
-	return VehicleFromPos(tile, data, proc, true) != nullptr;
+	if (v->z_pos > z) return nullptr;
+
+	return v;
 }
 
 /**
@@ -582,11 +560,11 @@ bool HasVehicleOnPos(TileIndex tile, void *data, VehicleFromPosProc *proc)
  * @param data Pointer to height data.
  * @return \a v if conditions are met, else \c nullptr.
  */
-static Vehicle *EnsureNoVehicleProcZ(Vehicle *v, void *data)
+static Vehicle *EnsureNoAircraftProcZ(Vehicle *v, void *data)
 {
-	int z = *(int*)data;
+	int z = static_cast<int>(reinterpret_cast<intptr_t>(data));
 
-	if (v->type == VEH_DISASTER || (v->type == VEH_AIRCRAFT && v->subtype == AIR_SHADOW)) return nullptr;
+	if (v->subtype == AIR_SHADOW) return nullptr;
 	if (v->z_pos > z) return nullptr;
 
 	return v;
@@ -605,25 +583,19 @@ CommandCost EnsureNoVehicleOnGround(TileIndex tile)
 	 * error message only (which may be different for different machines).
 	 * Such a message does not affect MP synchronisation.
 	 */
-	Vehicle *v = VehicleFromPos(tile, &z, &EnsureNoVehicleProcZ, true);
-	if (v != nullptr) return_cmd_error(STR_ERROR_TRAIN_IN_THE_WAY + v->type);
+	if (VehicleFromPos(tile, VEH_TRAIN, reinterpret_cast<void *>(static_cast<intptr_t>(z)), &EnsureNoVehicleProcZ, true) != nullptr) {
+		return_cmd_error(STR_ERROR_TRAIN_IN_THE_WAY);
+	}
+	if (VehicleFromPos(tile, VEH_ROAD, reinterpret_cast<void *>(static_cast<intptr_t>(z)), &EnsureNoVehicleProcZ, true) != nullptr) {
+		return_cmd_error(STR_ERROR_ROAD_VEHICLE_IN_THE_WAY);
+	}
+	if (VehicleFromPos(tile, VEH_SHIP, reinterpret_cast<void *>(static_cast<intptr_t>(z)), &EnsureNoVehicleProcZ, true) != nullptr) {
+		return_cmd_error(STR_ERROR_SHIP_IN_THE_WAY);
+	}
+	if (VehicleFromPos(tile, VEH_AIRCRAFT, reinterpret_cast<void *>(static_cast<intptr_t>(z)), &EnsureNoAircraftProcZ, true) != nullptr) {
+		return_cmd_error(STR_ERROR_AIRCRAFT_IN_THE_WAY);
+	}
 	return CommandCost();
-}
-
-/**
- * Callback that returns 'real' vehicles lower or at height \c *(int*)data, for road vehicles.
- * @param v Vehicle to examine.
- * @param data Pointer to height data.
- * @return \a v if conditions are met, else \c nullptr.
- */
-static Vehicle *EnsureNoRoadVehicleProcZ(Vehicle *v, void *data)
-{
-	int z = *(int*)data;
-
-	if (v->type != VEH_ROAD) return nullptr;
-	if (v->z_pos > z) return nullptr;
-
-	return v;
 }
 
 /**
@@ -639,7 +611,7 @@ CommandCost EnsureNoRoadVehicleOnGround(TileIndex tile)
 	 * error message only (which may be different for different machines).
 	 * Such a message does not affect MP synchronisation.
 	 */
-	Vehicle *v = VehicleFromPos(tile, &z, &EnsureNoRoadVehicleProcZ, true);
+	Vehicle *v = VehicleFromPos(tile, VEH_ROAD, reinterpret_cast<void *>(static_cast<intptr_t>(z)), &EnsureNoVehicleProcZ, true);
 	if (v != nullptr) return_cmd_error(STR_ERROR_ROAD_VEHICLE_IN_THE_WAY);
 	return CommandCost();
 }
@@ -654,7 +626,6 @@ struct GetVehicleTunnelBridgeProcData {
 static Vehicle *GetVehicleTunnelBridgeProc(Vehicle *v, void *data)
 {
 	const GetVehicleTunnelBridgeProcData *info = (GetVehicleTunnelBridgeProcData*) data;
-	if (v->type != VEH_TRAIN && v->type != VEH_ROAD && v->type != VEH_SHIP) return nullptr;
 	if (v == info->v) return nullptr;
 
 	if (v->type == VEH_TRAIN && info->across_only && IsBridge(info->t)) {
@@ -683,10 +654,11 @@ CommandCost TunnelBridgeIsFree(TileIndex tile, TileIndex endtile, const Vehicle 
 	data.v = ignore;
 	data.t = tile;
 	data.across_only = across_only;
-	Vehicle *v = VehicleFromPos(tile, &data, &GetVehicleTunnelBridgeProc, true);
+	VehicleType type = static_cast<VehicleType>(GetTunnelBridgeTransportType(tile));
+	Vehicle *v = VehicleFromPos(tile, type, &data, &GetVehicleTunnelBridgeProc, true);
 	if (v == nullptr) {
 		data.t = endtile;
-		v = VehicleFromPos(endtile, &data, &GetVehicleTunnelBridgeProc, true);
+		v = VehicleFromPos(endtile, type, &data, &GetVehicleTunnelBridgeProc, true);
 	}
 
 	if (v != nullptr) return_cmd_error(STR_ERROR_TRAIN_IN_THE_WAY + v->type);
@@ -696,8 +668,6 @@ CommandCost TunnelBridgeIsFree(TileIndex tile, TileIndex endtile, const Vehicle 
 static Vehicle *EnsureNoTrainOnTrackProc(Vehicle *v, void *data)
 {
 	TrackBits rail_bits = *(TrackBits *)data;
-
-	if (v->type != VEH_TRAIN) return nullptr;
 
 	Train *t = Train::From(v);
 	if (rail_bits & TRACK_BIT_WORMHOLE) {
@@ -725,12 +695,12 @@ CommandCost EnsureNoTrainOnTrackBits(TileIndex tile, TrackBits track_bits)
 	 * error message only (which may be different for different machines).
 	 * Such a message does not affect MP synchronisation.
 	 */
-	Vehicle *v = VehicleFromPos(tile, &track_bits, &EnsureNoTrainOnTrackProc, true);
+	Vehicle *v = VehicleFromPos(tile, VEH_TRAIN, &track_bits, &EnsureNoTrainOnTrackProc, true);
 	if (v != nullptr) return_cmd_error(STR_ERROR_TRAIN_IN_THE_WAY + v->type);
 	return CommandCost();
 }
 
-static void UpdateVehicleTileHash(Vehicle *v, bool remove)
+void UpdateVehicleTileHash(Vehicle *v, bool remove)
 {
 	Vehicle **old_hash = v->hash_tile_current;
 	Vehicle **new_hash;
@@ -740,7 +710,7 @@ static void UpdateVehicleTileHash(Vehicle *v, bool remove)
 	} else {
 		int x = GB(TileX(v->tile), HASH_RES, HASH_BITS);
 		int y = GB(TileY(v->tile), HASH_RES, HASH_BITS) << HASH_BITS;
-		new_hash = &_vehicle_tile_hash[(x + y) & TOTAL_HASH_MASK];
+		new_hash = &_vehicle_tile_hash[((x + y) & TOTAL_HASH_MASK) + (TOTAL_HASH_SIZE * v->type)];
 	}
 
 	if (old_hash == new_hash) return;
@@ -765,11 +735,11 @@ static void UpdateVehicleTileHash(Vehicle *v, bool remove)
 
 bool ValidateVehicleTileHash(const Vehicle *v)
 {
-	if (v->type == VEH_TRAIN && Train::From(v)->IsVirtual()) return v->hash_tile_current == nullptr;
+	if ((v->type == VEH_TRAIN && Train::From(v)->IsVirtual()) || v->type >= VEH_COMPANY_END) return v->hash_tile_current == nullptr;
 
 	int x = GB(TileX(v->tile), HASH_RES, HASH_BITS);
 	int y = GB(TileY(v->tile), HASH_RES, HASH_BITS) << HASH_BITS;
-	return v->hash_tile_current == &_vehicle_tile_hash[(x + y) & TOTAL_HASH_MASK];
+	return v->hash_tile_current == &_vehicle_tile_hash[((x + y) & TOTAL_HASH_MASK) + (TOTAL_HASH_SIZE * v->type)];
 }
 
 static Vehicle *_vehicle_viewport_hash[1 << (GEN_HASHX_BITS + GEN_HASHY_BITS)];
@@ -802,16 +772,14 @@ static void UpdateVehicleViewportHash(Vehicle *v, int x, int y)
 
 void ResetVehicleHash()
 {
-	Vehicle *v;
-	FOR_ALL_VEHICLES(v) { v->hash_tile_current = nullptr; }
+	for (Vehicle *v : Vehicle::Iterate()) { v->hash_tile_current = nullptr; }
 	memset(_vehicle_viewport_hash, 0, sizeof(_vehicle_viewport_hash));
 	memset(_vehicle_tile_hash, 0, sizeof(_vehicle_tile_hash));
 }
 
 void ResetVehicleColourMap()
 {
-	Vehicle *v;
-	FOR_ALL_VEHICLES(v) { v->colourmap = PAL_NONE; }
+	for (Vehicle *v : Vehicle::Iterate()) { v->colourmap = PAL_NONE; }
 }
 
 /**
@@ -987,6 +955,10 @@ void Vehicle::PreDestructor()
 		TraceRestrictRemoveVehicleFromAllSlots(this->index);
 		ClrBit(Train::From(this)->flags, VRF_HAVE_SLOT);
 	}
+	if (this->type == VEH_TRAIN && HasBit(Train::From(this)->flags, VRF_PENDING_SPEED_RESTRICTION)) {
+		pending_speed_restriction_change_map.erase(this->index);
+		ClrBit(Train::From(this)->flags, VRF_PENDING_SPEED_RESTRICTION);
+	}
 
 	if (this->Previous() == nullptr) {
 		InvalidateWindowData(WC_VEHICLE_DEPOT, this->tile);
@@ -1005,6 +977,7 @@ void Vehicle::PreDestructor()
 		OrderBackup::ClearVehicle(this);
 	}
 	InvalidateWindowClassesData(GetWindowClassForVehicleType(this->type), 0);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 
 	this->cargo.Truncate();
 	DeleteVehicleOrders(this);
@@ -1045,10 +1018,18 @@ Vehicle::~Vehicle()
 
 	delete v;
 
-	UpdateVehicleTileHash(this, true);
+	if (this->type < VEH_COMPANY_END) UpdateVehicleTileHash(this, true);
 	UpdateVehicleViewportHash(this, INVALID_COORD, 0);
 	DeleteVehicleNews(this->index, INVALID_STRING_ID);
 	DeleteNewGRFInspectWindow(GetGrfSpecFeature(this->type), this->index);
+}
+
+/**
+ * Vehicle pool is about to be cleaned
+ */
+void Vehicle::PreCleanPool()
+{
+	pending_speed_restriction_change_map.clear();
 }
 
 /**
@@ -1058,8 +1039,7 @@ Vehicle::~Vehicle()
 void VehicleEnteredDepotThisTick(Vehicle *v)
 {
 	/* Template Replacement Setup stuff */
-	TemplateReplacement *tr = GetTemplateReplacementByGroupID(v->group_id);
-	if (tr != nullptr) {
+	if (GetTemplateIDByGroupIDRecursive(v->group_id) != INVALID_TEMPLATE) {
 		/* Vehicle should stop in the depot if it was in 'stopping' state */
 		_vehicles_to_templatereplace.insert(v->index);
 	}
@@ -1163,12 +1143,13 @@ void RemoveFromOtherVehicleTickCache(const Vehicle *v)
 
 void RebuildVehicleTickCaches()
 {
-	Vehicle *v = nullptr;
-	SCOPE_INFO_FMT([&v], "RebuildVehicleTickCaches: %s", scope_dumper().VehicleInfo(v));
+	Vehicle *si_v = nullptr;
+	SCOPE_INFO_FMT([&si_v], "RebuildVehicleTickCaches: %s", scope_dumper().VehicleInfo(si_v));
 
 	ClearVehicleTickCaches();
 
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
+		si_v = v;
 		switch (v->type) {
 			default:
 				_tick_other_veh_cache.push_back(v);
@@ -1274,9 +1255,12 @@ void CallVehicleTicks()
 
 	{
 		PerformanceMeasurer framerate(PFE_GL_ECONOMY);
-		Station *st = nullptr;
-		SCOPE_INFO_FMT([&st], "CallVehicleTicks: LoadUnloadStation: %s", scope_dumper().StationInfo(st));
-		FOR_ALL_STATIONS(st) LoadUnloadStation(st);
+		Station *si_st = nullptr;
+		SCOPE_INFO_FMT([&si_st], "CallVehicleTicks: LoadUnloadStation: %s", scope_dumper().StationInfo(si_st));
+		for (Station *st : Station::Iterate()) {
+			si_st = st;
+			LoadUnloadStation(st);
+		}
 	}
 
 	if (!_tick_caches_valid || HasChickenBit(DCBF_VEH_TICK_CACHE)) RebuildVehicleTickCaches();
@@ -1610,13 +1594,13 @@ void ViewportAddVehicles(DrawPixelInfo *dpi)
 	}
 }
 
-void ViewportMapDrawVehicles(DrawPixelInfo *dpi)
+void ViewportMapDrawVehicles(DrawPixelInfo *dpi, ViewPort *vp)
 {
-	/* The bounding rectangle */
-	const int l = dpi->left;
-	const int r = dpi->left + dpi->width;
-	const int t = dpi->top;
-	const int b = dpi->top + dpi->height;
+	/* The save rectangle */
+	const int l = vp->virtual_left;
+	const int r = vp->virtual_left + vp->virtual_width;
+	const int t = vp->virtual_top;
+	const int b = vp->virtual_top + vp->virtual_height;
 
 	/* The hash area to scan */
 	const ViewportHashBound vhb = GetViewportHashBound(l, r, t, b);
@@ -1624,24 +1608,42 @@ void ViewportMapDrawVehicles(DrawPixelInfo *dpi)
 	Blitter *blitter = BlitterFactory::GetCurrentBlitter();
 	for (int y = vhb.yl;; y = (y + (1 << 6)) & (0x3F << 6)) {
 		for (int x = vhb.xl;; x = (x + 1) & 0x3F) {
-			const Vehicle *v = _vehicle_viewport_hash[x + y]; // already masked & 0xFFF
+			if (!HasBit(vp->map_draw_vehicles_cache.done_hash_bits[y >> 6], x)) {
+				SetBit(vp->map_draw_vehicles_cache.done_hash_bits[y >> 6], x);
+				const Vehicle *v = _vehicle_viewport_hash[x + y]; // already masked & 0xFFF
 
-			while (v != nullptr) {
-				if (!(v->vehstatus & (VS_HIDDEN | VS_UNCLICKABLE)) && (v->type != VEH_EFFECT)) {
-					Point pt = RemapCoords(v->x_pos, v->y_pos, v->z_pos);
-					if (pt.x >= l && pt.x < r && pt.y >= t && pt.y < b) {
-						const int pixel_x = UnScaleByZoomLower(pt.x - dpi->left, dpi->zoom);
-						const int pixel_y = UnScaleByZoomLower(pt.y - dpi->top, dpi->zoom);
-						blitter->SetPixel(dpi->dst_ptr, pixel_x, pixel_y, PC_WHITE);
+				while (v != nullptr) {
+					if (!(v->vehstatus & (VS_HIDDEN | VS_UNCLICKABLE)) && (v->type != VEH_EFFECT)) {
+						Point pt = RemapCoords(v->x_pos, v->y_pos, v->z_pos);
+						if (pt.x >= l && pt.x < r && pt.y >= t && pt.y < b) {
+							const int pixel_x = UnScaleByZoomLower(pt.x - l, dpi->zoom);
+							const int pixel_y = UnScaleByZoomLower(pt.y - t, dpi->zoom);
+							vp->map_draw_vehicles_cache.vehicle_pixels[pixel_x + (pixel_y) * vp->width] = true;
+						}
 					}
+					v = v->hash_viewport_next;
 				}
-				v = v->hash_viewport_next;
 			}
 
 			if (x == vhb.xu) break;
 		}
 
 		if (y == vhb.yu) break;
+	}
+
+	/* The drawing rectangle */
+	int mask = ScaleByZoom(-1, vp->zoom);
+	const int dl = UnScaleByZoomLower(dpi->left - (vp->virtual_left & mask), dpi->zoom);
+	const int dr = UnScaleByZoomLower(dpi->left + dpi->width - (vp->virtual_left & mask), dpi->zoom);
+	const int dt = UnScaleByZoomLower(dpi->top - (vp->virtual_top & mask), dpi->zoom);
+	const int db = UnScaleByZoomLower(dpi->top + dpi->height - (vp->virtual_top & mask), dpi->zoom);
+	int y_ptr = vp->width * dt;
+	for (int y = dt; y < db; y++, y_ptr += vp->width) {
+		for (int x = dl; x < dr; x++) {
+			if (vp->map_draw_vehicles_cache.vehicle_pixels[y_ptr + x]) {
+				blitter->SetPixel(dpi->dst_ptr, x - dl, y - dt, PC_WHITE);
+			}
+		}
 	}
 }
 
@@ -1654,7 +1656,7 @@ void ViewportMapDrawVehicles(DrawPixelInfo *dpi)
  */
 Vehicle *CheckClickOnVehicle(const ViewPort *vp, int x, int y)
 {
-	Vehicle *found = nullptr, *v;
+	Vehicle *found = nullptr;
 	uint dist, best_dist = UINT_MAX;
 
 	if ((uint)(x -= vp->left) >= (uint)vp->width || (uint)(y -= vp->top) >= (uint)vp->height) return nullptr;
@@ -1662,7 +1664,7 @@ Vehicle *CheckClickOnVehicle(const ViewPort *vp, int x, int y)
 	x = ScaleByZoom(x, vp->zoom) + vp->virtual_left;
 	y = ScaleByZoom(y, vp->zoom) + vp->virtual_top;
 
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		if (((v->vehstatus & VS_UNCLICKABLE) == 0) && v->IsDrawn() &&
 				x >= v->coord.left && x <= v->coord.right &&
 				y >= v->coord.top && y <= v->coord.bottom) {
@@ -2121,6 +2123,31 @@ uint8 CalcPercentVehicleFilled(const Vehicle *front, StringID *colour)
 	}
 }
 
+uint8 CalcPercentVehicleFilledOfCargo(const Vehicle *front, CargoID cargo)
+{
+	int count = 0;
+	int max = 0;
+
+	/* Count up max and used */
+	for (const Vehicle *v = front; v != nullptr; v = v->Next()) {
+		if (v->cargo_type != cargo) continue;
+		count += v->cargo.StoredCount();
+		max += v->cargo_cap;
+	}
+
+	/* Train without capacity */
+	if (max == 0) return 0;
+
+	/* Return the percentage */
+	if (count * 2 < max) {
+		/* Less than 50%; round up, so that 0% means really empty. */
+		return CeilDiv(count * 100, max);
+	} else {
+		/* More than 50%; round down, so that 100% means really full. */
+		return (count * 100) / max;
+	}
+}
+
 /**
  * Vehicle entirely entered the depot, update its status, orders, vehicle windows, service it, etc.
  * @param v Vehicle that entered a depot.
@@ -2178,6 +2205,7 @@ void VehicleEnterDepot(Vehicle *v)
 	SetWindowDirty(WC_VEHICLE_DEPOT, v->tile);
 
 	v->vehstatus |= VS_HIDDEN;
+	v->UpdateIsDrawn();
 	v->cur_speed = 0;
 
 	VehicleServiceInDepot(v);
@@ -2260,16 +2288,6 @@ void VehicleEnterDepot(Vehicle *v)
 	}
 }
 
-
-/**
- * Update the position of the vehicle. This will update the hash that tells
- *  which vehicles are on a tile.
- */
-void Vehicle::UpdatePosition()
-{
-	UpdateVehicleTileHash(this, false);
-}
-
 /**
  * Update the vehicle on the viewport, updating the right hash and setting the
  *  new coordinates.
@@ -2323,6 +2341,21 @@ void Vehicle::UpdatePositionAndViewport()
 void Vehicle::MarkAllViewportsDirty() const
 {
 	::MarkAllViewportsDirty(this->coord.left, this->coord.top, this->coord.right, this->coord.bottom);
+}
+
+VehicleOrderID Vehicle::GetFirstWaitingLocation(bool require_wait_timetabled) const
+{
+	for (int i = 0; i < this->GetNumOrders(); ++i) {
+		const Order* order = this->GetOrder(i);
+
+		if (order->IsWaitTimetabled() && !order->IsType(OT_IMPLICIT) && !order->IsType(OT_CONDITIONAL)) {
+			return i;
+		}
+		if (order->IsType(OT_GOTO_STATION)) {
+			return (order->IsWaitTimetabled() || !require_wait_timetabled) ? i : INVALID_VEH_ORDER_ID;
+		}
+	}
+	return INVALID_VEH_ORDER_ID;
 }
 
 /**
@@ -2399,8 +2432,7 @@ VehicleEnterTileStatus VehicleEnterTile(Vehicle *v, TileIndex tile, int x, int y
 FreeUnitIDGenerator::FreeUnitIDGenerator(VehicleType type, CompanyID owner) : cache(nullptr), maxid(0), curid(0)
 {
 	/* Find maximum */
-	const Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (const Vehicle *v : Vehicle::Iterate()) {
 		if (v->type == type && v->owner == owner) {
 			this->maxid = max<UnitID>(this->maxid, v->unitnumber);
 		}
@@ -2414,7 +2446,7 @@ FreeUnitIDGenerator::FreeUnitIDGenerator(VehicleType type, CompanyID owner) : ca
 	this->cache = CallocT<bool>(this->maxid + 2);
 
 	/* Fill the cache */
-	FOR_ALL_VEHICLES(v) {
+	for (const Vehicle *v : Vehicle::Iterate()) {
 		if (v->type == type && v->owner == owner) {
 			this->cache[v->unitnumber] = true;
 		}
@@ -2490,8 +2522,7 @@ bool CanBuildVehicleInfrastructure(VehicleType type, byte subtype)
 	/* We can build vehicle infrastructure when we may build the vehicle type */
 	if (max > 0) {
 		/* Can we actually build the vehicle type? */
-		const Engine *e;
-		FOR_ALL_ENGINES_OF_TYPE(e, type) {
+		for (const Engine *e : Engine::IterateType(type)) {
 			if (type == VEH_ROAD && GetRoadTramType(e->u.road.roadtype) != (RoadTramType)subtype) continue;
 			if (HasBit(e->company_avail, _local_company)) return true;
 		}
@@ -2499,9 +2530,8 @@ bool CanBuildVehicleInfrastructure(VehicleType type, byte subtype)
 	}
 
 	/* We should be able to build infrastructure when we have the actual vehicle type */
-	const Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
-		if (type == VEH_ROAD && GetRoadTramType(RoadVehicle::From(v)->roadtype) != (RoadTramType)subtype) continue;
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (v->type == VEH_ROAD && GetRoadTramType(RoadVehicle::From(v)->roadtype) != (RoadTramType)subtype) continue;
 		if (v->owner == _local_company && v->type == type) return true;
 	}
 
@@ -3505,6 +3535,7 @@ void Vehicle::ShowVisualEffect() const
 				IsTunnelTile(v->tile) ||
 				(v->type == VEH_TRAIN &&
 				!HasPowerOnRail(Train::From(v)->railtype, GetTileRailTypeByTrackBit(v->tile, Train::From(v)->track)))) {
+			if (HasBit(v->vcache.cached_veh_flags, VCF_LAST_VISUAL_EFFECT)) break;
 			continue;
 		}
 
@@ -3773,6 +3804,7 @@ char *Vehicle::DumpVehicleFlags(char *b, const char *last) const
 	b += seprintf(b, last, ", vcf:");
 	dump('l', HasBit(this->vcache.cached_veh_flags, VCF_LAST_VISUAL_EFFECT));
 	dump('z', HasBit(this->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST));
+	dump('d', HasBit(this->vcache.cached_veh_flags, VCF_IS_DRAWN));
 	if (this->IsGroundVehicle()) {
 		uint16 gv_flags = this->GetGroundVehicleFlags();
 		b += seprintf(b, last, ", gvf:");
@@ -3821,8 +3853,7 @@ char *Vehicle::DumpVehicleFlags(char *b, const char *last) const
 
 void VehiclesYearlyLoop()
 {
-	Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		if (v->IsPrimaryVehicle()) {
 			/* show warning if vehicle is not generating enough income last 2 years (corresponds to a red icon in the vehicle list) */
 			Money profit = v->GetDisplayProfitThisYear();
@@ -4003,15 +4034,13 @@ void DumpVehicleStats(char *buffer, const char *last)
 	};
 	std::map<Owner, cstats> cstatmap;
 
-	Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		cstats &cs = cstatmap[v->owner];
 		vtypestats &vs = ((v->type == VEH_TRAIN) && Train::From(v)->IsVirtual()) ? cs.virt_train : cs.vstats[v->type];
 		vs.count[v->Previous() != nullptr ? 1 : 0]++;
 	}
 
-	const TemplateVehicle *tv;
-	FOR_ALL_TEMPLATES(tv) {
+	for (const TemplateVehicle *tv : TemplateVehicle::Iterate()) {
 		cstats &cs = cstatmap[tv->owner];
 		cs.template_train.count[tv->Prev() != nullptr ? 1 : 0]++;
 	}

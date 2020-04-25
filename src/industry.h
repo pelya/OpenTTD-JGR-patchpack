@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -64,7 +62,7 @@ struct Industry : IndustryPool::PoolItem<&_industry_pool> {
 
 	PartOfSubsidy part_of_subsidy;      ///< NOSAVE: is this industry a source/destination of a subsidy?
 	StationList stations_near;          ///< NOSAVE: List of nearby stations.
-	std::unique_ptr<const char, FreeDeleter> cached_name; ///< NOSAVE: Cache of the resolved name of the industry
+	mutable std::string cached_name;    ///< NOSAVE: Cache of the resolved name of the industry
 
 	Owner founder;                      ///< Founder of the industry
 	Date construction_date;             ///< Date of the construction of the industry
@@ -162,12 +160,12 @@ struct Industry : IndustryPool::PoolItem<&_industry_pool> {
 
 	inline const char *GetCachedName() const
 	{
-		if (!this->cached_name) const_cast<Industry *>(this)->FillCachedName();
-		return this->cached_name.get();
+		if (this->cached_name.empty()) this->FillCachedName();
+		return this->cached_name.c_str();
 	}
 
 private:
-	void FillCachedName();
+	void FillCachedName() const;
 
 protected:
 	static uint16 counts[NUM_INDUSTRYTYPES]; ///< Number of industries per type ingame
@@ -180,9 +178,6 @@ void PlantRandomFarmField(const Industry *i);
 void ReleaseDisastersTargetingIndustry(IndustryID);
 
 bool IsTileForestIndustry(TileIndex tile);
-
-#define FOR_ALL_INDUSTRIES_FROM(var, start) FOR_ALL_ITEMS_FROM(Industry, industry_index, var, start)
-#define FOR_ALL_INDUSTRIES(var) FOR_ALL_INDUSTRIES_FROM(var, 0)
 
 /** Data for managing the number of industries of a single industry type. */
 struct IndustryTypeBuildData {
@@ -213,5 +208,13 @@ struct IndustryBuildData {
 };
 
 extern IndustryBuildData _industry_builder;
+
+
+/** Special values for the industry list window for the data parameter of #InvalidateWindowData. */
+enum IndustryDirectoryInvalidateWindowData {
+	IDIWD_FORCE_REBUILD,
+	IDIWD_PRODUCTION_CHANGE,
+	IDIWD_FORCE_RESORT,
+};
 
 #endif /* INDUSTRY_H */

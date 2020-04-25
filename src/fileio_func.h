@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -23,7 +21,7 @@ byte FioReadByte();
 uint16 FioReadWord();
 uint32 FioReadDword();
 void FioCloseAll();
-void FioOpenFile(uint slot, const char *filename, Subdirectory subdir);
+void FioOpenFile(uint slot, const char *filename, Subdirectory subdir, char **output_filename = nullptr);
 void FioReadBlock(void *ptr, size_t size);
 void FioSkipBytes(int n);
 
@@ -49,7 +47,7 @@ static inline bool IsValidSearchPath(Searchpath sp)
 #define FOR_ALL_SEARCHPATHS(sp) for (sp = SP_FIRST_DIR; sp < NUM_SEARCHPATHS; sp++) if (IsValidSearchPath(sp))
 
 void FioFCloseFile(FILE *f);
-FILE *FioFOpenFile(const char *filename, const char *mode, Subdirectory subdir, size_t *filesize = nullptr);
+FILE *FioFOpenFile(const char *filename, const char *mode, Subdirectory subdir, size_t *filesize = nullptr, char **output_filename = nullptr);
 bool FioCheckFileExists(const char *filename, Subdirectory subdir);
 char *FioGetFullPath(char *buf, const char *last, Searchpath sp, Subdirectory subdir, const char *filename);
 char *FioFindFullPath(char *buf, const char *last, Subdirectory subdir, const char *filename);

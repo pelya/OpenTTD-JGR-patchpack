@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -63,8 +61,7 @@ CommandCost CmdInsertOrderIntl(DoCommandFlag flags, Vehicle *v, VehicleOrderID s
 void IntialiseOrderDestinationRefcountMap()
 {
 	ClearOrderDestinationRefcountMap();
-	const Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (const Vehicle *v : Vehicle::Iterate()) {
 		if (v != v->FirstShared()) continue;
 		const Order *order;
 		FOR_VEHICLE_ORDERS(v, order) {
@@ -453,6 +450,20 @@ void OrderList::Initialize(Order *chain, Vehicle *v)
 }
 
 /**
+ * Recomputes Timetable duration.
+ * Split out into a separate function so it can be used by afterload.
+ */
+void OrderList::RecalculateTimetableDuration()
+{
+	this->timetable_duration = 0;
+	for (Order *o = this->first; o != nullptr; o = o->next) {
+		if (!o->IsType(OT_CONDITIONAL)) {
+			this->timetable_duration += o->GetTimetabledWait() + o->GetTimetabledTravel();
+		}
+	}
+}
+
+/**
  * Free a complete order chain.
  * @param keep_orderlist If this is true only delete the orders, otherwise also delete the OrderList.
  * @note do not use on "current_order" vehicle orders!
@@ -519,7 +530,7 @@ VehicleOrderID OrderList::GetIndexOfOrder(const Order *order) const
  * or refit at a depot or evaluate a non-trivial condition.
  * @param next The order to start looking at.
  * @param hops The number of orders we have already looked at.
- * @param cargo_mask The bit set of cargoes that the we are looking at, this may be reduced to indicate the set of cargoes that the result is valid for.
+ * @param cargo_mask The bit set of cargoes that the we are looking at, this may be reduced to indicate the set of cargoes that the result is valid for. This may be 0 to ignore cargo types entirely.
  * @return Either of
  *         \li a station order
  *         \li a refitting depot order
@@ -528,8 +539,6 @@ VehicleOrderID OrderList::GetIndexOfOrder(const Order *order) const
  */
 const Order *OrderList::GetNextDecisionNode(const Order *next, uint hops, CargoTypes &cargo_mask) const
 {
-	assert(cargo_mask != 0);
-
 	if (hops > this->GetNumOrders() || next == nullptr) return nullptr;
 
 	if (next->IsType(OT_CONDITIONAL)) {
@@ -550,7 +559,9 @@ const Order *OrderList::GetNextDecisionNode(const Order *next, uint hops, CargoT
 	bool can_load_or_unload = false;
 	if ((next->IsType(OT_GOTO_STATION) || next->IsType(OT_IMPLICIT)) &&
 			(next->GetNonStopType() & ONSF_NO_STOP_AT_DESTINATION_STATION) == 0) {
-		if (next->GetUnloadType() == OUFB_CARGO_TYPE_UNLOAD || next->GetLoadType() == OLFB_CARGO_TYPE_LOAD) {
+		if (cargo_mask == 0) {
+			can_load_or_unload = true;
+		} else if (next->GetUnloadType() == OUFB_CARGO_TYPE_UNLOAD || next->GetLoadType() == OLFB_CARGO_TYPE_LOAD) {
 			/* This is a cargo-specific load/unload order.
 			 * If the first cargo is both a no-load and no-unload order, skip it.
 			 * Drop cargoes which don't match the first one. */
@@ -572,7 +583,7 @@ const Order *OrderList::GetNextDecisionNode(const Order *next, uint hops, CargoT
 /**
  * Recursively determine the next deterministic station to stop at.
  * @param v The vehicle we're looking at.
- * @param CargoTypes cargo_mask Bit-set of the cargo IDs of interest.
+ * @param CargoTypes cargo_mask Bit-set of the cargo IDs of interest. This may be 0 to ignore cargo types entirely.
  * @param first Order to start searching at or nullptr to start at cur_implicit_order_index + 1.
  * @param hops Number of orders we have already looked at.
  * @return A CargoMaskedStationIDStack of the cargo mask the result is valid for, and the next stopping station or INVALID_STATION.
@@ -581,8 +592,6 @@ const Order *OrderList::GetNextDecisionNode(const Order *next, uint hops, CargoT
  */
 CargoMaskedStationIDStack OrderList::GetNextStoppingStation(const Vehicle *v, CargoTypes cargo_mask, const Order *first, uint hops) const
 {
-	assert(cargo_mask != 0);
-
 	const Order *next = first;
 	if (first == nullptr) {
 		next = this->GetOrderAt(v->cur_implicit_order_index);
@@ -627,7 +636,7 @@ CargoMaskedStationIDStack OrderList::GetNextStoppingStation(const Vehicle *v, Ca
 
 		/* Don't return a next stop if the vehicle has to unload everything. */
 		if ((next->IsType(OT_GOTO_STATION) || next->IsType(OT_IMPLICIT)) &&
-				next->GetDestination() == v->last_station_visited) {
+				next->GetDestination() == v->last_station_visited && cargo_mask != 0) {
 			/* This is a cargo-specific load/unload order.
 			 * Don't return a next stop if first cargo has transfer or unload set.
 			 * Drop cargoes which don't match the first one. */
@@ -1105,6 +1114,17 @@ CommandCost CmdInsertOrderIntl(DoCommandFlag flags, Vehicle *v, VehicleOrderID s
 					break;
 				}
 
+				case OCV_CARGO_LOAD_PERCENTAGE:
+					if (!CargoSpec::Get(new_order.GetConditionValue())->IsValid()) return CMD_ERROR;
+					if (new_order.GetXData() > 100) return CMD_ERROR;
+					if (occ == OCC_IS_TRUE || occ == OCC_IS_FALSE) return CMD_ERROR;
+					break;
+
+				case OCV_CARGO_WAITING_AMOUNT:
+					if (!CargoSpec::Get(new_order.GetConditionValue())->IsValid()) return CMD_ERROR;
+					if (occ == OCC_IS_TRUE || occ == OCC_IS_FALSE) return CMD_ERROR;
+					break;
+
 				case OCV_CARGO_WAITING:
 				case OCV_CARGO_ACCEPTANCE:
 					if (!CargoSpec::Get(new_order.GetConditionValue())->IsValid()) return CMD_ERROR;
@@ -1232,6 +1252,7 @@ void InsertOrder(Vehicle *v, Order *new_o, VehicleOrderID sel_ord)
 
 	/* Make sure to rebuild the whole list */
 	InvalidateWindowClassesData(GetWindowClassForVehicleType(v->type), 0);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 }
 
 /**
@@ -1250,6 +1271,7 @@ static CommandCost DecloneOrder(Vehicle *dst, DoCommandFlag flags)
 		DeleteVehicleOrders(dst);
 		InvalidateVehicleOrder(dst, VIWD_REMOVE_ALL_ORDERS);
 		InvalidateWindowClassesData(GetWindowClassForVehicleType(dst->type), 0);
+		InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 		CheckMarkDirtyFocusedRoutePaths(dst);
 	}
 	return CommandCost();
@@ -1387,6 +1409,7 @@ void DeleteOrder(Vehicle *v, VehicleOrderID sel_ord)
 	}
 
 	InvalidateWindowClassesData(GetWindowClassForVehicleType(v->type), 0);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 }
 
 /**
@@ -1586,7 +1609,7 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 			break;
 
 		case OT_CONDITIONAL:
-			if (mof != MOF_COND_VARIABLE && mof != MOF_COND_COMPARATOR && mof != MOF_COND_VALUE && mof != MOF_COND_DESTINATION) return CMD_ERROR;
+			if (mof != MOF_COND_VARIABLE && mof != MOF_COND_COMPARATOR && mof != MOF_COND_VALUE && mof != MOF_COND_VALUE_2 && mof != MOF_COND_DESTINATION) return CMD_ERROR;
 			break;
 
 		default:
@@ -1673,6 +1696,7 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 				case OCV_LOAD_PERCENTAGE:
 				case OCV_RELIABILITY:
 				case OCV_PERCENT:
+				case OCV_CARGO_LOAD_PERCENTAGE:
 					if (data > 100) return CMD_ERROR;
 					break;
 
@@ -1686,9 +1710,24 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 					if (!(data < NUM_CARGO && CargoSpec::Get(data)->IsValid())) return CMD_ERROR;
 					break;
 
+				case OCV_CARGO_WAITING_AMOUNT:
+					break;
+
 				default:
 					if (data > 2047) return CMD_ERROR;
 					break;
+			}
+			break;
+
+		case MOF_COND_VALUE_2:
+			switch (order->GetConditionVariable()) {
+				case OCV_CARGO_LOAD_PERCENTAGE:
+				case OCV_CARGO_WAITING_AMOUNT:
+					if (!(data < NUM_CARGO && CargoSpec::Get(data)->IsValid())) return CMD_ERROR;
+					break;
+
+				default:
+					return CMD_ERROR;
 			}
 			break;
 
@@ -1767,7 +1806,8 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 			case MOF_COND_VARIABLE: {
 				/* Check whether old conditional variable had a cargo as value */
-				bool old_var_was_cargo = (order->GetConditionVariable() == OCV_CARGO_ACCEPTANCE || order->GetConditionVariable() == OCV_CARGO_WAITING);
+				bool old_var_was_cargo = (order->GetConditionVariable() == OCV_CARGO_ACCEPTANCE || order->GetConditionVariable() == OCV_CARGO_WAITING
+						|| order->GetConditionVariable() == OCV_CARGO_LOAD_PERCENTAGE || order->GetConditionVariable() == OCV_CARGO_WAITING_AMOUNT);
 				bool old_var_was_slot = (order->GetConditionVariable() == OCV_SLOT_OCCUPANCY || order->GetConditionVariable() == OCV_TRAIN_IN_SLOT);
 				order->SetConditionVariable((OrderConditionVariable)data);
 
@@ -1788,6 +1828,11 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 					case OCV_CARGO_WAITING:
 						if (!old_var_was_cargo) order->SetConditionValue((uint16) GetFirstValidCargo());
 						if (occ != OCC_IS_TRUE && occ != OCC_IS_FALSE) order->SetConditionComparator(OCC_IS_TRUE);
+						break;
+					case OCV_CARGO_LOAD_PERCENTAGE:
+					case OCV_CARGO_WAITING_AMOUNT:
+						if (!old_var_was_cargo) order->SetConditionValue((uint16) GetFirstValidCargo());
+						order->GetXDataRef() = 0;
 						break;
 					case OCV_REQUIRES_SERVICE:
 						if (old_var_was_cargo || old_var_was_slot) order->SetConditionValue(0);
@@ -1819,6 +1864,8 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 				switch (order->GetConditionVariable()) {
 					case OCV_SLOT_OCCUPANCY:
 					case OCV_TRAIN_IN_SLOT:
+					case OCV_CARGO_LOAD_PERCENTAGE:
+					case OCV_CARGO_WAITING_AMOUNT:
 						order->GetXDataRef() = data;
 						break;
 
@@ -1826,6 +1873,10 @@ CommandCost CmdModifyOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 						order->SetConditionValue(data);
 						break;
 				}
+				break;
+
+			case MOF_COND_VALUE_2:
+				order->SetConditionValue(data);
 				break;
 
 			case MOF_COND_DESTINATION:
@@ -2060,6 +2111,7 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 
 
 				InvalidateWindowClassesData(GetWindowClassForVehicleType(dst->type), 0);
+				InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 				CheckMarkDirtyFocusedRoutePaths(dst);
 
 				CheckAdvanceVehicleOrdersAfterClone(dst, flags);
@@ -2163,6 +2215,7 @@ CommandCost CmdCloneOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 				InvalidateVehicleOrder(dst, VIWD_REMOVE_ALL_ORDERS);
 
 				InvalidateWindowClassesData(GetWindowClassForVehicleType(dst->type), 0);
+				InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 				CheckMarkDirtyFocusedRoutePaths(dst);
 
 				CheckAdvanceVehicleOrdersAfterClone(dst, flags);
@@ -2326,14 +2379,12 @@ void CheckOrders(const Vehicle *v)
  */
 void RemoveOrderFromAllVehicles(OrderType type, DestinationID destination, bool hangar)
 {
-	Vehicle *v;
-
 	/* Aircraft have StationIDs for depot orders and never use DepotIDs
 	 * This fact is handled specially below
 	 */
 
 	/* Go through all vehicles */
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		Order *order = &v->current_order;
 		if ((v->type == VEH_AIRCRAFT && order->IsType(OT_GOTO_DEPOT) && !hangar ? OT_GOTO_STATION : order->GetType()) == type &&
 				(!hangar || v->type == VEH_AIRCRAFT) && v->current_order.GetDestination() == destination) {
@@ -2390,6 +2441,7 @@ void DeleteVehicleOrders(Vehicle *v, bool keep_orderlist, bool reset_order_indic
 		v->orders.list = nullptr;
 	} else {
 		DeleteWindowById(GetWindowClassForVehicleType(v->type), VehicleListIdentifier(VL_SHARED_ORDERS, v->type, v->owner, v->index).Pack());
+		InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 		if (v->orders.list != nullptr) {
 			/* Remove the orders */
 			v->orders.list->FreeChain(keep_orderlist);
@@ -2525,6 +2577,7 @@ VehicleOrderID ProcessConditionalOrder(const Order *order, const Vehicle *v)
 	// OrderConditionCompare ignores the last parameter for occ == OCC_IS_TRUE or occ == OCC_IS_FALSE.
 	switch (order->GetConditionVariable()) {
 		case OCV_LOAD_PERCENTAGE:    skip_order = OrderConditionCompare(occ, CalcPercentVehicleFilled(v, nullptr), value); break;
+		case OCV_CARGO_LOAD_PERCENTAGE: skip_order = OrderConditionCompare(occ, CalcPercentVehicleFilledOfCargo(v, (CargoType) value), order->GetXData()); break;
 		case OCV_RELIABILITY:        skip_order = OrderConditionCompare(occ, ToPercent16(v->reliability),       value); break;
 		case OCV_MAX_RELIABILITY:    skip_order = OrderConditionCompare(occ, ToPercent16(v->GetEngine()->reliability),   value); break;
 		case OCV_MAX_SPEED:          skip_order = OrderConditionCompare(occ, v->GetDisplayMaxSpeed() * 10 / 16, value); break;
@@ -2534,7 +2587,12 @@ VehicleOrderID ProcessConditionalOrder(const Order *order, const Vehicle *v)
 		case OCV_CARGO_WAITING: {
 			StationID next_station = GetNextRealStation(v, order);
 			if (Station::IsValidID(next_station)) skip_order = OrderConditionCompare(occ, (Station::Get(next_station)->goods[value].cargo.AvailableCount() > 0), value);
-				break;
+			break;
+		}
+		case OCV_CARGO_WAITING_AMOUNT: {
+			StationID next_station = GetNextRealStation(v, order);
+			if (Station::IsValidID(next_station)) skip_order = OrderConditionCompare(occ, Station::Get(next_station)->goods[value].cargo.AvailableCount(), order->GetXData());
+			break;
 		}
 		case OCV_CARGO_ACCEPTANCE: {
 			StationID next_station = GetNextRealStation(v, order);
@@ -2858,8 +2916,7 @@ CommandCost CmdMassChangeOrder(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 	DestinationID to_dest = GB(p2, 0, 16);
 
 	if (flags & DC_EXEC) {
-		Vehicle *v;
-		FOR_ALL_VEHICLES(v) {
+		for (Vehicle *v : Vehicle::Iterate()) {
 			if (v->type == vehtype && v->IsPrimaryVehicle() && CheckOwnership(v->owner).Succeeded()) {
 				Order *order;
 				int index = 0;

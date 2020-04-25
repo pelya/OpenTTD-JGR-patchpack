@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -277,8 +275,5 @@ struct Plan : PlanPool::PoolItem<&_plan_pool> {
 		return TileXY(x / count, y / count);
 	}
 };
-
-#define FOR_ALL_PLANS_FROM(var, start) FOR_ALL_ITEMS_FROM(Plan, plan_index, var, start)
-#define FOR_ALL_PLANS(var) FOR_ALL_PLANS_FROM(var, 0)
 
 #endif /* PLANS_BASE_H */

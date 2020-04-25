@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -947,6 +945,36 @@ uint ConvertDisplayToPowerWeightRatio(double in)
 uint ConvertDisplayToForceWeightRatio(double in)
 {
 	return ConvertDisplayToWeightRatio(_units_force[_settings_game.locale.units_force], in);
+}
+
+uint ConvertCargoQuantityToDisplayQuantity(CargoID cargo, uint quantity)
+{
+	switch (CargoSpec::Get(cargo)->units_volume) {
+		case STR_TONS:
+			return _units_weight[_settings_game.locale.units_weight].c.ToDisplay(quantity);
+
+		case STR_LITERS:
+			return _units_volume[_settings_game.locale.units_volume].c.ToDisplay(quantity);
+
+		default:
+			break;
+	}
+	return quantity;
+}
+
+uint ConvertDisplayQuantityToCargoQuantity(CargoID cargo, uint quantity)
+{
+	switch (CargoSpec::Get(cargo)->units_volume) {
+		case STR_TONS:
+			return _units_weight[_settings_game.locale.units_weight].c.FromDisplay(quantity);
+
+		case STR_LITERS:
+			return _units_volume[_settings_game.locale.units_volume].c.FromDisplay(quantity);
+
+		default:
+			break;
+	}
+	return quantity;
 }
 
 /**

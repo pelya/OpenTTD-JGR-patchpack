@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -73,7 +71,7 @@ static inline bool IsPbsSignal(SignalType type)
 	return type == SIGTYPE_PBS || type == SIGTYPE_PBS_ONEWAY;
 }
 
-/// Is this a programmable signal?
+/// Is this a programmable pre-signal?
 static inline bool IsProgrammableSignal(SignalType type)
 {
 	return type == SIGTYPE_PROG;

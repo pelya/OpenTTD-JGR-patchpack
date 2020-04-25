@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -84,6 +82,7 @@ bool _do_autosave;           ///< are we doing an autosave at the moment?
 
 extern bool _sl_is_ext_version;
 extern bool _sl_maybe_springpp;
+extern bool _sl_maybe_chillpp;
 
 /** What are we currently doing? */
 enum SaveLoadAction {
@@ -364,6 +363,11 @@ static void SlNullPointers()
 	assert(_sl.action == SLA_NULL);
 }
 
+struct ThreadSlErrorException {
+	StringID string;
+	const char *extra_msg;
+};
+
 /**
  * Error handler. Sets everything up to show an error message and to clean
  * up the mess of a partial savegame load.
@@ -377,6 +381,10 @@ void NORETURN SlError(StringID string, const char *extra_msg, bool already_mallo
 	char *str = nullptr;
 	if (extra_msg != nullptr) {
 		str = already_malloced ? const_cast<char *>(extra_msg) : stredup(extra_msg);
+	}
+
+	if (IsNonMainThread()) {
+		throw ThreadSlErrorException{ string, extra_msg };
 	}
 
 	/* Distinguish between loading into _load_check_data vs. normal save/load. */
@@ -721,7 +729,10 @@ int SlIterateArray()
 
 	/* After reading in the whole array inside the loop
 	 * we must have read in all the data, so we must be at end of current block. */
-	if (_next_offs != 0 && _sl.reader->GetSize() != _next_offs) SlErrorCorrupt("Invalid chunk size");
+	if (_next_offs != 0 && _sl.reader->GetSize() != _next_offs) {
+		DEBUG(sl, 1, "Invalid chunk size: " PRINTF_SIZE " != " PRINTF_SIZE, _sl.reader->GetSize(), _next_offs);
+		SlErrorCorrupt("Invalid chunk size");
+	}
 
 	for (;;) {
 		uint length = SlReadArrayLength();
@@ -2055,7 +2066,10 @@ static void SlLoadChunk(const ChunkHandler *ch)
 				_sl.obj_len = len;
 				endoffs = _sl.reader->GetSize() + len;
 				ch->load_proc();
-				if (_sl.reader->GetSize() != endoffs) SlErrorCorrupt("Invalid chunk size");
+				if (_sl.reader->GetSize() != endoffs) {
+					DEBUG(sl, 1, "Invalid chunk size: " PRINTF_SIZE " != " PRINTF_SIZE ", (" PRINTF_SIZE ")", _sl.reader->GetSize(), endoffs, len);
+					SlErrorCorrupt("Invalid chunk size");
+				}
 			} else {
 				SlErrorCorrupt("Invalid chunk type");
 			}
@@ -2138,7 +2152,10 @@ static void SlLoadCheckChunk(const ChunkHandler *ch)
 				} else {
 					SlSkipBytes(len);
 				}
-				if (_sl.reader->GetSize() != endoffs) SlErrorCorrupt("Invalid chunk size");
+				if (_sl.reader->GetSize() != endoffs) {
+					DEBUG(sl, 1, "Invalid chunk size: " PRINTF_SIZE " != " PRINTF_SIZE ", (" PRINTF_SIZE ")", _sl.reader->GetSize(), endoffs, len);
+					SlErrorCorrupt("Invalid chunk size");
+				}
 			} else {
 				SlErrorCorrupt("Invalid chunk type");
 			}
@@ -2213,24 +2230,21 @@ static const ChunkHandler *SlFindChunkHandler(uint32 id)
 /** Load all chunks */
 static void SlLoadChunks()
 {
-	uint32 id;
-	const ChunkHandler *ch;
-
-	for (id = SlReadUint32(); id != 0; id = SlReadUint32()) {
+	for (uint32 id = SlReadUint32(); id != 0; id = SlReadUint32()) {
 		DEBUG(sl, 2, "Loading chunk %c%c%c%c", id >> 24, id >> 16, id >> 8, id);
 		size_t read = 0;
 		if (_debug_sl_level >= 3) read = SlGetBytesRead();
 
-		ch = SlFindChunkHandler(id);
-		if (ch == nullptr) {
-			if (SlXvIsChunkDiscardable(id)) {
-				DEBUG(sl, 1, "Discarding chunk %c%c%c%c", id >> 24, id >> 16, id >> 8, id);
-				SlLoadCheckChunk(nullptr);
-			} else {
-				SlErrorCorrupt("Unknown chunk type");
-			}
+		if (SlXvIsChunkDiscardable(id)) {
+			DEBUG(sl, 1, "Discarding chunk %c%c%c%c", id >> 24, id >> 16, id >> 8, id);
+			SlLoadCheckChunk(nullptr);
 		} else {
-			SlLoadChunk(ch);
+			const ChunkHandler *ch = SlFindChunkHandler(id);
+			if (ch == nullptr) {
+				SlErrorCorrupt("Unknown chunk type");
+			} else {
+				SlLoadChunk(ch);
+			}
 		}
 		DEBUG(sl, 3, "Loaded chunk %c%c%c%c (" PRINTF_SIZE " bytes)", id >> 24, id >> 16, id >> 8, id, SlGetBytesRead() - read);
 	}
@@ -2247,8 +2261,12 @@ static void SlLoadCheckChunks()
 		size_t read = 0;
 		if (_debug_sl_level >= 3) read = SlGetBytesRead();
 
-		ch = SlFindChunkHandler(id);
-		if (ch == nullptr && !SlXvIsChunkDiscardable(id)) SlErrorCorrupt("Unknown chunk type");
+		if (SlXvIsChunkDiscardable(id)) {
+			ch = nullptr;
+		} else {
+			ch = SlFindChunkHandler(id);
+			if (ch == nullptr) SlErrorCorrupt("Unknown chunk type");
+		}
 		SlLoadCheckChunk(ch);
 		DEBUG(sl, 3, "Loaded chunk %c%c%c%c (" PRINTF_SIZE " bytes)", id >> 24, id >> 16, id >> 8, id, SlGetBytesRead() - read);
 	}
@@ -2736,25 +2754,26 @@ struct SaveLoadFormat {
 	byte min_compression;                 ///< the minimum compression level of this format
 	byte default_compression;             ///< the default compression level of this format
 	byte max_compression;                 ///< the maximum compression level of this format
+	bool no_threaded_load;                ///< unsuitable for threaded loading
 };
 
 /** The different saveload formats known/understood by OpenTTD. */
 static const SaveLoadFormat _saveload_formats[] = {
 #if defined(WITH_LZO)
 	/* Roughly 75% larger than zlib level 6 at only ~7% of the CPU usage. */
-	{"lzo",    TO_BE32X('OTTD'), CreateLoadFilter<LZOLoadFilter>,    CreateSaveFilter<LZOSaveFilter>,    0, 0, 0},
+	{"lzo",    TO_BE32X('OTTD'), CreateLoadFilter<LZOLoadFilter>,    CreateSaveFilter<LZOSaveFilter>,    0, 0, 0, true},
 #else
-	{"lzo",    TO_BE32X('OTTD'), nullptr,                            nullptr,                            0, 0, 0},
+	{"lzo",    TO_BE32X('OTTD'), nullptr,                            nullptr,                            0, 0, 0, false},
 #endif
 	/* Roughly 5 times larger at only 1% of the CPU usage over zlib level 6. */
-	{"none",   TO_BE32X('OTTN'), CreateLoadFilter<NoCompLoadFilter>, CreateSaveFilter<NoCompSaveFilter>, 0, 0, 0},
+	{"none",   TO_BE32X('OTTN'), CreateLoadFilter<NoCompLoadFilter>, CreateSaveFilter<NoCompSaveFilter>, 0, 0, 0, false},
 #if defined(WITH_ZLIB)
 	/* After level 6 the speed reduction is significant (1.5x to 2.5x slower per level), but the reduction in filesize is
 	 * fairly insignificant (~1% for each step). Lower levels become ~5-10% bigger by each level than level 6 while level
 	 * 1 is "only" 3 times as fast. Level 0 results in uncompressed savegames at about 8 times the cost of "none". */
-	{"zlib",   TO_BE32X('OTTZ'), CreateLoadFilter<ZlibLoadFilter>,   CreateSaveFilter<ZlibSaveFilter>,   0, 6, 9},
+	{"zlib",   TO_BE32X('OTTZ'), CreateLoadFilter<ZlibLoadFilter>,   CreateSaveFilter<ZlibSaveFilter>,   0, 6, 9, false},
 #else
-	{"zlib",   TO_BE32X('OTTZ'), nullptr,                            nullptr,                            0, 0, 0},
+	{"zlib",   TO_BE32X('OTTZ'), nullptr,                            nullptr,                            0, 0, 0, false},
 #endif
 #if defined(WITH_LIBLZMA)
 	/* Level 2 compression is speed wise as fast as zlib level 6 compression (old default), but results in ~10% smaller saves.
@@ -2762,9 +2781,9 @@ static const SaveLoadFormat _saveload_formats[] = {
 	 * The next significant reduction in file size is at level 4, but that is already 4 times slower. Level 3 is primarily 50%
 	 * slower while not improving the filesize, while level 0 and 1 are faster, but don't reduce savegame size much.
 	 * It's OTTX and not e.g. OTTL because liblzma is part of xz-utils and .tar.xz is preferred over .tar.lzma. */
-	{"lzma",   TO_BE32X('OTTX'), CreateLoadFilter<LZMALoadFilter>,   CreateSaveFilter<LZMASaveFilter>,   0, 2, 9},
+	{"lzma",   TO_BE32X('OTTX'), CreateLoadFilter<LZMALoadFilter>,   CreateSaveFilter<LZMASaveFilter>,   0, 2, 9, false},
 #else
-	{"lzma",   TO_BE32X('OTTX'), nullptr,                            nullptr,                            0, 0, 0},
+	{"lzma",   TO_BE32X('OTTX'), nullptr,                            nullptr,                            0, 0, 0, false},
 #endif
 };
 
@@ -2826,6 +2845,16 @@ static const SaveLoadFormat *GetSavegameFormat(char *s, byte *compression_level)
 void InitializeGame(uint size_x, uint size_y, bool reset_date, bool reset_settings);
 extern bool AfterLoadGame();
 extern bool LoadOldSaveGame(const char *file);
+
+/**
+ * Clear temporary data that is passed between various saveload phases.
+ */
+static void ResetSaveloadData()
+{
+	ResetTempEngineData();
+	ResetLabelMaps();
+	ResetOldWaypoints();
+}
 
 /**
  * Clear/free saveload state.
@@ -3017,6 +3046,9 @@ struct ThreadedLoadFilter : LoadFilter {
 	byte read_buf[MEMORY_CHUNK_SIZE * BUFFER_COUNT]; ///< Buffers for reading from source.
 	bool no_thread = false;
 
+	bool have_exception = false;
+	ThreadSlErrorException caught_exception;
+
 	std::thread read_thread;
 
 	/**
@@ -3050,21 +3082,28 @@ struct ThreadedLoadFilter : LoadFilter {
 
 	static void RunThread(ThreadedLoadFilter *self)
 	{
-		std::unique_lock<std::mutex> lk(self->mutex);
-		while (!self->no_thread) {
-			if (self->count_ready == BUFFER_COUNT) {
-				self->full_cv.wait(lk);
-				continue;
-			}
+		try {
+			std::unique_lock<std::mutex> lk(self->mutex);
+			while (!self->no_thread) {
+				if (self->count_ready == BUFFER_COUNT) {
+					self->full_cv.wait(lk);
+					continue;
+				}
 
-			uint buf = (self->first_ready + self->count_ready) % BUFFER_COUNT;
-			lk.unlock();
-			size_t read = self->chain->Read(self->read_buf + (buf * MEMORY_CHUNK_SIZE), MEMORY_CHUNK_SIZE);
-			lk.lock();
-			self->read_offsets[buf] = 0;
-			self->read_counts[buf] = read;
-			self->count_ready++;
-			if (self->count_ready == 1) self->empty_cv.notify_one();
+				uint buf = (self->first_ready + self->count_ready) % BUFFER_COUNT;
+				lk.unlock();
+				size_t read = self->chain->Read(self->read_buf + (buf * MEMORY_CHUNK_SIZE), MEMORY_CHUNK_SIZE);
+				lk.lock();
+				self->read_offsets[buf] = 0;
+				self->read_counts[buf] = read;
+				self->count_ready++;
+				if (self->count_ready == 1) self->empty_cv.notify_one();
+			}
+		} catch (const ThreadSlErrorException &ex) {
+			std::unique_lock<std::mutex> lk(self->mutex);
+			self->caught_exception = ex;
+			self->have_exception = true;
+			self->empty_cv.notify_one();
 		}
 	}
 
@@ -3074,7 +3113,11 @@ struct ThreadedLoadFilter : LoadFilter {
 
 		size_t read = 0;
 		std::unique_lock<std::mutex> lk(this->mutex);
-		while (read < size) {
+		while (read < size || this->have_exception) {
+			if (this->have_exception) {
+				this->have_exception = false;
+				SlError(this->caught_exception.string, this->caught_exception.extra_msg);
+			}
 			if (this->count_ready == 0) {
 				this->empty_cv.wait(lk);
 				continue;
@@ -3158,7 +3201,8 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 				special_version = SlXvCheckSpecialSavegameVersions();
 			}
 
-			DEBUG(sl, 1, "Loading savegame version %d%s%s", _sl_version, _sl_is_ext_version ? " (extended)" : "", _sl_maybe_springpp ? " which might be SpringPP" : "");
+			DEBUG(sl, 1, "Loading savegame version %d%s%s%s", _sl_version, _sl_is_ext_version ? " (extended)" : "",
+					_sl_maybe_springpp ? " which might be SpringPP" : "", _sl_maybe_chillpp ? " which might be ChillPP" : "");
 
 			/* Is the version higher than the current? */
 			if (_sl_version > SAVEGAME_VERSION && !special_version) SlError(STR_GAME_SAVELOAD_ERROR_TOO_NEW_SAVEGAME);
@@ -3176,11 +3220,15 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 	}
 
 	_sl.lf = fmt->init_load(_sl.lf);
-	_sl.lf = new ThreadedLoadFilter(_sl.lf);
+	if (!fmt->no_threaded_load) {
+		_sl.lf = new ThreadedLoadFilter(_sl.lf);
+	}
 	_sl.reader = new ReadBuffer(_sl.lf);
 	_next_offs = 0;
 
 	if (!load_check) {
+		ResetSaveloadData();
+
 		/* Old maps were hardcoded to 256x256 and thus did not contain
 		 * any mapsize information. Pre-initialize to 256x256 to not to
 		 * confuse old games */
@@ -3286,6 +3334,8 @@ SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, Detaile
 	try {
 		/* Load a TTDLX or TTDPatch game */
 		if (fop == SLO_LOAD && dft == DFT_OLD_GAME_FILE) {
+			ResetSaveloadData();
+
 			InitializeGame(256, 256, true, true); // set a mapsize of 256x256 for TTDPatch games or it might get confused
 
 			/* TTD/TTO savegames have no NewGRFs, TTDP savegame have them
@@ -3377,8 +3427,7 @@ void GenerateDefaultSaveName(char *buf, const char *last)
 	 * 'Spectator' as "company" name. */
 	CompanyID cid = _local_company;
 	if (!Company::IsValidID(cid)) {
-		const Company *c;
-		FOR_ALL_COMPANIES(c) {
+		for (const Company *c : Company::Iterate()) {
 			cid = c->index;
 			break;
 		}

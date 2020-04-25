@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -129,10 +127,12 @@ static int CalculateMaxRequiredVehicle(Ticks timetable_duration, uint32 schedule
 	std::vector<std::pair<uint32, int>> indices;
 	for (int i = 0; i < required_loop; i++) {
 		for (uint32 offset : offsets) {
+			if (offset >= schedule_duration) continue;
 			indices.push_back(std::make_pair(i * schedule_duration + offset, 1));
 			indices.push_back(std::make_pair(i * schedule_duration + offset + timetable_duration, -1));
 		}
 	}
+	if (indices.empty()) return -1;
 	std::sort(indices.begin(), indices.end());
 	int current_count = 0;
 	int vehicle_count = 0;
@@ -151,6 +151,7 @@ struct SchdispatchWindow : Window {
 
 	uint item_count = 0;     ///< Number of scheduled item
 	bool last_departure_future; ///< True if last departure is currently displayed in the future
+	uint warning_count = 0;
 
 	SchdispatchWindow(WindowDesc *desc, WindowNumber window_number) :
 			Window(desc),
@@ -203,6 +204,10 @@ struct SchdispatchWindow : Window {
 
 			case WID_SCHDISPATCH_SUMMARY_PANEL:
 				size->height = WD_FRAMERECT_TOP + 4 * FONT_HEIGHT_NORMAL + WD_FRAMERECT_BOTTOM;
+				if (warning_count > 0) {
+					const Dimension warning_dimensions = GetSpriteSize(SPR_WARNING_SIGN);
+					size->height += warning_count * max<int>(warning_dimensions.height, FONT_HEIGHT_NORMAL);
+				}
 				break;
 		}
 	}
@@ -351,20 +356,63 @@ struct SchdispatchWindow : Window {
 							this->last_departure_future ? STR_SCHDISPATCH_SUMMARY_LAST_DEPARTURE_FUTURE : STR_SCHDISPATCH_SUMMARY_LAST_DEPARTURE_PAST);
 					y += FONT_HEIGHT_NORMAL;
 
-					const int required_vehicle = CalculateMaxRequiredVehicle(v->orders.list->GetTimetableTotalDuration(), v->orders.list->GetScheduledDispatchDuration(), v->orders.list->GetScheduledDispatch());
-					if (required_vehicle > 0) {
-						SetDParam(0, required_vehicle);
-						DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_SCHDISPATCH_SUMMARY_L1);
+					bool have_conditional = false;
+					for (int n = 0; n < v->GetNumOrders(); n++) {
+						const Order *order = v->GetOrder(n);
+						if (order->IsType(OT_CONDITIONAL)) {
+							have_conditional = true;
+						}
+					}
+					if (!have_conditional) {
+						const int required_vehicle = CalculateMaxRequiredVehicle(v->orders.list->GetTimetableTotalDuration(), v->orders.list->GetScheduledDispatchDuration(), v->orders.list->GetScheduledDispatch());
+						if (required_vehicle > 0) {
+							SetDParam(0, required_vehicle);
+							DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_SCHDISPATCH_SUMMARY_L1);
+						}
 					}
 					y += FONT_HEIGHT_NORMAL;
 
 					SetTimetableParams(0, v->orders.list->GetScheduledDispatchDuration());
 					SetDParam(4, v->orders.list->GetScheduledDispatchStartTick());
+					SetDParam(5, v->orders.list->GetScheduledDispatchStartTick() + v->orders.list->GetScheduledDispatchDuration());
 					DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_SCHDISPATCH_SUMMARY_L2);
 					y += FONT_HEIGHT_NORMAL;
 
 					SetTimetableParams(0, v->orders.list->GetScheduledDispatchDelay());
 					DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_SCHDISPATCH_SUMMARY_L3);
+					y += FONT_HEIGHT_NORMAL;
+
+					uint warnings = 0;
+					auto draw_warning = [&](StringID text) {
+						const Dimension warning_dimensions = GetSpriteSize(SPR_WARNING_SIGN);
+						int step_height = max<int>(warning_dimensions.height, FONT_HEIGHT_NORMAL);
+						int left = r.left + WD_FRAMERECT_LEFT;
+						int right = r.right - WD_FRAMERECT_RIGHT;
+						const bool rtl = (_current_text_dir == TD_RTL);
+						DrawSprite(SPR_WARNING_SIGN, 0, rtl ? right - warning_dimensions.width - 5 : left + 5, y + (step_height - warning_dimensions.height) / 2);
+						if (rtl) {
+							right -= (warning_dimensions.width + 10);
+						} else {
+							left += (warning_dimensions.width + 10);
+						}
+						DrawString(left, right, y + (step_height - FONT_HEIGHT_NORMAL) / 2, text);
+						y += step_height;
+						warnings++;
+					};
+
+					uint32 duration = v->orders.list->GetScheduledDispatchDuration();
+					for (uint32 slot : v->orders.list->GetScheduledDispatch()) {
+						if (slot >= duration) {
+							draw_warning(STR_SCHDISPATCH_SLOT_OUTSIDE_SCHEDULE);
+							break;
+						}
+					}
+
+					if (warnings != this->warning_count) {
+						SchdispatchWindow *mutable_this = const_cast<SchdispatchWindow *>(this);
+						mutable_this->warning_count = warnings;
+						mutable_this->ReInit();
+					}
 				}
 
 				break;

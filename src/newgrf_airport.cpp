@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -60,6 +58,9 @@ struct AirportResolverObject : public ResolverObject {
 	}
 
 	const SpriteGroup *ResolveReal(const RealSpriteGroup *group) const override;
+
+	GrfSpecFeature GetFeature() const override;
+	uint32 GetDebugID() const override;
 };
 
 /**
@@ -226,6 +227,16 @@ void AirportOverrideManager::SetEntitySpec(AirportSpec *as)
 	if (group->num_loading > 0) return group->loading[0];
 
 	return nullptr;
+}
+
+GrfSpecFeature AirportResolverObject::GetFeature() const
+{
+	return GSF_AIRPORTS;
+}
+
+uint32 AirportResolverObject::GetDebugID() const
+{
+	return AirportSpec::Get(this->airport_scope.airport_id)->grf_prop.local_id;
 }
 
 /* virtual */ uint32 AirportScopeResolver::GetRandomBits() const

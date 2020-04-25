@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -100,7 +98,7 @@ public:
 	NetworkRecvStatus SendMove(ClientID client_id, CompanyID company_id);
 
 	NetworkRecvStatus SendClientInfo(NetworkClientInfo *ci);
-	NetworkRecvStatus SendError(NetworkErrorCode error);
+	NetworkRecvStatus SendError(NetworkErrorCode error, const char *reason = nullptr);
 	NetworkRecvStatus SendDesyncLog(const std::string &log);
 	NetworkRecvStatus SendChat(NetworkAction action, ClientID client_id, bool self_send, const char *msg, NetworkTextMessageData data);
 	NetworkRecvStatus SendJoin(ClientID client_id);
@@ -132,18 +130,5 @@ public:
 void NetworkServer_Tick(bool send_frame);
 void NetworkServerSetCompanyPassword(CompanyID company_id, const char *password, bool already_hashed = true);
 void NetworkServerUpdateCompanyPassworded(CompanyID company_id, bool passworded);
-
-/**
- * Iterate over all the sockets from a given starting point.
- * @param var The variable to iterate with.
- * @param start The start of the iteration.
- */
-#define FOR_ALL_CLIENT_SOCKETS_FROM(var, start) FOR_ALL_ITEMS_FROM(NetworkClientSocket, clientsocket_index, var, start)
-
-/**
- * Iterate over all the sockets.
- * @param var The variable to iterate with.
- */
-#define FOR_ALL_CLIENT_SOCKETS(var) FOR_ALL_CLIENT_SOCKETS_FROM(var, 0)
 
 #endif /* NETWORK_SERVER_H */

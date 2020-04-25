@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -17,6 +15,10 @@
 #include "saveload_internal.h"
 
 #include "../safeguards.h"
+
+static uint32 _jokerpp_separation_mode;
+std::vector<OrderList *> _jokerpp_auto_separation;
+std::vector<OrderList *> _jokerpp_non_auto_separation;
 
 /**
  * Converts this order from an old savegame's version;
@@ -130,9 +132,7 @@ const SaveLoad *GetOrderDescription()
 
 static void Save_ORDR()
 {
-	Order *order;
-
-	FOR_ALL_ORDERS(order) {
+	for (Order *order : Order::Iterate()) {
 		SlSetArrayIndex(order->index);
 		SlObject(order, GetOrderDescription());
 	}
@@ -173,8 +173,8 @@ static void Load_ORDR()
 		}
 
 		/* Update all the next pointer */
-		Order *o;
-		FOR_ALL_ORDERS(o) {
+		for (Order *o : Order::Iterate()) {
+			size_t order_index = o->index;
 			/* Delete invalid orders */
 			if (o->IsType(OT_NOTHING)) {
 				delete o;
@@ -191,12 +191,6 @@ static void Load_ORDR()
 		while ((index = SlIterateArray()) != -1) {
 			Order *order = new (index) Order();
 			SlObject(order, GetOrderDescription());
-			if (IsSavegameVersionBefore(SLV_190)) {
-				order->SetTravelTimetabled(order->GetTravelTime() > 0);
-				order->SetWaitTimetabled(order->GetWaitTime() > 0);
-			} else if (order->IsType(OT_CONDITIONAL) && SlXvIsFeatureMissing(XSLFI_TIMETABLE_EXTRA)) {
-				order->SetWaitTimetabled(order->GetWaitTime() > 0);
-			}
 		}
 	}
 }
@@ -216,9 +210,7 @@ const SaveLoad *GetOrderExtraInfoDescription()
 
 void Save_ORDX()
 {
-	Order *order;
-
-	FOR_ALL_ORDERS(order) {
+	for (Order *order : Order::Iterate()) {
 		if (order->extra) {
 			SlSetArrayIndex(order->index);
 			SlObject(order->extra.get(), GetOrderExtraInfoDescription());
@@ -242,9 +234,7 @@ static void Ptrs_ORDR()
 	/* Orders from old savegames have pointers corrected in Load_ORDR */
 	if (IsSavegameVersionBefore(SLV_5, 2)) return;
 
-	Order *o;
-
-	FOR_ALL_ORDERS(o) {
+	for (Order *o : Order::Iterate()) {
 		SlObject(o, GetOrderDescription());
 	}
 }
@@ -259,6 +249,8 @@ const SaveLoad *GetOrderListDescription()
 		SLE_CONDVAR_X(OrderList, scheduled_dispatch_start_full_date_fract, SLE_UINT16, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_SCHEDULED_DISPATCH)),
 		SLE_CONDVAR_X(OrderList, scheduled_dispatch_last_dispatch,         SLE_INT32,  SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_SCHEDULED_DISPATCH)),
 		SLE_CONDVAR_X(OrderList, scheduled_dispatch_max_delay,             SLE_INT32,  SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_SCHEDULED_DISPATCH)),
+		SLEG_CONDVAR_X(_jokerpp_separation_mode,                           SLE_UINT32, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_JOKERPP)),
+		SLE_CONDNULL_X(21,                                                             SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_JOKERPP)),
 		SLE_END()
 	};
 
@@ -267,9 +259,7 @@ const SaveLoad *GetOrderListDescription()
 
 static void Save_ORDL()
 {
-	OrderList *list;
-
-	FOR_ALL_ORDER_LISTS(list) {
+	for (OrderList *list : OrderList::Iterate()) {
 		SlSetArrayIndex(list->index);
 		SlObject(list, GetOrderListDescription());
 	}
@@ -277,21 +267,28 @@ static void Save_ORDL()
 
 static void Load_ORDL()
 {
+	_jokerpp_auto_separation.clear();
+	_jokerpp_non_auto_separation.clear();
 	int index;
 
 	while ((index = SlIterateArray()) != -1) {
 		/* set num_orders to 0 so it's a valid OrderList */
 		OrderList *list = new (index) OrderList(0);
 		SlObject(list, GetOrderListDescription());
+		if (SlXvIsFeaturePresent(XSLFI_JOKERPP)) {
+			if (_jokerpp_separation_mode == 0) {
+				_jokerpp_auto_separation.push_back(list);
+			} else {
+				_jokerpp_non_auto_separation.push_back(list);
+			}
+		}
 	}
 
 }
 
 void Ptrs_ORDL()
 {
-	OrderList *list;
-
-	FOR_ALL_ORDER_LISTS(list) {
+	for (OrderList *list : OrderList::Iterate()) {
 		SlObject(list, GetOrderListDescription());
 		list->ReindexOrderList();
 	}
@@ -336,8 +333,7 @@ static void Save_BKOR()
 	 * normal games this information isn't needed. */
 	if (!_networking || !_network_server) return;
 
-	OrderBackup *ob;
-	FOR_ALL_ORDER_BACKUPS(ob) {
+	for (OrderBackup *ob : OrderBackup::Iterate()) {
 		SlSetArrayIndex(ob->index);
 		SlObject(ob, GetOrderBackupDescription());
 	}
@@ -356,8 +352,7 @@ void Load_BKOR()
 
 static void Ptrs_BKOR()
 {
-	OrderBackup *ob;
-	FOR_ALL_ORDER_BACKUPS(ob) {
+	for (OrderBackup *ob : OrderBackup::Iterate()) {
 		SlObject(ob, GetOrderBackupDescription());
 	}
 }

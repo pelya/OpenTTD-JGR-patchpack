@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -37,8 +35,7 @@ void CcBuildWagon(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p
 
 	/* find a locomotive in the depot. */
 	const Vehicle *found = nullptr;
-	const Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (const Train *t : Train::Iterate()) {
 		if (t->IsFrontEngine() && t->tile == tile && t->IsStoppedInDepot() && !t->IsVirtual()) {
 			if (found != nullptr) return; // must be exactly one.
 			found = t;
@@ -52,6 +49,7 @@ void CcBuildWagon(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p
 		DoCommandP(0, _new_vehicle_id, found->index, CMD_MOVE_RAIL_VEHICLE);
 		InvalidateWindowClassesData(WC_TRAINS_LIST, 0);
 		InvalidateWindowClassesData(WC_TRACE_RESTRICT_SLOTS, 0);
+		InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 	}
 }
 

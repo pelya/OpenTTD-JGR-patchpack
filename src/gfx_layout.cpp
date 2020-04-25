@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -633,6 +631,8 @@ static inline void GetLayouter(Layouter::LineCacheItem &line, const char *&str, 
 		} else if (c >= SCC_FIRST_FONT && c <= SCC_LAST_FONT) {
 			state.SetFontSize((FontSize)(c - SCC_FIRST_FONT));
 		} else {
+			/* Filter out non printable characters */
+			if (!IsPrintable(c)) continue;
 			/* Filter out text direction characters that shouldn't be drawn, and
 			 * will not be handled in the fallback non ICU case because they are
 			 * mostly needed for RTL languages which need more ICU support. */

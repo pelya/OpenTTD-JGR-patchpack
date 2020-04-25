@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -41,6 +39,7 @@ static inline bool UseThreadedModelProgress()
 
 bool IsFirstModalProgressLoop();
 void SetModalProgress(bool state);
+void SleepWhileModalProgress(int milliseconds);
 
 extern std::mutex _modal_progress_work_mutex;
 extern std::mutex _modal_progress_paint_mutex;

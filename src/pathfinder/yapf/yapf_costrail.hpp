@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -72,8 +70,8 @@ protected:
 		int p1 = Yapf().PfGetSettings().rail_look_ahead_signal_p1;
 		int p2 = Yapf().PfGetSettings().rail_look_ahead_signal_p2;
 		int *pen = m_sig_look_ahead_costs.GrowSizeNC(Yapf().PfGetSettings().rail_look_ahead_max_signals);
-		for (uint i = 0; i < Yapf().PfGetSettings().rail_look_ahead_max_signals; i++) {
-			pen[i] = p0 + i * (p1 + i * p2);
+		for (int i = 0; i < (int) Yapf().PfGetSettings().rail_look_ahead_max_signals; i++) {
+			pen[i] = max<int>(0, p0 + i * (p1 + i * p2));
 		}
 	}
 
@@ -216,6 +214,8 @@ private:
 				TileIndex candidate_tile = INVALID_TILE;
 
 				if (IsRailDepotTile(v->tile)) {
+					candidate_tile = v->tile;
+				} else if (v->track & TRACK_BIT_WORMHOLE && IsTileType(v->tile, MP_TUNNELBRIDGE) && IsTunnelBridgeSignalSimulationExit(v->tile) && IsTunnelBridgePBS(v->tile)) {
 					candidate_tile = v->tile;
 				}
 

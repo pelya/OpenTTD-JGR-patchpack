@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -156,7 +154,6 @@ void Ship::GetImage(Direction direction, EngineImageType image_type, VehicleSpri
 static const Depot *FindClosestShipDepot(const Vehicle *v, uint max_distance)
 {
 	/* Find the closest depot */
-	const Depot *depot;
 	const Depot *best_depot = nullptr;
 	/* If we don't have a maximum distance, i.e. distance = 0,
 	 * we want to find any depot so the best distance of no
@@ -165,7 +162,7 @@ static const Depot *FindClosestShipDepot(const Vehicle *v, uint max_distance)
 	 * further away than max_distance can safely be ignored. */
 	uint best_dist = max_distance == 0 ? UINT_MAX : max_distance + 1;
 
-	FOR_ALL_DEPOTS(depot) {
+	for (const Depot *depot : Depot::Iterate()) {
 		TileIndex tile = depot->xy;
 		if (IsShipDepotTile(tile) && IsInfraTileUsageAllowed(VEH_SHIP, v->owner, tile)) {
 			uint dist = DistanceManhattan(tile, v->tile);
@@ -346,7 +343,7 @@ void Ship::UpdateDeltaXY()
  */
 static Vehicle *EnsureNoVisibleShipProc(Vehicle *v, void *data)
 {
-	return v->type == VEH_SHIP && (v->vehstatus & VS_HIDDEN) == 0 ? v : nullptr;
+	return (v->vehstatus & VS_HIDDEN) == 0 ? v : nullptr;
 }
 
 static bool CheckShipLeaveDepot(Ship *v)
@@ -372,7 +369,7 @@ static bool CheckShipLeaveDepot(Ship *v)
 
 	/* Don't leave depot if another vehicle is already entering/leaving */
 	/* This helps avoid CPU load if many ships are set to start at the same time */
-	if (HasVehicleOnPos(v->tile, nullptr, &EnsureNoVisibleShipProc)) return true;
+	if (HasVehicleOnPos(v->tile, VEH_SHIP, nullptr, &EnsureNoVisibleShipProc)) return true;
 
 	TileIndex tile = v->tile;
 	Axis axis = GetShipDepotAxis(tile);
@@ -408,6 +405,7 @@ static bool CheckShipLeaveDepot(Ship *v)
 
 	v->state = AxisToTrackBits(axis);
 	v->vehstatus &= ~VS_HIDDEN;
+	v->UpdateIsDrawn();
 
 	v->cur_speed = 0;
 	v->UpdateViewport(true, true);
@@ -535,10 +533,9 @@ static Track ChooseShipTrack(Ship *v, TileIndex tile, DiagDirection enterdir, Tr
  * Get the available water tracks on a tile for a ship entering a tile.
  * @param tile The tile about to enter.
  * @param dir The entry direction.
- * @param trackdir The trackdir the ship has on the old tile.
  * @return The available trackbits on the next tile.
  */
-static inline TrackBits GetAvailShipTracks(TileIndex tile, DiagDirection dir, Trackdir trackdir)
+static inline TrackBits GetAvailShipTracks(TileIndex tile, DiagDirection dir)
 {
 	TrackBits tracks = GetTileShipTrackStatus(tile) & DiagdirReachesTracks(dir);
 
@@ -591,8 +588,6 @@ struct ShipCollideChecker {
 /** Helper function for collision avoidance. */
 static Vehicle *FindShipOnTile(Vehicle *v, void *data)
 {
-	if (v->type != VEH_SHIP) return nullptr;
-
 	ShipCollideChecker *scc = (ShipCollideChecker*)data;
 
 	/* Don't detect vehicles on different parallel tracks. */
@@ -627,8 +622,8 @@ static bool HandleSpeedOnAqueduct(Ship *v, TileIndex tile, TileIndex ramp)
 	if (scc.search_tile == INVALID_TILE) return false;
 
 	if (IsValidTile(scc.search_tile) &&
-			(HasVehicleOnPos(ramp, &scc, FindShipOnTile) ||
-			HasVehicleOnPos(GetOtherTunnelBridgeEnd(ramp), &scc, FindShipOnTile))) {
+			(HasVehicleOnPos(ramp, VEH_SHIP, &scc, FindShipOnTile) ||
+			HasVehicleOnPos(GetOtherTunnelBridgeEnd(ramp), VEH_SHIP, &scc, FindShipOnTile))) {
 		v->cur_speed /= 4;
 	}
 	return false;
@@ -667,7 +662,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 	scc.track_bits = track_bits;
 	scc.search_tile = tile;
 
-	bool found = HasVehicleOnPos(tile, &scc, FindShipOnTile);
+	bool found = HasVehicleOnPos(tile, VEH_SHIP, &scc, FindShipOnTile);
 
 	if (!found) {
 		/* Bridge entrance */
@@ -678,7 +673,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 		scc.search_tile = TileAddWrap(tile, ti.x, ti.y);
 		if (scc.search_tile == INVALID_TILE) return;
 
-		found = HasVehicleOnPos(scc.search_tile, &scc, FindShipOnTile);
+		found = HasVehicleOnPos(scc.search_tile, VEH_SHIP, &scc, FindShipOnTile);
 	}
 	if (!found) {
 		scc.track_bits = track_bits;
@@ -686,7 +681,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 		scc.search_tile = TileAddWrap(scc.search_tile, ti.x, ti.y);
 		if (scc.search_tile == INVALID_TILE) return;
 
-		found = HasVehicleOnPos(scc.search_tile, &scc, FindShipOnTile);
+		found = HasVehicleOnPos(scc.search_tile, VEH_SHIP, &scc, FindShipOnTile);
 	}
 	if (found) {
 
@@ -704,7 +699,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 			TileIndex tile_check = TileAddWrap(tile, ti.x, ti.y);
 			if (tile_check == INVALID_TILE) continue;
 
-			if (HasVehicleOnPos(tile_check, &scc, FindShipOnTile)) continue;
+			if (HasVehicleOnPos(tile_check, VEH_SHIP, &scc, FindShipOnTile)) continue;
 
 			TrackBits bits = GetTileShipTrackStatus(tile_check) & DiagdirReachesTracks(_ship_search_directions[track][diagdir]);
 			if (!IsDiagonalTrack(track)) bits &= TRACK_BIT_CROSS;  // No 90 degree turns.
@@ -785,6 +780,7 @@ bool IsShipDestinationTile(TileIndex tile, StationID station)
 			const Industry *i = Industry::GetByTile(t);
 			if (i->neutral_station != nullptr && i->neutral_station->index == station) return true;
 		}
+		if (IsTileType(t, MP_STATION) && IsOilRig(t) && GetStationIndex(t) == station) return true;
 	}
 	return false;
 }
@@ -886,7 +882,7 @@ static void ShipController(Ship *v)
 
 			DiagDirection diagdir = DiagdirBetweenTiles(gp.old_tile, gp.new_tile);
 			assert(diagdir != INVALID_DIAGDIR);
-			tracks = GetAvailShipTracks(gp.new_tile, diagdir, v->GetVehicleTrackdir());
+			tracks = GetAvailShipTracks(gp.new_tile, diagdir);
 			if (tracks == TRACK_BIT_NONE) goto reverse_direction;
 
 			/* Choose a direction, and continue if we find one */

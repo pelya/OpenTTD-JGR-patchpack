@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -86,6 +84,7 @@ public:
 	int buffer_depth;     ///< Colour depth of used frame buffer
 	void *pixel_buffer;   ///< used for direct pixel access
 	void *window_buffer;  ///< Colour translation from palette to screen
+	CGColorSpaceRef color_space; //< Window color space
 	id window;            ///< Pointer to window object
 
 #	define MAX_DIRTY_RECTS 100

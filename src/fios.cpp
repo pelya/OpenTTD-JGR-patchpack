@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -699,7 +697,7 @@ public:
 		if (f == nullptr) return false;
 
 		ScenarioIdentifier id;
-		int fret = fscanf(f, "%i", &id.scenid);
+		int fret = fscanf(f, "%u", &id.scenid);
 		FioFCloseFile(f);
 		if (fret != 1) return false;
 		strecpy(id.filename, filename, lastof(id.filename));

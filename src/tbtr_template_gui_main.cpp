@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -260,10 +258,13 @@ public:
 				resize->height = WD_MATRIX_TOP + FONT_HEIGHT_NORMAL + WD_MATRIX_BOTTOM;
 				size->height = 8 * resize->height;
 				break;
-			case TRW_WIDGET_BOTTOM_MATRIX:
-				this->bottom_matrix_item_size = resize->height = WD_MATRIX_TOP + FONT_HEIGHT_NORMAL + ScaleGUITrad(GetVehicleHeight(VEH_TRAIN));
+			case TRW_WIDGET_BOTTOM_MATRIX: {
+				int base_resize = WD_MATRIX_TOP + FONT_HEIGHT_NORMAL + WD_MATRIX_BOTTOM;
+				int target_resize = WD_MATRIX_TOP + FONT_HEIGHT_NORMAL + ScaleGUITrad(GetVehicleHeight(VEH_TRAIN));
+				this->bottom_matrix_item_size = resize->height = CeilT<int>(target_resize, base_resize);
 				size->height = 4 * resize->height;
 				break;
+			}
 			case TRW_WIDGET_TRAIN_RAILTYPE_DROPDOWN: {
 				Dimension d = GetStringBoundingBox(STR_REPLACE_ALL_RAILTYPE);
 				for (RailType rt = RAILTYPE_BEGIN; rt != RAILTYPE_END; rt++) {
@@ -277,9 +278,6 @@ public:
 				*size = maxdim(*size, d);
 				break;
 			}
-			default:
-				size->width = ScaleGUITrad(size->width);
-				break;
 		}
 	}
 
@@ -535,13 +533,12 @@ public:
 
 	/** For a given group (id) find the template that is issued for template replacement for this group and return this template's index
 	 *  from the gui list */
-	short FindTemplateIndexForGroup(short gid) const
+	short FindTemplateIndex(TemplateID tid) const
 	{
-		TemplateReplacement *tr = GetTemplateReplacementByGroupID(gid);
-		if (!tr) return -1;
+		if (tid == INVALID_TEMPLATE) return -1;
 
 		for (uint32 i = 0; i < this->templates.size(); ++i) {
-			if (templates[i]->index == tr->sel_template) {
+			if (templates[i]->index == tid) {
 				return i;
 			}
 		}
@@ -568,8 +565,7 @@ public:
 
 		GUIGroupList list;
 
-		const Group *g;
-		FOR_ALL_GROUPS(g) {
+		for (const Group *g : Group::Iterate()) {
 			if (g->owner == owner && g->vehicle_type == VEH_TRAIN) {
 				list.push_back(g);
 			}
@@ -603,34 +599,38 @@ public:
 				GfxFillRect(r.left + 1, y, r.right, y + WD_MATRIX_TOP + FONT_HEIGHT_NORMAL + WD_MATRIX_BOTTOM, _colour_gradient[COLOUR_GREY][3]);
 			}
 
-			int text_y = y + ScaleGUITrad(3);
+			int text_y = y + WD_MATRIX_TOP;
 
 			SetDParam(0, g_id);
 			StringID str = STR_GROUP_NAME;
 			DrawString(left + ScaleGUITrad(30 + this->indents[i] * 10), right, text_y, str, TC_BLACK);
 
+			const TemplateID tid = GetTemplateIDByGroupIDRecursive(g_id);
+			const TemplateID tid_self = GetTemplateIDByGroupID(g_id);
+
 			/* Draw the template in use for this group, if there is one */
-			short template_in_use = FindTemplateIndexForGroup(g_id);
-			if (template_in_use >= 0) {
+			short template_in_use = FindTemplateIndex(tid);
+			if (tid != INVALID_TEMPLATE && tid_self == INVALID_TEMPLATE) {
+				DrawString (left, right, text_y, STR_TMP_TEMPLATE_FROM_PARENT_GROUP, TC_SILVER, SA_HOR_CENTER);
+			} else if (template_in_use >= 0) {
 				SetDParam(0, template_in_use);
 				DrawString (left, right, text_y, STR_TMPL_GROUP_USES_TEMPLATE, TC_BLACK, SA_HOR_CENTER);
-			} else if (GetTemplateReplacementByGroupID(g_id)) { /* If there isn't a template applied from the current group, check if there is one for another rail type */
+			} else if (tid != INVALID_TEMPLATE) { /* If there isn't a template applied from the current group, check if there is one for another rail type */
 				DrawString (left, right, text_y, STR_TMPL_TMPLRPL_EX_DIFF_RAILTYPE, TC_SILVER, SA_HOR_CENTER);
 			}
 
 			/* Draw the number of trains that still need to be treated by the currently selected template replacement */
-			const TemplateReplacement *tr = GetTemplateReplacementByGroupID(g_id);
-			if (tr) {
-				const TemplateVehicle *tv = TemplateVehicle::Get(tr->sel_template);
+			if (tid != INVALID_TEMPLATE) {
+				const TemplateVehicle *tv = TemplateVehicle::Get(tid);
 				const int num_trains = NumTrainsNeedTemplateReplacement(g_id, tv);
-				// Draw text
-				DrawString(left, right - ScaleGUITrad(16), text_y, STR_TMPL_NUM_TRAINS_NEED_RPL, num_trains ? TC_BLACK : TC_GREY, SA_RIGHT);
 				// Draw number
 				SetDParam(0, num_trains);
-				DrawString(left, right - ScaleGUITrad(4), text_y, STR_JUST_INT, num_trains ? TC_ORANGE : TC_GREY, SA_RIGHT);
+				int inner_right = DrawString(left, right - ScaleGUITrad(4), text_y, STR_JUST_INT, num_trains ? TC_ORANGE : TC_GREY, SA_RIGHT);
+				// Draw text
+				DrawString(left, inner_right - ScaleFontTrad(4), text_y, STR_TMPL_NUM_TRAINS_NEED_RPL, num_trains ? TC_BLACK : TC_GREY, SA_RIGHT);
 			}
 
-			y += WD_MATRIX_TOP + FONT_HEIGHT_NORMAL+ WD_MATRIX_BOTTOM;
+			y += WD_MATRIX_TOP + FONT_HEIGHT_NORMAL + WD_MATRIX_BOTTOM;
 		}
 	}
 
@@ -661,7 +661,7 @@ public:
 			}
 
 			bool buildable = true;
-			for (const TemplateVehicle *u = v; u != nullptr; u = u->Next()) {
+			for (const TemplateVehicle *u = v; u != nullptr; u = u->GetNextUnit()) {
 				if (!IsEngineBuildable(u->engine_type, VEH_TRAIN, u->owner)) {
 					buildable = false;
 					break;
@@ -697,16 +697,16 @@ public:
 			TextColour color;
 
 			color = v->IsSetReuseDepotVehicles() ? TC_LIGHT_BLUE : TC_GREY;
-			DrawString(right - ScaleGUITrad(300), right, bottom_edge, STR_TMPL_CONFIG_USEDEPOT, color, SA_LEFT);
+			DrawString(right - ScaleFontTrad(300), right, bottom_edge, STR_TMPL_CONFIG_USEDEPOT, color, SA_LEFT);
 
 			color = v->IsSetKeepRemainingVehicles() ? TC_LIGHT_BLUE : TC_GREY;
-			DrawString(right - ScaleGUITrad(225), right, bottom_edge, STR_TMPL_CONFIG_KEEPREMAINDERS, color, SA_LEFT);
+			DrawString(right - ScaleFontTrad(225), right, bottom_edge, STR_TMPL_CONFIG_KEEPREMAINDERS, color, SA_LEFT);
 
 			color = v->IsSetRefitAsTemplate() ? TC_LIGHT_BLUE : TC_GREY;
-			DrawString(right - ScaleGUITrad(150), right, bottom_edge, STR_TMPL_CONFIG_REFIT, color, SA_LEFT);
+			DrawString(right - ScaleFontTrad(150), right, bottom_edge, STR_TMPL_CONFIG_REFIT, color, SA_LEFT);
 
 			color = v->IsReplaceOldOnly() ? TC_LIGHT_BLUE : TC_GREY;
-			DrawString(right - ScaleGUITrad(75), right, bottom_edge, STR_TMPL_CONFIG_OLD_ONLY, color, SA_LEFT);
+			DrawString(right - ScaleFontTrad(75), right, bottom_edge, STR_TMPL_CONFIG_OLD_ONLY, color, SA_LEFT);
 
 			y += this->bottom_matrix_item_size;
 		}
@@ -776,6 +776,8 @@ public:
 			g_id = g->index;
 		}
 
+		const TemplateID tid = GetTemplateIDByGroupID(g_id);
+
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_EDIT, this->editInProgress || !selected_ok);
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_DELETE, this->editInProgress || !selected_ok);
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_CONFIGTMPL_REUSE, this->editInProgress || !selected_ok);
@@ -783,8 +785,8 @@ public:
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_CONFIGTMPL_REFIT, this->editInProgress ||!selected_ok);
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_CONFIGTMPL_OLD_ONLY, this->editInProgress ||!selected_ok);
 
-		this->SetWidgetDisabledState(TRW_WIDGET_START, this->editInProgress || !(selected_ok && group_ok && FindTemplateIndexForGroup(g_id) != this->selected_template_index));
-		this->SetWidgetDisabledState(TRW_WIDGET_STOP, this->editInProgress || !(group_ok && GetTemplateReplacementByGroupID(g_id) != nullptr));
+		this->SetWidgetDisabledState(TRW_WIDGET_START, this->editInProgress || !(selected_ok && group_ok && FindTemplateIndex(tid) != this->selected_template_index));
+		this->SetWidgetDisabledState(TRW_WIDGET_STOP, this->editInProgress || !(group_ok && tid != INVALID_TEMPLATE));
 
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_DEFINE, this->editInProgress);
 		this->SetWidgetDisabledState(TRW_WIDGET_TMPL_BUTTONS_CLONE, this->editInProgress);

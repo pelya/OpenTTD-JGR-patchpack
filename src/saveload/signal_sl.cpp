@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -104,7 +102,7 @@ static void Save_SPRG()
 			i != e; ++i) {
 		SignalReference ref = i->first;
 		if(!HasProgrammableSignals(ref)) {
-			DEBUG(sl, 0, "Programmable signal information for (%x, %d) has been leaked!",
+			DEBUG(sl, 0, "Programmable pre-signal information for (%x, %d) has been leaked!",
 						ref.tile, ref.track);
 			++i;
 			FreeSignalProgram(ref);

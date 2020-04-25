@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -1782,6 +1780,17 @@ public:
 		if (this->editable) this->avs->Draw(w);
 		this->acs->Draw(w);
 		this->inf->Draw(w);
+	}
+
+	void FillDirtyWidgets(std::vector<NWidgetBase *> &dirty_widgets) override
+	{
+		if (this->base_flags & WBF_DIRTY) {
+			dirty_widgets.push_back(this);
+		} else {
+			if (this->editable) this->avs->FillDirtyWidgets(dirty_widgets);
+			this->acs->FillDirtyWidgets(dirty_widgets);
+			this->inf->FillDirtyWidgets(dirty_widgets);
+		}
 	}
 };
 

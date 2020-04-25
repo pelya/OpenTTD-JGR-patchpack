@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -44,8 +42,5 @@ struct Tunnel : TunnelPool::PoolItem<&_tunnel_pool> {
 
 	static void PreCleanPool();
 };
-
-#define FOR_ALL_TUNNELS_FROM(var, start) FOR_ALL_ITEMS_FROM(Tunnel, tunnel_index, var, start)
-#define FOR_ALL_TUNNELS(var) FOR_ALL_TUNNELS_FROM(var, 0)
 
 #endif /* TUNNEL_BASE_H */

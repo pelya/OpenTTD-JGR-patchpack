@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -11,6 +9,7 @@
 
 #include "../stdafx.h"
 #include "../waypoint_base.h"
+#include "../debug.h"
 #include "../newgrf_station.h"
 #include "../vehicle_base.h"
 #include "../town.h"
@@ -100,52 +99,67 @@ void MoveWaypointsToBaseStations()
 
 	/* All saveload conversions have been done. Create the new waypoints! */
 	for (OldWaypoint &wp : _old_waypoints) {
-		Waypoint *new_wp = new Waypoint(wp.xy);
+		TileIndex t = wp.xy;
+		/* Sometimes waypoint (sign) locations became disconnected from their actual location in
+		 * the map array. If this is the case, try to locate the actual location in the map array */
+		if (!IsTileType(t, MP_RAILWAY) || GetRailTileType(t) != 2 /* RAIL_TILE_WAYPOINT */ || _m[t].m2 != wp.index) {
+			DEBUG(sl, 0, "Found waypoint tile %u with invalid position", t);
+			for (t = 0; t < MapSize(); t++) {
+				if (IsTileType(t, MP_RAILWAY) && GetRailTileType(t) == 2 /* RAIL_TILE_WAYPOINT */ && _m[t].m2 == wp.index) {
+					DEBUG(sl, 0, "Found actual waypoint position at %u", t);
+					break;
+				}
+			}
+		}
+		if (t == MapSize()) {
+			SlErrorCorrupt("Waypoint with invalid tile");
+		}
+
+		Waypoint *new_wp = new Waypoint(t);
 		new_wp->town       = wp.town;
 		new_wp->town_cn    = wp.town_cn;
 		new_wp->name       = wp.name;
 		new_wp->delete_ctr = 0; // Just reset delete counter for once.
 		new_wp->build_date = wp.build_date;
 		new_wp->owner      = wp.owner;
+		new_wp->string_id  = STR_SV_STNAME_WAYPOINT;
 
-		new_wp->string_id = STR_SV_STNAME_WAYPOINT;
+		/* The tile might've been reserved! */
+		bool reserved = !IsSavegameVersionBefore(SLV_100) && HasBit(_m[t].m5, 4);
 
-		TileIndex t = wp.xy;
-		if (IsTileType(t, MP_RAILWAY) && GetRailTileType(t) == 2 /* RAIL_TILE_WAYPOINT */ && _m[t].m2 == wp.index) {
-			/* The tile might've been reserved! */
-			bool reserved = !IsSavegameVersionBefore(SLV_100) && HasBit(_m[t].m5, 4);
+		/* The tile really has our waypoint, so reassign the map array */
+		MakeRailWaypoint(t, GetTileOwner(t), new_wp->index, (Axis)GB(_m[t].m5, 0, 1), 0, GetRailType(t));
+		new_wp->facilities |= FACIL_TRAIN;
+		new_wp->owner = GetTileOwner(t);
 
-			/* The tile really has our waypoint, so reassign the map array */
-			MakeRailWaypoint(t, GetTileOwner(t), new_wp->index, (Axis)GB(_m[t].m5, 0, 1), 0, GetRailType(t));
-			new_wp->facilities |= FACIL_TRAIN;
-			new_wp->owner = GetTileOwner(t);
+		SetRailStationReservation(t, reserved);
 
-			SetRailStationReservation(t, reserved);
-
-			if (wp.spec != nullptr) {
-				SetCustomStationSpecIndex(t, AllocateSpecToStation(wp.spec, new_wp, true));
-			}
-			new_wp->rect.BeforeAddTile(t, StationRect::ADD_FORCE);
+		if (wp.spec != nullptr) {
+			SetCustomStationSpecIndex(t, AllocateSpecToStation(wp.spec, new_wp, true));
 		}
+		new_wp->rect.BeforeAddTile(t, StationRect::ADD_FORCE);
 
 		wp.new_index = new_wp->index;
 	}
 
 	/* Update the orders of vehicles */
-	OrderList *ol;
-	FOR_ALL_ORDER_LISTS(ol) {
+	for (OrderList *ol : OrderList::Iterate()) {
 		if (ol->GetFirstSharedVehicle()->type != VEH_TRAIN) continue;
 
 		for (Order *o = ol->GetFirstOrder(); o != nullptr; o = o->next) UpdateWaypointOrder(o);
 	}
 
-	Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		if (v->type != VEH_TRAIN) continue;
 
 		UpdateWaypointOrder(&v->current_order);
 	}
 
+	ResetOldWaypoints();
+}
+
+void ResetOldWaypoints()
+{
 	_old_waypoints.clear();
 	_old_waypoints.shrink_to_fit();
 }
@@ -173,7 +187,7 @@ static const SaveLoad _old_waypoint_desc[] = {
 static void Load_WAYP()
 {
 	/* Precaution for when loading failed and it didn't get cleared */
-	_old_waypoints.clear();
+	ResetOldWaypoints();
 
 	int index;
 

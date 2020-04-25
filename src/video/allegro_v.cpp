@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -515,6 +513,7 @@ void VideoDriver_Allegro::MainLoop()
 			if (old_shift_pressed != _shift_pressed) HandleShiftChanged();
 
 			GameLoop();
+			GameLoopPaletteAnimations();
 
 			UpdateWindows();
 			CheckPaletteAnim();

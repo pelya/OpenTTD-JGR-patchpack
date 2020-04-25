@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -20,6 +18,7 @@
 #include "rail_gui.h"
 #include "linkgraph/linkgraph.h"
 #include "saveload/saveload.h"
+#include "newgrf_profiling.h"
 #include "console_func.h"
 #include "debug.h"
 
@@ -39,6 +38,8 @@ uint32    _quit_after_days;  ///< Quit after this many days of run time
 YearMonthDay _game_load_cur_date_ymd;
 DateFract _game_load_date_fract;
 uint8 _game_load_tick_skip_counter;
+
+int32 _old_ending_year_slv_105; ///< Old ending year for savegames before SLV_105
 
 /**
  * Set the date.
@@ -218,21 +219,18 @@ static void OnNewYear()
 
 	if (_cur_year == _settings_client.gui.semaphore_build_before) ResetSignalVariant();
 
-	/* check if we reached end of the game */
-	if (_cur_year == ORIGINAL_END_YEAR) {
+	/* check if we reached end of the game (end of ending year) */
+	if (_cur_year == _settings_game.game_creation.ending_year + 1) {
 		ShowEndGameChart();
 	/* check if we reached the maximum year, decrement dates by a year */
 	} else if (_cur_year == MAX_YEAR + 1) {
-		Vehicle *v;
 		int days_this_year;
 
 		_cur_year--;
 		days_this_year = IsLeapYear(_cur_year) ? DAYS_IN_LEAP_YEAR : DAYS_IN_YEAR;
 		_date -= days_this_year;
-		FOR_ALL_VEHICLES(v) v->date_of_last_service -= days_this_year;
-
-		LinkGraph *lg;
-		FOR_ALL_LINK_GRAPHS(lg) lg->ShiftDates(-days_this_year);
+		for (Vehicle *v : Vehicle::Iterate()) v->date_of_last_service -= days_this_year;
+		for (LinkGraph *lg : LinkGraph::Iterate()) lg->ShiftDates(-days_this_year);
 
 		/* Because the _date wraps here, and text-messages expire by game-days, we have to clean out
 		 *  all of them if the date is set back, else those messages will hang for ever */
@@ -269,12 +267,18 @@ static void OnNewMonth()
  */
 static void OnNewDay()
 {
+	if (!_newgrf_profilers.empty() && _newgrf_profile_end_date <= _date) {
+		NewGRFProfiler::FinishAll();
+	}
+
 	if (_network_server) NetworkServerDailyLoop();
 
 	DisasterDailyLoop();
 	IndustryDailyLoop();
 
-	SetWindowWidgetDirty(WC_STATUS_BAR, 0, 0);
+	if (!_settings_client.gui.time_in_minutes || _settings_client.gui.date_with_time > 0) {
+		SetWindowWidgetDirty(WC_STATUS_BAR, 0, 0);
+	}
 	EnginesDailyLoop();
 
 	/* Refresh after possible snowline change */

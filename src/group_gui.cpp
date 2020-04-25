@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -108,20 +106,22 @@ static const NWidgetPart _nested_group_widgets[] = {
 	EndContainer(),
 };
 
+/* cached values for GroupNameSorter to spare many GetString() calls */
+static const Group *_last_group[2] = { nullptr, nullptr };
+
 /** Sort the groups by their name */
 bool GroupNameSorter(const Group * const &a, const Group * const &b)
 {
-	static const Group *last_group[2] = { nullptr, nullptr };
 	static char         last_name[2][64] = { "", "" };
 
-	if (a != last_group[0]) {
-		last_group[0] = a;
+	if (a != _last_group[0]) {
+		_last_group[0] = a;
 		SetDParam(0, a->index);
 		GetString(last_name[0], STR_GROUP_NAME, lastof(last_name[0]));
 	}
 
-	if (b != last_group[1]) {
-		last_group[1] = b;
+	if (b != _last_group[1]) {
+		_last_group[1] = b;
 		SetDParam(0, b->index);
 		GetString(last_name[1], STR_GROUP_NAME, lastof(last_name[1]));
 	}
@@ -192,8 +192,7 @@ private:
 		bool enable_expand_all = false;
 		bool enable_collapse_all = false;
 
-		const Group *g;
-		FOR_ALL_GROUPS(g) {
+		for (const Group *g : Group::Iterate()) {
 			if (g->owner == owner && g->vehicle_type == this->vli.vtype) {
 				list.push_back(g);
 				if (g->parent != INVALID_GROUP) {
@@ -210,6 +209,10 @@ private:
 		this->SetWidgetDisabledState(WID_GL_COLLAPSE_ALL_GROUPS, !enable_collapse_all);
 
 		list.ForceResort();
+
+		/* invalidate cached values for name sorter - group names could change */
+		_last_group[0] = _last_group[1] = nullptr;
+
 		list.Sort(&GroupNameSorter);
 
 		AddChildren(&list, INVALID_GROUP, 0);
@@ -324,7 +327,7 @@ private:
 			spr = SPR_PROFIT_NA;
 		} else if (profit_last_year < 0) {
 			spr = SPR_PROFIT_NEGATIVE;
-		} else if (profit_last_year < (Money)10000 * num_profit_vehicle) { // TODO magic number
+		} else if (profit_last_year < VEHICLE_PROFIT_THRESHOLD * num_profit_vehicle) {
 			spr = SPR_PROFIT_SOME;
 		} else {
 			spr = SPR_PROFIT_LOT;
@@ -363,8 +366,7 @@ private:
 
 	void SetAllGroupsFoldState(bool folded)
 	{
-		const Group *g;
-		FOR_ALL_GROUPS(g) {
+		for (const Group *g : Group::Iterate()) {
 			if (g->owner == this->owner && g->vehicle_type == this->vli.vtype) {
 				if (g->parent != INVALID_GROUP) {
 					Group::Get(g->parent)->folded = folded;
@@ -408,6 +410,7 @@ public:
 		this->groups.ForceRebuild();
 		this->groups.NeedResort();
 		this->BuildGroupList(vli.company);
+		this->group_sb->SetCount((uint)this->groups.size());
 
 		this->GetWidget<NWidgetCore>(WID_GL_CAPTION)->widget_data = STR_VEHICLE_LIST_TRAIN_CAPTION + this->vli.vtype;
 		this->GetWidget<NWidgetCore>(WID_GL_LIST_VEHICLE)->tool_tip = STR_VEHICLE_LIST_TRAIN_LIST_TOOLTIP + this->vli.vtype;
@@ -787,6 +790,10 @@ public:
 
 				this->vehicle_sel = v->index;
 
+				if (_ctrl_pressed) {
+					this->SelectGroup(v->group_id);
+				}
+
 				SetObjectToPlaceWnd(SPR_CURSOR_MOUSE, PAL_NONE, HT_DRAG, this);
 				SetMouseCursorVehicle(v, EIT_IN_LIST);
 				_cursor.vehchain = true;
@@ -859,7 +866,7 @@ public:
 
 		switch (widget) {
 			case WID_GL_ALL_VEHICLES: // All vehicles
-			case WID_GL_DEFAULT_VEHICLES: // Ungroupd vehicles
+			case WID_GL_DEFAULT_VEHICLES: // Ungrouped vehicles
 				if (g->parent != INVALID_GROUP) {
 					DoCommandP(0, this->group_sel | (1 << 16), INVALID_GROUP, CMD_ALTER_GROUP | CMD_MSG(STR_ERROR_GROUP_CAN_T_SET_PARENT));
 				}
@@ -1080,6 +1087,36 @@ public:
 	{
 		if (this->vehicle_sel == vehicle) ResetObjectToPlace();
 	}
+
+	/**
+	 * Selects the specified group in the list
+	 *
+	 * @param g_id The ID of the group to be selected
+	 */
+	void SelectGroup(const GroupID g_id)
+	{
+		if (g_id == INVALID_GROUP || g_id == this->vli.index) return;
+
+		this->vli.index = g_id;
+		if (g_id != ALL_GROUP && g_id != DEFAULT_GROUP) {
+			const Group *g = Group::Get(g_id);
+			int id_g = find_index(this->groups, g);
+			// The group's branch is maybe collapsed, so try to expand it
+			if (id_g == -1) {
+				for (auto pg = Group::GetIfValid(g->parent); pg != nullptr; pg = Group::GetIfValid(pg->parent)) {
+					pg->folded = false;
+				}
+				this->groups.ForceRebuild();
+				this->BuildGroupList(this->owner);
+				this->group_sb->SetCount((uint)this->groups.size());
+				id_g = find_index(this->groups, g);
+			}
+			this->group_sb->ScrollTowards(id_g);
+		}
+		this->vehicles.ForceRebuild();
+		this->SetDirty();
+	}
+
 };
 
 
@@ -1101,18 +1138,31 @@ static WindowDesc _train_group_desc(
  * Show the group window for the given company and vehicle type.
  * @param company The company to show the window for.
  * @param vehicle_type The type of vehicle to show it for.
+ * @param group The group to be selected. Defaults to INVALID_GROUP.
+ * @param need_existing_window Whether the existing window is needed. Defaults to false.
  */
-void ShowCompanyGroup(CompanyID company, VehicleType vehicle_type)
+void ShowCompanyGroup(CompanyID company, VehicleType vehicle_type, GroupID group = INVALID_GROUP, bool need_existing_window = false)
 {
 	if (!Company::IsValidID(company)) return;
 
-	WindowNumber num = VehicleListIdentifier(VL_GROUP_LIST, vehicle_type, company).Pack();
+	const WindowNumber num = VehicleListIdentifier(VL_GROUP_LIST, vehicle_type, company).Pack();
+	VehicleGroupWindow *w;
 	if (vehicle_type == VEH_TRAIN) {
-		AllocateWindowDescFront<VehicleGroupWindow>(&_train_group_desc, num);
+		w = AllocateWindowDescFront<VehicleGroupWindow>(&_train_group_desc, num, need_existing_window);
 	} else {
 		_other_group_desc.cls = GetWindowClassForVehicleType(vehicle_type);
-		AllocateWindowDescFront<VehicleGroupWindow>(&_other_group_desc, num);
+		w = AllocateWindowDescFront<VehicleGroupWindow>(&_other_group_desc, num, need_existing_window);
 	}
+	if (w != nullptr) w->SelectGroup(group);
+}
+
+/**
+ * Show the group window for the given vehicle.
+ * @param v The vehicle to show the window for.
+ */
+void ShowCompanyGroupForVehicle(const Vehicle *v)
+{
+	ShowCompanyGroup(v->owner, v->type, v->group_id, true);
 }
 
 /**

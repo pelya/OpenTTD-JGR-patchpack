@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -307,6 +305,7 @@ enum SaveLoadVersion : uint16 {
 	SLV_SCRIPT_MEMLIMIT,                    ///< 215  PR#7516 Limit on AI/GS memory consumption.
 	SLV_MULTITILE_DOCKS,                    ///< 216  PR#7380 Multiple docks per station.
 	SLV_TRADING_AGE,                        ///< 217  PR#7780 Configurable company trading age.
+	SLV_ENDING_YEAR,                        ///< 218  PR#7747 v1.10 Configurable ending year.
 
 	SL_MAX_VERSION,                         ///< Highest possible saveload version
 
@@ -321,6 +320,18 @@ enum SaveLoadVersion : uint16 {
 	SL_TRACE_RESTRICT_2000 = 2000,
 	SL_TRACE_RESTRICT_2001 = 2001,
 	SL_TRACE_RESTRICT_2002 = 2002,
+	SL_JOKER_1_19 = 278,
+	SL_JOKER_1_20 = 279,
+	SL_JOKER_1_21 = 280,
+	SL_JOKER_1_22 = 281,
+	SL_JOKER_1_23 = 282,
+	SL_JOKER_1_24 = 283,
+	SL_JOKER_1_25 = 284,
+	SL_JOKER_1_26 = 285,
+	SL_JOKER_1_27 = 286,
+	SL_CHILLPP_201 = 201,
+	SL_CHILLPP_232 = 232,
+	SL_CHILLPP_233 = 233,
 };
 
 /** Save or load result codes. */
@@ -495,7 +506,8 @@ enum VarTypes {
 	SLF_NO_NETWORK_SYNC = 1 << 10, ///< do not synchronize over network (but it is saved if SLF_NOT_IN_SAVE is not set)
 	SLF_ALLOW_CONTROL   = 1 << 11, ///< allow control codes in the strings
 	SLF_ALLOW_NEWLINE   = 1 << 12, ///< allow new lines in the strings
-	/* 3 more possible flags */
+	SLF_HEX             = 1 << 13, ///< print numbers as hex in the config file (only useful for unsigned)
+	/* 2 more possible flags */
 };
 
 typedef uint32 VarType;

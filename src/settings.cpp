@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -24,6 +22,7 @@
  */
 
 #include "stdafx.h"
+#include <limits>
 #include "currency.h"
 #include "screenshot.h"
 #include "network/network.h"
@@ -178,7 +177,8 @@ static size_t LookupManyOfMany(const char *many, const char *str)
  * @param maxitems the maximum number of elements the integerlist-array has
  * @return returns the number of items found, or -1 on an error
  */
-static int ParseIntList(const char *p, int *items, int maxitems)
+template<typename T>
+static int ParseIntList(const char *p, T *items, int maxitems)
 {
 	int n = 0; // number of items read so far
 	bool comma = false; // do we accept comma?
@@ -198,9 +198,9 @@ static int ParseIntList(const char *p, int *items, int maxitems)
 			default: {
 				if (n == maxitems) return -1; // we don't accept that many numbers
 				char *end;
-				long v = strtol(p, &end, 0);
+				unsigned long v = strtoul(p, &end, 0);
 				if (p == end) return -1; // invalid character (not a number)
-				if (sizeof(int) < sizeof(long)) v = ClampToI32(v);
+				if (sizeof(T) < sizeof(v)) v = Clamp<unsigned long>(v, std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
 				items[n++] = v;
 				p = end; // first non-number
 				comma = true; // we accept comma now
@@ -226,7 +226,7 @@ static int ParseIntList(const char *p, int *items, int maxitems)
  */
 static bool LoadIntList(const char *str, void *array, int nelems, VarType type)
 {
-	int items[64];
+	unsigned long items[64];
 	int i, nitems;
 
 	if (str == nullptr) {
@@ -275,7 +275,7 @@ static void MakeIntList(char *buf, const char *last, const void *array, int nele
 	const byte *p = (const byte *)array;
 
 	for (i = 0; i != nelems; i++) {
-		switch (type) {
+		switch (GetVarMemType(type)) {
 			case SLE_VAR_BL:
 			case SLE_VAR_I8:  v = *(const   int8 *)p; p += 1; break;
 			case SLE_VAR_U8:  v = *(const  uint8 *)p; p += 1; break;
@@ -285,7 +285,13 @@ static void MakeIntList(char *buf, const char *last, const void *array, int nele
 			case SLE_VAR_U32: v = *(const uint32 *)p; p += 4; break;
 			default: NOT_REACHED();
 		}
-		buf += seprintf(buf, last, (i == 0) ? "%d" : ",%d", v);
+		if (IsSignedVarMemType(type)) {
+			buf += seprintf(buf, last, (i == 0) ? "%d" : ",%d", v);
+		} else if (type & SLF_HEX) {
+			buf += seprintf(buf, last, (i == 0) ? "0x%X" : ",0x%X", v);
+		} else {
+			buf += seprintf(buf, last, (i == 0) ? "%u" : ",%u", v);
+		}
 	}
 }
 
@@ -698,7 +704,7 @@ static void IniSaveSettings(IniFile *ini, const SettingDesc *sd, const char *grp
 
 				switch (sdb->cmd) {
 					case SDT_BOOLX:      strecpy(buf, (i != 0) ? "true" : "false", lastof(buf)); break;
-					case SDT_NUMX:       seprintf(buf, lastof(buf), IsSignedVarMemType(sld->conv) ? "%d" : "%u", i); break;
+					case SDT_NUMX:       seprintf(buf, lastof(buf), IsSignedVarMemType(sld->conv) ? "%d" : (sld->conv & SLF_HEX) ? "%X" : "%u", i); break;
 					case SDT_ONEOFMANY:  MakeOneOfMany(buf, lastof(buf), sdb->many, i); break;
 					case SDT_MANYOFMANY: MakeManyOfMany(buf, lastof(buf), sdb->many, i); break;
 					default: NOT_REACHED();
@@ -726,7 +732,7 @@ static void IniSaveSettings(IniFile *ini, const SettingDesc *sd, const char *grp
 				break;
 
 			case SDT_INTLIST:
-				MakeIntList(buf, lastof(buf), ptr, sld->length, GetVarMemType(sld->conv));
+				MakeIntList(buf, lastof(buf), ptr, sld->length, sld->conv);
 				break;
 
 			default: NOT_REACHED();
@@ -915,8 +921,7 @@ static bool DeleteSelectStationWindow(int32 p1)
 
 static bool UpdateConsists(int32 p1)
 {
-	Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (Train *t : Train::Iterate()) {
 		/* Update the consist of all trains so the maximum speed is set correctly. */
 		if (t->IsFrontEngine() || t->IsFreeWagon()) t->ConsistChanged(CCF_TRACK);
 	}
@@ -951,8 +956,7 @@ static bool CheckInterval(int32 p1)
 
 	if (update_vehicles) {
 		const Company *c = Company::Get(_current_company);
-		Vehicle *v;
-		FOR_ALL_VEHICLES(v) {
+		for (Vehicle *v : Vehicle::Iterate()) {
 			if (v->owner == _current_company && v->IsPrimaryVehicle() && !v->ServiceIntervalIsCustom()) {
 				v->SetServiceInterval(CompanyServiceInterval(c, v->type));
 				v->SetServiceIntervalIsPercent(p1 != 0);
@@ -982,8 +986,7 @@ static bool UpdateInterval(VehicleType type, int32 p1)
 	if (interval != p1) return false;
 
 	if (update_vehicles) {
-		Vehicle *v;
-		FOR_ALL_VEHICLES(v) {
+		for (Vehicle *v : Vehicle::Iterate()) {
 			if (v->owner == _current_company && v->type == type && v->IsPrimaryVehicle() && !v->ServiceIntervalIsCustom()) {
 				v->SetServiceInterval(p1);
 			}
@@ -1017,8 +1020,7 @@ static bool UpdateIntervalAircraft(int32 p1)
 
 static bool TrainAccelerationModelChanged(int32 p1)
 {
-	Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (Train *t : Train::Iterate()) {
 		if (t->IsFrontEngine()) {
 			t->tcache.cached_max_curve_speed = t->GetCurveSpeedLimit();
 			t->UpdateAcceleration();
@@ -1040,8 +1042,7 @@ static bool TrainAccelerationModelChanged(int32 p1)
  */
 static bool TrainSlopeSteepnessChanged(int32 p1)
 {
-	Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (Train *t : Train::Iterate()) {
 		if (t->IsFrontEngine()) t->CargoChanged();
 	}
 
@@ -1056,16 +1057,14 @@ static bool TrainSlopeSteepnessChanged(int32 p1)
 static bool RoadVehAccelerationModelChanged(int32 p1)
 {
 	if (_settings_game.vehicle.roadveh_acceleration_model != AM_ORIGINAL) {
-		RoadVehicle *rv;
-		FOR_ALL_ROADVEHICLES(rv) {
+		for (RoadVehicle *rv : RoadVehicle::Iterate()) {
 			if (rv->IsFrontEngine()) {
 				rv->CargoChanged();
 			}
 		}
 	}
 	if (_settings_game.vehicle.roadveh_acceleration_model == AM_ORIGINAL || !_settings_game.vehicle.improved_breakdowns) {
-		RoadVehicle *rv;
-		FOR_ALL_ROADVEHICLES(rv) {
+		for (RoadVehicle *rv : RoadVehicle::Iterate()) {
 			if (rv->IsFrontEngine()) {
 				rv->breakdown_chance_factor = 128;
 			}
@@ -1087,8 +1086,7 @@ static bool RoadVehAccelerationModelChanged(int32 p1)
  */
 static bool RoadVehSlopeSteepnessChanged(int32 p1)
 {
-	RoadVehicle *rv;
-	FOR_ALL_ROADVEHICLES(rv) {
+	for (RoadVehicle *rv : RoadVehicle::Iterate()) {
 		if (rv->IsFrontEngine()) rv->CargoChanged();
 	}
 
@@ -1238,6 +1236,21 @@ static bool EnableSingleVehSharedOrderGuiChanged(int32)
 	return true;
 }
 
+static bool CheckYapfRailSignalPenalties(int32)
+{
+	extern void YapfCheckRailSignalPenalties();
+	YapfCheckRailSignalPenalties();
+
+	return true;
+}
+
+static bool ViewportMapShowTunnelModeChanged(int32 p1)
+{
+	extern void ViewportMapBuildTunnelCache();
+	ViewportMapBuildTunnelCache();
+	return RedrawScreen(p1);
+}
+
 /** Checks if any settings are set to incorrect values, and sets them to correct values in that case. */
 static void ValidateSettings()
 {
@@ -1300,16 +1313,14 @@ static bool CheckFreeformEdges(int32 p1)
 {
 	if (_game_mode == GM_MENU) return true;
 	if (p1 != 0) {
-		Ship *s;
-		FOR_ALL_SHIPS(s) {
+		for (Ship *s : Ship::Iterate()) {
 			/* Check if there is a ship on the northern border. */
 			if (TileX(s->tile) == 0 || TileY(s->tile) == 0) {
 				ShowErrorMessage(STR_CONFIG_SETTING_EDGES_NOT_EMPTY, INVALID_STRING_ID, WL_ERROR);
 				return false;
 			}
 		}
-		BaseStation *st;
-		FOR_ALL_BASE_STATIONS(st) {
+		for (const BaseStation *st : BaseStation::Iterate()) {
 			/* Check if there is a non-deleted buoy on the northern border. */
 			if (st->IsInUse() && (TileX(st->xy) == 0 || TileY(st->xy) == 0)) {
 				ShowErrorMessage(STR_CONFIG_SETTING_EDGES_NOT_EMPTY, INVALID_STRING_ID, WL_ERROR);
@@ -1397,8 +1408,7 @@ static bool ChangeMaxHeightLevel(int32 p1)
 static bool StationCatchmentChanged(int32 p1)
 {
 	Station::RecomputeCatchmentForAll();
-	Station *st;
-	FOR_ALL_STATIONS(st) UpdateStationAcceptance(st, true);
+	for (Station *st : Station::Iterate()) UpdateStationAcceptance(st, true);
 	MarkWholeScreenDirty();
 	return true;
 }
@@ -1434,8 +1444,7 @@ static bool MaxVehiclesChanged(int32 p1)
 
 static bool InvalidateShipPathCache(int32 p1)
 {
-	Ship *s;
-	FOR_ALL_SHIPS(s) {
+	for (Ship *s : Ship::Iterate()) {
 		s->path.clear();
 	}
 	return true;
@@ -1445,8 +1454,7 @@ static bool ImprovedBreakdownsSettingChanged(int32 p1)
 {
 	if (!_settings_game.vehicle.improved_breakdowns) return true;
 
-	Vehicle *v;
-	FOR_ALL_VEHICLES(v) {
+	for (Vehicle *v : Vehicle::Iterate()) {
 		switch(v->type) {
 			case VEH_TRAIN:
 				if (v->IsFrontEngine()) {
@@ -1531,6 +1539,15 @@ static int OrderTownGrowthRate(uint nth)
 }
 
 /* End - GUI order callbacks */
+
+/* Begin - xref conversion callbacks */
+
+static int64 LinkGraphDistModeXrefChillPP(int64 val)
+{
+	return val ^ 2;
+}
+
+/* End - xref conversion callbacks */
 
 /**
  * Prepare for reading and old diff_custom by zero-ing the memory.
@@ -1701,7 +1718,7 @@ static GRFConfig *GRFLoadConfig(IniFile *ini, const char *grpname, bool is_stati
 
 		/* Parse parameters */
 		if (!StrEmpty(item->value)) {
-			int count = ParseIntList(item->value, (int*)c->param, lengthof(c->param));
+			int count = ParseIntList(item->value, c->param, lengthof(c->param));
 			if (count < 0) {
 				SetDParamStr(0, filename);
 				ShowErrorMessage(STR_CONFIG_ERROR, STR_CONFIG_ERROR_ARRAY, WL_CRITICAL);
@@ -2370,9 +2387,9 @@ void IConsoleListSettings(const char *prefilter)
  * a pointer to a struct which is getting saved
  */
 static void LoadSettingsXref(const SettingDesc *osd, void *object) {
-	DEBUG(sl, 3, "PATS chunk: Loading xref setting: '%s'", osd->xref);
+	DEBUG(sl, 3, "PATS chunk: Loading xref setting: '%s'", osd->xref.target);
 	uint index = 0;
-	const SettingDesc *setting_xref = GetSettingFromName(osd->xref, &index, true);
+	const SettingDesc *setting_xref = GetSettingFromName(osd->xref.target, &index, true);
 	assert(setting_xref != nullptr);
 
 	// Generate a new SaveLoad from the xref target using the version params from the source
@@ -2383,7 +2400,9 @@ static void LoadSettingsXref(const SettingDesc *osd, void *object) {
 	void *ptr = GetVariableAddress(object, &sld);
 
 	if (!SlObjectMember(ptr, &sld)) return;
-	if (IsNumericType(sld.conv)) Write_ValidateSetting(ptr, setting_xref, ReadValue(ptr, sld.conv));
+	int64 val = ReadValue(ptr, sld.conv);
+	if (osd->xref.conv != nullptr) val = osd->xref.conv(val);
+	if (IsNumericType(sld.conv)) Write_ValidateSetting(ptr, setting_xref, val);
 }
 
 /**
@@ -2399,7 +2418,7 @@ static void LoadSettings(const SettingDesc *osd, void *object)
 	for (; osd->save.cmd != SL_END; osd++) {
 		if (osd->patx_name != nullptr) continue;
 		const SaveLoad *sld = &osd->save;
-		if (osd->xref != nullptr) {
+		if (osd->xref.target != nullptr) {
 			if (sld->ext_feature_test.IsFeaturePresent(_sl_version, sld->version_from, sld->version_to)) LoadSettingsXref(osd, object);
 			continue;
 		}
@@ -2424,7 +2443,7 @@ static void SaveSettings(const SettingDesc *sd, void *object)
 	size_t length = 0;
 	for (i = sd; i->save.cmd != SL_END; i++) {
 		if (i->patx_name != nullptr) continue;
-		if (i->xref != nullptr) continue;
+		if (i->xref.target != nullptr) continue;
 		length += SlCalcObjMemberLength(object, &i->save);
 	}
 	SlSetLength(length);
@@ -2718,8 +2737,7 @@ void SaveSettingsPlyx()
 	size_t length = 8;
 	uint32 companies_count = 0;
 
-	Company *c;
-	FOR_ALL_COMPANIES(c) {
+	for (Company *c : Company::Iterate()) {
 		length += 12;
 		companies_count++;
 		uint32 setting_count = 0;
@@ -2746,7 +2764,7 @@ void SaveSettingsPlyx()
 	SlWriteUint32(companies_count);            // companies count
 
 	size_t index = 0;
-	FOR_ALL_COMPANIES(c) {
+	for (Company *c : Company::Iterate()) {
 		length += 12;
 		companies_count++;
 		SlWriteUint32(c->index);               // company ID

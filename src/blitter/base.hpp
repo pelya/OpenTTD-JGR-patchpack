@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -200,7 +198,7 @@ public:
 	 * @param scroll_x How much to scroll in X.
 	 * @param scroll_y How much to scroll in Y.
 	 */
-	virtual void ScrollBuffer(void *video, int &left, int &top, int &width, int &height, int scroll_x, int scroll_y) = 0;
+	virtual void ScrollBuffer(void *video, int left, int top, int width, int height, int scroll_x, int scroll_y) = 0;
 
 	/**
 	 * Calculate how much memory there is needed for an image of this size in the video-buffer.

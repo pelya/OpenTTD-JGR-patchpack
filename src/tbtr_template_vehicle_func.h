@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -40,6 +38,7 @@ void tbtr_debug_pvt(const Train*);
 #endif
 
 TemplateVehicle* GetTemplateVehicleByGroupID(GroupID);
+TemplateVehicle* GetTemplateVehicleByGroupIDRecursive(GroupID);
 bool ChainContainsVehicle(Train*, Train*);
 Train* ChainContainsEngine(EngineID, Train*);
 Train* DepotContainsEngine(TileIndex, EngineID, Train*);
@@ -48,7 +47,7 @@ int NumTrainsNeedTemplateReplacement(GroupID, const TemplateVehicle*);
 
 CommandCost TestBuyAllTemplateVehiclesInChain(TemplateVehicle *tv, TileIndex tile);
 
-void CmdRefitTrainFromTemplate(Train *t, TemplateVehicle *tv, DoCommandFlag);
+CommandCost CmdRefitTrainFromTemplate(Train *t, TemplateVehicle *tv, DoCommandFlag);
 void BreakUpRemainders(Train *t);
 
 bool TemplateVehicleContainsEngineOfRailtype(const TemplateVehicle*, RailType);

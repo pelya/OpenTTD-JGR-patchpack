@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -181,6 +179,7 @@ struct AIListWindow : public Window {
 		InvalidateWindowData(WC_GAME_OPTIONS, WN_GAME_OPTIONS_AI);
 		InvalidateWindowClassesData(WC_AI_SETTINGS);
 		DeleteWindowByClass(WC_QUERY_STRING);
+		InvalidateWindowClassesData(WC_TEXTFILE);
 	}
 
 	void OnClick(Point pt, int widget, int click_count) override
@@ -590,7 +589,7 @@ struct AISettingsWindow : public Window {
 	}
 
 private:
-	bool IsEditableItem(const ScriptConfigItem config_item) const
+	bool IsEditableItem(const ScriptConfigItem &config_item) const
 	{
 		return _game_mode == GM_MENU || ((this->slot != OWNER_DEITY) && !Company::IsValidID(this->slot)) || (config_item.flags & SCRIPTCONFIG_INGAME) != 0;
 	}
@@ -642,15 +641,24 @@ struct ScriptTextfileWindow : public TextfileWindow {
 
 	ScriptTextfileWindow(TextfileType file_type, CompanyID slot) : TextfileWindow(file_type), slot(slot)
 	{
-		const char *textfile = GetConfig(slot)->GetTextfile(file_type, slot);
-		this->LoadTextfile(textfile, (slot == OWNER_DEITY) ? GAME_DIR : AI_DIR);
+		this->OnInvalidateData();
 	}
 
 	void SetStringParameters(int widget) const override
 	{
 		if (widget == WID_TF_CAPTION) {
 			SetDParam(0, (slot == OWNER_DEITY) ? STR_CONTENT_TYPE_GAME_SCRIPT : STR_CONTENT_TYPE_AI);
-			SetDParamStr(1, GetConfig(slot)->GetName());
+			SetDParamStr(1, GetConfig(slot)->GetInfo()->GetName());
+		}
+	}
+
+	void OnInvalidateData(int data = 0, bool gui_scope = true) override
+	{
+		const char *textfile = GetConfig(slot)->GetTextfile(file_type, slot);
+		if (textfile == nullptr) {
+			delete this;
+		} else {
+			this->LoadTextfile(textfile, (slot == OWNER_DEITY) ? GAME_DIR : AI_DIR);
 		}
 	}
 };
@@ -1054,8 +1062,7 @@ struct AIDebugWindow : public Window {
 
 		ai_debug_company = INVALID_COMPANY;
 
-		const Company *c;
-		FOR_ALL_COMPANIES(c) {
+		for (const Company *c : Company::Iterate()) {
 			if (c->is_ai) {
 				ChangeToAI(c->index);
 				return;
@@ -1314,8 +1321,7 @@ struct AIDebugWindow : public Window {
 				if ((_pause_mode & PM_PAUSED_NORMAL) == PM_PAUSED_NORMAL) {
 					bool all_unpaused = !Game::IsPaused();
 					if (all_unpaused) {
-						Company *c;
-						FOR_ALL_COMPANIES(c) {
+						for (const Company *c : Company::Iterate()) {
 							if (c->is_ai && AI::IsPaused(c->index)) {
 								all_unpaused = false;
 								break;
@@ -1554,8 +1560,7 @@ void ShowAIDebugWindowIfAIError()
 	/* Network clients can't debug AIs. */
 	if (_networking && !_network_server) return;
 
-	Company *c;
-	FOR_ALL_COMPANIES(c) {
+	for (const Company *c : Company::Iterate()) {
 		if (c->is_ai && c->ai_instance->IsDead()) {
 			ShowAIDebugWindow(c->index);
 			break;

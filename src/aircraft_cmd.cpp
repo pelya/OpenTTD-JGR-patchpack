@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -123,13 +121,27 @@ enum HelicopterRotorStates {
  */
 static StationID FindNearestHangar(const Aircraft *v)
 {
-	const Station *st;
 	uint best = 0;
 	StationID index = INVALID_STATION;
-	TileIndex vtile = TileVirtXY(v->x_pos, v->y_pos);
+	TileIndex vtile = TileVirtXYClampedToMap(v->x_pos, v->y_pos);
 	const AircraftVehicleInfo *avi = AircraftVehInfo(v->engine_type);
+	uint max_range = v->acache.cached_max_range_sqr;
 
-	FOR_ALL_STATIONS(st) {
+	/* Determine destinations where it's coming from and where it's heading to */
+	const Station *last_dest = nullptr;
+	const Station *next_dest = nullptr;
+	if (max_range != 0) {
+		if (v->current_order.IsType(OT_GOTO_STATION) ||
+				(v->current_order.IsType(OT_GOTO_DEPOT) && v->current_order.GetDepotActionType() != ODATFB_NEAREST_DEPOT)) {
+			last_dest = Station::GetIfValid(v->last_station_visited);
+			next_dest = Station::GetIfValid(v->current_order.GetDestination());
+		} else {
+			last_dest = GetTargetAirportIfValid(v);
+			next_dest = Station::GetIfValid(v->GetNextStoppingStationCargoIndependent().value);
+		}
+	}
+
+	for (const Station *st : Station::Iterate()) {
 		if (!IsInfraUsageAllowed(VEH_AIRCRAFT, v->owner, st->owner) || !(st->facilities & FACIL_AIRPORT) || !st->airport.HasHangar()) continue;
 
 		const AirportFTAClass *afc = st->airport.GetFTA();
@@ -140,13 +152,15 @@ static StationID FindNearestHangar(const Aircraft *v)
 		/* the plane won't land at any helicopter station */
 		if (!(afc->flags & AirportFTAClass::AIRPLANES) && (avi->subtype & AIR_CTOL)) continue;
 
+		/* Check if our last and next destinations can be reached from the depot airport. */
+		if (max_range != 0) {
+			uint last_dist = (last_dest != nullptr && last_dest->airport.tile != INVALID_TILE) ? DistanceSquare(st->airport.tile, last_dest->airport.tile) : 0;
+			uint next_dist = (next_dest != nullptr && next_dest->airport.tile != INVALID_TILE) ? DistanceSquare(st->airport.tile, next_dest->airport.tile) : 0;
+			if (last_dist > max_range || next_dist > max_range) continue;
+		}
+
 		/* v->tile can't be used here, when aircraft is flying v->tile is set to 0 */
 		uint distance = DistanceSquare(vtile, st->airport.tile);
-		if (v->acache.cached_max_range_sqr != 0) {
-			/* Check if our current destination can be reached from the depot airport. */
-			const Station *cur_dest = GetTargetAirportIfValid(v);
-			if (cur_dest != nullptr && DistanceSquare(st->airport.tile, cur_dest->airport.tile) > v->acache.cached_max_range_sqr) continue;
-		}
 		if (distance < best || index == INVALID_STATION) {
 			best = distance;
 			index = st->index;
@@ -563,9 +577,11 @@ void HandleAircraftEnterHangar(Aircraft *v)
 
 	Aircraft *u = v->Next();
 	u->vehstatus |= VS_HIDDEN;
+	u->UpdateIsDrawn();
 	u = u->Next();
 	if (u != nullptr) {
 		u->vehstatus |= VS_HIDDEN;
+		u->UpdateIsDrawn();
 		u->cur_speed = 0;
 	}
 
@@ -699,9 +715,7 @@ static int UpdateAircraftSpeed(Aircraft *v, uint speed_limit = SPEED_LIMIT_NONE,
  */
 int GetTileHeightBelowAircraft(const Vehicle *v)
 {
-	int safe_x = Clamp(v->x_pos, 0, MapMaxX() * TILE_SIZE);
-	int safe_y = Clamp(v->y_pos, 0, MapMaxY() * TILE_SIZE);
-	return TileHeight(TileVirtXY(safe_x, safe_y)) * TILE_HEIGHT;
+	return TileHeight(TileVirtXYClampedToMap(v->x_pos, v->y_pos)) * TILE_HEIGHT;
 }
 
 /**
@@ -1481,14 +1495,17 @@ void AircraftLeaveHangar(Aircraft *v, Direction exit_dir)
 	v->progress = 0;
 	v->direction = exit_dir;
 	v->vehstatus &= ~VS_HIDDEN;
+	v->UpdateIsDrawn();
 	{
 		Vehicle *u = v->Next();
 		u->vehstatus &= ~VS_HIDDEN;
+		u->UpdateIsDrawn();
 
 		/* Rotor blades */
 		u = u->Next();
 		if (u != nullptr) {
 			u->vehstatus &= ~VS_HIDDEN;
+			u->UpdateIsDrawn();
 			u->cur_speed = 80;
 		}
 	}
@@ -2174,8 +2191,7 @@ void UpdateAirplanesOnNewStation(const Station *st)
 	const AirportFTAClass *ap = st->airport.GetFTA();
 	Direction rotation = st->airport.tile == INVALID_TILE ? DIR_N : st->airport.rotation;
 
-	Aircraft *v;
-	FOR_ALL_AIRCRAFT(v) {
+	for (Aircraft *v : Aircraft::Iterate()) {
 		if (!v->IsNormalAircraft() || v->targetairport != st->index) continue;
 		assert(v->state == FLYING);
 

@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -20,7 +18,7 @@
 
 #include "safeguards.h"
 
-static void DrawTile_Void(TileInfo *ti)
+static void DrawTile_Void(TileInfo *ti, DrawTileProcParams params)
 {
 	DrawGroundSprite(SPR_FLAT_BARE_LAND + SlopeToSpriteOffset(ti->tileh), PALETTE_ALL_BLACK);
 }

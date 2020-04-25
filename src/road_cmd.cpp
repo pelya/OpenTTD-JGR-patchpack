@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -184,10 +182,7 @@ RoadType AllocateRoadType(RoadTypeLabel label, RoadTramType rtt)
  */
 bool RoadVehiclesAreBuilt()
 {
-	const RoadVehicle *rv;
-	FOR_ALL_ROADVEHICLES(rv) return true;
-
-	return false;
+	return !RoadVehicle::Iterate().empty();
 }
 
 /**
@@ -528,8 +523,7 @@ static CommandCost RemoveRoad(TileIndex tile, DoCommandFlag flags, RoadBits piec
 				if (HasRoadWorks(tile)) {
 					/* flooding tile with road works, don't forget to remove the effect vehicle too */
 					assert(_current_company == OWNER_WATER);
-					EffectVehicle *v;
-					FOR_ALL_EFFECTVEHICLES(v) {
+					for (EffectVehicle *v : EffectVehicle::Iterate()) {
 						if (TileVirtXY(v->x_pos, v->y_pos) == tile) {
 							delete v;
 						}
@@ -1844,8 +1838,10 @@ void DrawRoadBits(TileInfo *ti)
 }
 
 /** Tile callback function for rendering a road tile to the screen */
-static void DrawTile_Road(TileInfo *ti)
+static void DrawTile_Road(TileInfo *ti, DrawTileProcParams params)
 {
+	if (!IsBridgeAbove(ti->tile) && GetRoadTileType(ti->tile) != ROAD_TILE_DEPOT && params.min_visible_height > (int)((TILE_HEIGHT + BB_HEIGHT_UNDER_BRIDGE) * ZOOM_LVL_BASE)) return;
+
 	switch (GetRoadTileType(ti->tile)) {
 		case ROAD_TILE_NORMAL:
 			DrawRoadBits(ti);
@@ -2158,6 +2154,12 @@ static void TileLoop_Road(TileIndex tile)
 
 			if (old_rb != new_rb) {
 				RemoveRoad(tile, DC_EXEC | DC_AUTO | DC_NO_WATER, (old_rb ^ new_rb), RTT_ROAD, true);
+
+				/* If new_rb is 0, there are now no road pieces left and the tile is no longer a road tile */
+				if (new_rb == 0) {
+					MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+					return;
+				}
 			}
 		}
 
@@ -2362,6 +2364,7 @@ static VehicleEnterTileStatus VehicleEnter_Road(Vehicle *v, TileIndex tile, int 
 				rv->direction = ReverseDir(rv->direction);
 				if (rv->Next() == nullptr) VehicleEnterDepot(rv->First());
 				rv->tile = tile;
+				rv->UpdateIsDrawn();
 
 				InvalidateWindowData(WC_VEHICLE_DEPOT, rv->tile);
 				return VETSB_ENTERED_WORMHOLE;
@@ -2478,8 +2481,6 @@ static CommandCost TerraformTile_Road(TileIndex tile, DoCommandFlag flags, int z
 /** Update power of road vehicle under which is the roadtype being converted */
 static Vehicle *UpdateRoadVehPowerProc(Vehicle *v, void *data)
 {
-	if (v->type != VEH_ROAD) return nullptr;
-
 	RoadVehicleList *affected_rvs = static_cast<RoadVehicleList*>(data);
 	include(*affected_rvs, RoadVehicle::From(v)->First());
 
@@ -2487,12 +2488,12 @@ static Vehicle *UpdateRoadVehPowerProc(Vehicle *v, void *data)
 }
 
 /**
- * Checks the tile and returns whether the current player is allowed to convert the roadtype to another roadtype
+ * Checks the tile and returns whether the current player is allowed to convert the roadtype to another roadtype without taking ownership
  * @param owner the tile owner.
  * @param rtt Road/tram type.
  * @return whether the road is convertible
  */
-static bool CanConvertRoadType(Owner owner, RoadTramType rtt)
+static bool CanConvertUnownedRoadType(Owner owner, RoadTramType rtt)
 {
 	return (owner == OWNER_NONE || (owner == OWNER_TOWN && rtt == RTT_ROAD));
 }
@@ -2588,7 +2589,7 @@ CommandCost CmdConvertRoad(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 		/* Trying to convert other's road */
 		Owner owner = GetRoadOwner(tile, rtt);
-		if (!CanConvertRoadType(owner, rtt)) {
+		if (!CanConvertUnownedRoadType(owner, rtt)) {
 			CommandCost ret = CheckOwnership(owner, tile);
 			if (ret.Failed()) {
 				error = ret;
@@ -2624,7 +2625,7 @@ CommandCost CmdConvertRoad(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 			if (flags & DC_EXEC) { // we can safely convert, too
 				/* Update the company infrastructure counters. */
-				if (!IsRoadStopTile(tile) && CanConvertRoadType(owner, rtt) && owner != OWNER_TOWN) {
+				if (!IsRoadStopTile(tile) && owner == _current_company) {
 					ConvertRoadTypeOwner(tile, num_pieces, owner, from_type, to_type);
 				} else {
 					UpdateCompanyRoadInfrastructure(from_type, owner, -num_pieces);
@@ -2636,7 +2637,7 @@ CommandCost CmdConvertRoad(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 				MarkTileDirtyByTile(tile);
 
 				/* update power of train on this tile */
-				FindVehicleOnPos(tile, &affected_rvs, &UpdateRoadVehPowerProc);
+				FindVehicleOnPos(tile, VEH_ROAD, &affected_rvs, &UpdateRoadVehPowerProc);
 
 				if (IsRoadDepotTile(tile)) {
 					/* Update build vehicle window related to this depot */
@@ -2694,7 +2695,7 @@ CommandCost CmdConvertRoad(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 			if (flags & DC_EXEC) {
 				/* Update the company infrastructure counters. */
-				if (CanConvertRoadType(owner, rtt) && owner != OWNER_TOWN) {
+				if (owner == _current_company) {
 					ConvertRoadTypeOwner(tile, tile_pieces, owner, from_type, to_type);
 					if (include_middle) {
 						ConvertRoadTypeOwner(endtile, end_pieces, owner, from_type, to_type);
@@ -2709,8 +2710,8 @@ CommandCost CmdConvertRoad(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 				SetRoadType(tile, rtt, to_type);
 				if (include_middle) SetRoadType(endtile, rtt, to_type);
 
-				FindVehicleOnPos(tile, &affected_rvs, &UpdateRoadVehPowerProc);
-				FindVehicleOnPos(endtile, &affected_rvs, &UpdateRoadVehPowerProc);
+				FindVehicleOnPos(tile, VEH_ROAD, &affected_rvs, &UpdateRoadVehPowerProc);
+				FindVehicleOnPos(endtile, VEH_ROAD, &affected_rvs, &UpdateRoadVehPowerProc);
 
 				if (IsBridge(tile)) {
 					MarkBridgeDirty(tile);

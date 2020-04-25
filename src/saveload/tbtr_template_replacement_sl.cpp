@@ -12,9 +12,7 @@ static const SaveLoad _template_replacement_desc[] = {
 
 static void Save_TMPL_RPLS()
 {
-	TemplateReplacement *tr;
-
-	FOR_ALL_TEMPLATE_REPLACEMENTS(tr) {
+	for (TemplateReplacement *tr : TemplateReplacement::Iterate()) {
 		SlSetArrayIndex(tr->index);
 		SlObject(tr, _template_replacement_desc);
 	}
@@ -28,6 +26,7 @@ static void Load_TMPL_RPLS()
 		TemplateReplacement *tr = new (index) TemplateReplacement();
 		SlObject(tr, _template_replacement_desc);
 	}
+	ReindexTemplateReplacements();
 }
 
 extern const ChunkHandler _template_replacement_chunk_handlers[] = {

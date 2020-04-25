@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -17,6 +15,7 @@
 #include "../../thread.h"
 #include "../../screenshot.h"
 #include "../../debug.h"
+#include "../../video/video_driver.hpp"
 #include "macos.h"
 
 #include <errno.h>
@@ -460,7 +459,9 @@ void CDECL HandleCrash(int signum, siginfo_t *si, void *context)
 
 	CrashLogOSX log(signum, si, context);
 	log.MakeCrashLog();
-	log.DisplayCrashDialog();
+	if (VideoDriver::GetInstance() == nullptr || VideoDriver::GetInstance()->HasGUI()) {
+		log.DisplayCrashDialog();
+	}
 
 	CrashLog::AfterCrashLogCleanup();
 	abort();

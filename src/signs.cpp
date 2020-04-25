@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -15,6 +13,7 @@
 #include "signs_func.h"
 #include "strings_func.h"
 #include "core/pool_func.hpp"
+#include "viewport_kdtree.h"
 
 #include "table/strings.h"
 
@@ -48,16 +47,20 @@ Sign::~Sign()
 void Sign::UpdateVirtCoord()
 {
 	Point pt = RemapCoords(this->x, this->y, this->z);
+
+	if (_viewport_sign_kdtree_valid && this->sign.kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeSign(this->index));
+
 	SetDParam(0, this->index);
-	this->sign.UpdatePosition(pt.x, pt.y - 6 * ZOOM_LVL_BASE, STR_WHITE_SIGN);
+	bool shown = HasBit(_display_opt, DO_SHOW_SIGNS) && !(this->IsCompetitorOwned() && !HasBit(_display_opt, DO_SHOW_COMPETITOR_SIGNS));
+	this->sign.UpdatePosition(shown ? ZOOM_LVL_DRAW_SPR : ZOOM_LVL_END, pt.x, pt.y - 6 * ZOOM_LVL_BASE, STR_WHITE_SIGN);
+
+	if (_viewport_sign_kdtree_valid) _viewport_sign_kdtree.Insert(ViewportSignKdtreeItem::MakeSign(this->index));
 }
 
 /** Update the coordinates of all signs */
 void UpdateAllSignVirtCoords()
 {
-	Sign *si;
-
-	FOR_ALL_SIGNS(si) {
+	for (Sign *si : Sign::Iterate()) {
 		si->UpdateVirtCoord();
 	}
 }

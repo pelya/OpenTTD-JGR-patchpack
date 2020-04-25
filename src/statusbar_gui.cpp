@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -83,6 +81,7 @@ struct StatusBarWindow : Window {
 	int ticker_scroll;
 	GUITimer ticker_timer;
 	GUITimer reminder_timeout;
+	int64 last_minute = 0;
 
 	static const int TICKER_STOP    = 1640; ///< scrolling is finished when counter reaches this value
 	static const int REMINDER_START = 1350; ///< time in ms for reminder notification (red dot on the right) to stay
@@ -122,8 +121,7 @@ struct StatusBarWindow : Window {
 
 			case WID_S_RIGHT: {
 				int64 max_money = UINT32_MAX;
-				const Company *c;
-				FOR_ALL_COMPANIES(c) max_money = max<int64>(c->money, max_money);
+				for (const Company *c : Company::Iterate()) max_money = max<int64>(c->money, max_money);
 				SetDParam(0, 100LL * max_money);
 				d = GetStringBoundingBox(STR_COMPANY_MONEY);
 				break;
@@ -226,7 +224,8 @@ struct StatusBarWindow : Window {
 	{
 		if (_pause_mode != PM_UNPAUSED) return;
 
-		if (_settings_client.gui.time_in_minutes) {
+		if (_settings_client.gui.time_in_minutes && this->last_minute != CURRENT_MINUTE) {
+			this->last_minute = CURRENT_MINUTE;
 			this->SetWidgetDirty(WID_S_LEFT);
 		}
 

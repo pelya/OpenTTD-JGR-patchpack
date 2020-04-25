@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -206,6 +204,19 @@ public:
 			if (nwid != nullptr) return nwid;
 		}
 		return nullptr;
+	}
+
+	void FillDirtyWidgets(std::vector<NWidgetBase *> &dirty_widgets) override
+	{
+		if (this->base_flags & WBF_DIRTY) {
+			dirty_widgets.push_back(this);
+		} else {
+			int i = 0;
+			for (NWidgetBase *child_wid = this->head; child_wid != nullptr; child_wid = child_wid->next) {
+				if (!this->visible[i++]) continue;
+				child_wid->FillDirtyWidgets(dirty_widgets);
+			}
+		}
 	}
 
 	/**
@@ -1690,12 +1701,12 @@ static WindowDesc _client_list_popup_desc(
 /* Here we start to define the options out of the menu */
 static void ClientList_Kick(const NetworkClientInfo *ci)
 {
-	NetworkServerKickClient(ci->client_id);
+	NetworkServerKickClient(ci->client_id, nullptr);
 }
 
 static void ClientList_Ban(const NetworkClientInfo *ci)
 {
-	NetworkServerKickOrBanIP(ci->client_id, true);
+	NetworkServerKickOrBanIP(ci->client_id, true, nullptr);
 }
 
 static void ClientList_SpeakToClient(const NetworkClientInfo *ci)
@@ -1874,10 +1885,9 @@ struct NetworkClientListWindow : Window {
 	bool CheckClientListHeight()
 	{
 		int num = 0;
-		const NetworkClientInfo *ci;
 
 		/* Should be replaced with a loop through all clients */
-		FOR_ALL_CLIENT_INFOS(ci) {
+		for (const NetworkClientInfo *ci : NetworkClientInfo::Iterate()) {
 			if (ci->client_playas != COMPANY_INACTIVE_CLIENT) num++;
 		}
 
@@ -1901,8 +1911,7 @@ struct NetworkClientListWindow : Window {
 		this->line_height = max(this->icon_size.height + 2U, (uint)FONT_HEIGHT_NORMAL);
 
 		uint width = 100; // Default width
-		const NetworkClientInfo *ci;
-		FOR_ALL_CLIENT_INFOS(ci) {
+		for (const NetworkClientInfo *ci : NetworkClientInfo::Iterate()) {
 			width = max(width, GetStringBoundingBox(ci->client_name).width);
 		}
 
@@ -1938,8 +1947,7 @@ struct NetworkClientListWindow : Window {
 		uint name_right = rtl ? right - type_icon_width : right;
 
 		int i = 0;
-		const NetworkClientInfo *ci;
-		FOR_ALL_CLIENT_INFOS(ci) {
+		for (const NetworkClientInfo *ci : NetworkClientInfo::Iterate()) {
 			TextColour colour;
 			if (this->selected_item == i++) { // Selected item, highlight it
 				GfxFillRect(r.left + 1, y, r.right - 1, y + this->line_height - 1, PC_BLACK);
@@ -1967,15 +1975,14 @@ struct NetworkClientListWindow : Window {
 	{
 		/* Show the popup with option */
 		if (this->selected_item != -1) {
-			NetworkClientInfo *ci;
-
 			int client_no = this->selected_item;
-			FOR_ALL_CLIENT_INFOS(ci) {
-				if (client_no == 0) break;
+			for (NetworkClientInfo *ci : NetworkClientInfo::Iterate()) {
+				if (client_no == 0) {
+					PopupClientList(ci->client_id, pt.x + this->left, pt.y + this->top);
+					break;
+				}
 				client_no--;
 			}
-
-			if (ci != nullptr) PopupClientList(ci->client_id, pt.x + this->left, pt.y + this->top);
 		}
 	}
 

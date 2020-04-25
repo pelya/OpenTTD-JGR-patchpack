@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -184,10 +182,11 @@ struct GUISettings {
 	bool   show_vehicle_group_in_details;    ///< show vehicle group in vehicle details window top widget
 	bool   show_restricted_signal_default;   ///< Show restricted electric signals using the default sprite
 	bool   show_adv_tracerestrict_features;  ///< Show advanced trace restrict features in UI
-	bool   show_progsig_ui;                  ///< Show programmable signals feature in UI
+	bool   show_progsig_ui;                  ///< Show programmable pre-signals feature in UI
 	bool   show_veh_list_cargo_filter;       ///< Show cargo list filter in UI
 	uint8  osk_activation;                   ///< Mouse gesture to trigger the OSK.
 	byte   starting_colour;                  ///< default color scheme for the company to start a new game with
+	bool   show_newgrf_name;                 ///< Show the name of the NewGRF in the build vehicle window
 	bool   show_vehicle_route_steps;         ///< when a window related to a specific vehicle is focused, show route steps
 	bool   show_vehicle_list_company_colour; ///< show the company colour of vehicles which have an owner different to the owner of the vehicle list
 	bool   enable_single_veh_shared_order_gui;    ///< enable showing a single vehicle in the shared order GUI window
@@ -331,6 +330,7 @@ struct GameCreationSettings {
 	uint32 generation_seed;                  ///< noise seed for world generation
 	uint32 generation_unique_id;             ///< random id to differentiate savegames
 	Year   starting_year;                    ///< starting date
+	Year   ending_year;                      ///< scoring end date
 	uint8  map_x;                            ///< X size of map
 	uint8  map_y;                            ///< Y size of map
 	byte   land_generator;                   ///< the landscape generator
@@ -370,7 +370,7 @@ struct ConstructionSettings {
 	uint8  trees_around_snow_line_range;     ///< range around snowline for mixed and arctic forest.
 	bool   trees_around_snow_line_enabled;   ///< enable mixed and arctic forest around snowline, and no trees above snowline
 	uint8  command_pause_level;              ///< level/amount of commands that can't be executed while paused
-	uint16 maximum_signal_evaluations;       ///< maximum number of programmable signals which may be evaluated in one pass
+	uint16 maximum_signal_evaluations;       ///< maximum number of programmable pre-signals which may be evaluated in one pass
 	byte   simulated_wormhole_signals;       ///< simulate signals in tunnel
 	bool   enable_build_river;               ///< enable building rivers in-game
 	bool   enable_remove_water;              ///< enable removing sea and rivers in-game
@@ -378,7 +378,9 @@ struct ConstructionSettings {
 	bool   chunnel;                          ///< allow construction of tunnels under water
 	uint8  rail_custom_bridge_heads;         ///< allow construction of rail custom bridge heads
 	bool   allow_grf_objects_under_bridges;  ///< allow all NewGRF objects under bridges
-	bool   allow_stations_under_bridges;     ///< allow all station tiles under bridges
+	bool   allow_stations_under_bridges;     ///< allow NewGRF rail station/waypoint tiles that do not specify clearance under bridges
+	bool   allow_road_stops_under_bridges;   ///< allow road/tram stops under bridges
+	bool   allow_docks_under_bridges;        ///< allow docks under bridges
 	byte   purchase_land_permitted;          ///< whether and how purchasing land is permitted
 
 	uint32 terraform_per_64k_frames;         ///< how many tile heights may, over a long period, be terraformed per 65536 frames?
@@ -554,7 +556,6 @@ struct EconomySettings {
 	bool   allow_shares;                     ///< allow the buying/selling of shares
 	uint8  min_years_for_shares;             ///< minimum age of a company for it to trade shares
 	uint8  feeder_payment_share;             ///< percentage of leg payment to virtually pay in feeder systems
-	bool   feeder_payment_src_station;       ///< calculate leg payment relative to the source station, not the leg source
 	byte   dist_local_authority;             ///< distance for town local authority, default 20
 	bool   exclusive_rights;                 ///< allow buying exclusive rights
 	bool   fund_buildings;                   ///< allow funding new buildings

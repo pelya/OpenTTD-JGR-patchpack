@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -458,6 +456,8 @@ static inline Money SignalMaintenanceCost(uint32 num)
 	return (_price[PR_INFRASTRUCTURE_RAIL] * 15 * num * (1 + IntSqrt(num))) >> 8; // 1 bit fraction for the multiplier and 7 bits scaling.
 }
 
+void MarkSingleSignalDirty(TileIndex tile, Trackdir td);
+
 void DrawTrainDepotSprite(int x, int y, int image, RailType railtype);
 int TicksToLeaveDepot(const Train *v);
 
@@ -470,7 +470,6 @@ bool ValParamRailtype(const RailType rail);
 
 RailTypes AddDateIntroducedRailTypes(RailTypes current, Date date);
 
-RailType GetBestRailtype(const CompanyID company);
 RailTypes GetCompanyRailtypes(CompanyID company, bool introduces = true);
 RailTypes GetRailTypes(bool introduces);
 

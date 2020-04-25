@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -140,6 +138,9 @@ CargoID GetCargoIDByBitnum(uint8 bitnum);
 void InitializeSortedCargoSpecs();
 extern std::vector<const CargoSpec *> _sorted_cargo_specs;
 extern uint8 _sorted_standard_cargo_specs_size;
+
+uint ConvertCargoQuantityToDisplayQuantity(CargoID cargo, uint quantity);
+uint ConvertDisplayQuantityToCargoQuantity(CargoID cargo, uint quantity);
 
 /**
  * Does cargo \a c have cargo class \a cc?

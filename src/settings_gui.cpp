@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -44,6 +42,7 @@
 
 #include "safeguards.h"
 
+extern void FlushDeparturesWindowTextCaches();
 
 static const StringID _driveside_dropdown[] = {
 	STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_LEFT,
@@ -533,6 +532,7 @@ struct GameOptionsWindow : Window {
 				ClearAllCachedNames();
 				UpdateAllVirtCoords();
 				ReInitAllWindows();
+				FlushDeparturesWindowTextCaches();
 				break;
 
 			case WID_GO_RESOLUTION_DROPDOWN: // Change resolution
@@ -548,6 +548,7 @@ struct GameOptionsWindow : Window {
 				UpdateAllVirtCoords();
 				FixTitleGameZoom();
 				ReInitAllWindows();
+				FlushDeparturesWindowTextCaches();
 				break;
 
 			case WID_GO_FONT_ZOOM_DROPDOWN:
@@ -558,6 +559,7 @@ struct GameOptionsWindow : Window {
 				UpdateFontHeightCache();
 				LoadStringWidthTable();
 				UpdateAllVirtCoords();
+				FlushDeparturesWindowTextCaches();
 				break;
 
 			case WID_GO_BASE_GRF_DROPDOWN:
@@ -1703,6 +1705,7 @@ static SettingsContainer &GetSettingsTree()
 			interface->Add(new SettingEntry("gui.prefer_teamchat"));
 			interface->Add(new SettingEntry("gui.advanced_vehicle_list"));
 			interface->Add(new SettingEntry("gui.expenses_layout"));
+			interface->Add(new SettingEntry("gui.show_newgrf_name"));
 			interface->Add(new SettingEntry("gui.show_train_length_in_details"));
 			interface->Add(new SettingEntry("gui.show_train_weight_ratios_in_details"));
 			interface->Add(new SettingEntry("gui.show_vehicle_group_in_details"));
@@ -1777,7 +1780,6 @@ static SettingsContainer &GetSettingsTree()
 			accounting->Add(new SettingEntry("difficulty.max_loan"));
 			accounting->Add(new SettingEntry("difficulty.subsidy_multiplier"));
 			accounting->Add(new SettingEntry("economy.feeder_payment_share"));
-			accounting->Add(new SettingEntry("economy.feeder_payment_src_station"));
 			accounting->Add(new SettingEntry("economy.infrastructure_maintenance"));
 			accounting->Add(new SettingEntry("difficulty.vehicle_costs"));
 			accounting->Add(new SettingEntry("difficulty.construction_cost"));
@@ -1846,6 +1848,8 @@ static SettingsContainer &GetSettingsTree()
 			limitations->Add(new SettingEntry("construction.rail_custom_bridge_heads"));
 			limitations->Add(new SettingEntry("construction.allow_grf_objects_under_bridges"));
 			limitations->Add(new SettingEntry("construction.allow_stations_under_bridges"));
+			limitations->Add(new SettingEntry("construction.allow_road_stops_under_bridges"));
+			limitations->Add(new SettingEntry("construction.allow_docks_under_bridges"));
 			limitations->Add(new SettingEntry("construction.purchase_land_permitted"));
 		}
 
@@ -1878,6 +1882,7 @@ static SettingsContainer &GetSettingsTree()
 			genworld->Add(new SettingEntry("economy.town_min_distance"));
 			genworld->Add(new SettingEntry("difficulty.industry_density"));
 			genworld->Add(new SettingEntry("gui.pause_on_newgame"));
+			genworld->Add(new SettingEntry("game_creation.ending_year"));
 		}
 
 		SettingsPage *environment = main->Add(new SettingsPage(STR_CONFIG_SETTING_ENVIRONMENT));

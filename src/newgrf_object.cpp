@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -188,8 +186,7 @@ static uint32 GetNearbyObjectTileInformation(byte parameter, TileIndex tile, Obj
 static uint32 GetClosestObject(TileIndex tile, ObjectType type, const Object *current)
 {
 	uint32 best_dist = UINT32_MAX;
-	const Object *o;
-	FOR_ALL_OBJECTS(o) {
+	for (const Object *o : Object::Iterate()) {
 		if (o->type != type || o == current) continue;
 
 		best_dist = min(best_dist, DistanceManhattan(tile, o->location.tile));
@@ -355,7 +352,7 @@ unhandled:
  */
 ObjectResolverObject::ObjectResolverObject(const ObjectSpec *spec, Object *obj, TileIndex tile, uint8 view,
 		CallbackID callback, uint32 param1, uint32 param2)
-	: ResolverObject(spec->grf_prop.grffile, callback, param1, param2), object_scope(*this, obj, tile, view)
+	: ResolverObject(spec->grf_prop.grffile, callback, param1, param2), object_scope(*this, obj, spec, tile, view)
 {
 	this->town_scope = nullptr;
 	this->root_spritegroup = (obj == nullptr && spec->grf_prop.spritegroup[CT_PURCHASE_OBJECT] != nullptr) ?
@@ -385,6 +382,16 @@ TownScopeResolver *ObjectResolverObject::GetTown()
 		this->town_scope = new TownScopeResolver(*this, t, this->object_scope.obj == nullptr);
 	}
 	return this->town_scope;
+}
+
+GrfSpecFeature ObjectResolverObject::GetFeature() const
+{
+	return GSF_OBJECTS;
+}
+
+uint32 ObjectResolverObject::GetDebugID() const
+{
+	return this->object_scope.spec->grf_prop.local_id;
 }
 
 /**

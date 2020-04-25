@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -558,6 +556,9 @@ static const int LEVEL_WIDTH = 10; ///< Indenting width of a sub-group in pixels
 
 typedef GUIList<const Group*> GUIGroupList;
 
+/* cached values for GroupNameSorter to spare many GetString() calls */
+static const Group *_last_group[2] = { nullptr, nullptr };
+
 /** Company livery colour scheme window. */
 struct SelectCompanyLiveryWindow : public Window {
 private:
@@ -580,7 +581,7 @@ private:
 
 		/* Disallow other company colours for the primary colour */
 		if (this->livery_class < LC_GROUP_RAIL && HasBit(this->sel, LS_DEFAULT) && primary) {
-			FOR_ALL_COMPANIES(c) {
+			for (const Company *c : Company::Iterate()) {
 				if (c->index != _local_company) SetBit(used_colours, c->colour);
 			}
 		}
@@ -623,17 +624,16 @@ private:
 
 	static bool GroupNameSorter(const Group * const &a, const Group * const &b)
 	{
-		static const Group *last_group[2] = { nullptr, nullptr };
 		static char         last_name[2][64] = { "", "" };
 
-		if (a != last_group[0]) {
-			last_group[0] = a;
+		if (a != _last_group[0]) {
+			_last_group[0] = a;
 			SetDParam(0, a->index);
 			GetString(last_name[0], STR_GROUP_NAME, lastof(last_name[0]));
 		}
 
-		if (b != last_group[1]) {
-			last_group[1] = b;
+		if (b != _last_group[1]) {
+			_last_group[1] = b;
 			SetDParam(0, b->index);
 			GetString(last_name[1], STR_GROUP_NAME, lastof(last_name[1]));
 		}
@@ -664,14 +664,17 @@ private:
 			GUIGroupList list;
 			VehicleType vtype = (VehicleType)(this->livery_class - LC_GROUP_RAIL);
 
-			const Group *g;
-			FOR_ALL_GROUPS(g) {
+			for (const Group *g : Group::Iterate()) {
 				if (g->owner == owner && g->vehicle_type == vtype) {
 					list.push_back(g);
 				}
 			}
 
 			list.ForceResort();
+
+			/* invalidate cached values for name sorter - group names could change */
+			_last_group[0] = _last_group[1] = nullptr;
+
 			list.Sort(&GroupNameSorter);
 
 			AddChildren(&list, INVALID_GROUP, 0);
@@ -756,8 +759,7 @@ public:
 				}
 
 				/* And group names */
-				const Group *g;
-				FOR_ALL_GROUPS(g) {
+				for (const Group *g : Group::Iterate()) {
 					if (g->owner == (CompanyID)this->window_number) {
 						SetDParam(0, g->index);
 						d = maxdim(d, GetStringBoundingBox(STR_GROUP_NAME));
@@ -1831,8 +1833,7 @@ struct CompanyInfrastructureWindow : Window
 		this->roadtypes = ROADTYPES_NONE;
 
 		/* Find the used railtypes. */
-		Engine *e;
-		FOR_ALL_ENGINES_OF_TYPE(e, VEH_TRAIN) {
+		for (const Engine *e : Engine::IterateType(VEH_TRAIN)) {
 			if (!HasBit(e->info.climates, _settings_game.game_creation.landscape)) continue;
 
 			this->railtypes |= GetRailTypeInfo(e->u.rail.railtype)->introduces_railtypes;
@@ -1842,7 +1843,7 @@ struct CompanyInfrastructureWindow : Window
 		this->railtypes = AddDateIntroducedRailTypes(this->railtypes, MAX_DAY);
 
 		/* Find the used roadtypes. */
-		FOR_ALL_ENGINES_OF_TYPE(e, VEH_ROAD) {
+		for (const Engine *e : Engine::IterateType(VEH_ROAD)) {
 			if (!HasBit(e->info.climates, _settings_game.game_creation.landscape)) continue;
 
 			this->roadtypes |= GetRoadTypeInfo(e->u.road.roadtype)->introduces_roadtypes;
@@ -2421,9 +2422,7 @@ struct CompanyWindow : Window
 				break;
 
 			case WID_C_DESC_OWNERS: {
-				const Company *c2;
-
-				FOR_ALL_COMPANIES(c2) {
+				for (const Company *c2 : Company::Iterate()) {
 					SetDParamMaxValue(0, 75);
 					SetDParam(1, c2->index);
 
@@ -2525,10 +2524,9 @@ struct CompanyWindow : Window
 			}
 
 			case WID_C_DESC_OWNERS: {
-				const Company *c2;
 				uint y = r.top;
 
-				FOR_ALL_COMPANIES(c2) {
+				for (const Company *c2 : Company::Iterate()) {
 					uint amt = GetAmountOwnedBy(c, c2->index);
 					if (amt != 0) {
 						SetDParam(0, amt * 25);
@@ -2689,7 +2687,7 @@ struct CompanyWindow : Window
 			default: NOT_REACHED();
 
 			case WID_C_GIVE_MONEY:
-				DoCommandP(0, (atoi(str) / _currency->rate), this->window_number, CMD_GIVE_MONEY | CMD_MSG(STR_ERROR_INSUFFICIENT_FUNDS), CcGiveMoney, str);
+				DoCommandP(0, (strtoull(str, nullptr, 10) / _currency->rate), this->window_number, CMD_GIVE_MONEY | CMD_MSG(STR_ERROR_INSUFFICIENT_FUNDS), CcGiveMoney, str);
 				break;
 
 			case WID_C_PRESIDENT_NAME:

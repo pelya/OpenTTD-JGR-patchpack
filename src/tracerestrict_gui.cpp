@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -9,7 +7,7 @@
 
 /** @file tracerestrict_gui.cpp GUI code for Trace Restrict
  *
- * This is largely based on the programmable signals patch's GUI
+ * This is largely based on the programmable pre-signals patch's GUI
  * */
 
 #include "stdafx.h"
@@ -153,6 +151,7 @@ static const StringID _program_insert_str[] = {
 	STR_TRACE_RESTRICT_WAIT_AT_PBS,
 	STR_TRACE_RESTRICT_SLOT_OP,
 	STR_TRACE_RESTRICT_REVERSE,
+	STR_TRACE_RESTRICT_SPEED_RESTRICTION,
 	INVALID_STRING_ID
 };
 static const uint32 _program_insert_else_hide_mask    = 8;     ///< disable bitmask for else
@@ -161,6 +160,7 @@ static const uint32 _program_insert_else_if_hide_mask = 2;     ///< disable bitm
 static const uint32 _program_wait_pbs_hide_mask = 0x100;       ///< disable bitmask for wait at PBS
 static const uint32 _program_slot_hide_mask = 0x200;           ///< disable bitmask for slot
 static const uint32 _program_reverse_hide_mask = 0x400;        ///< disable bitmask for reverse
+static const uint32 _program_speed_res_hide_mask = 0x800;      ///< disable bitmask for speed restriction
 static const uint _program_insert_val[] = {
 	TRIT_COND_UNDEFINED,                               // if block
 	TRIT_COND_UNDEFINED | (TRCF_ELSE << 16),           // elif block
@@ -173,6 +173,7 @@ static const uint _program_insert_val[] = {
 	TRIT_WAIT_AT_PBS,                                  // wait at PBS signal
 	TRIT_SLOT,                                         // slot operation
 	TRIT_REVERSE,                                      // reverse
+	TRIT_SPEED_RESTRICTION,                            // speed restriction
 };
 
 /** insert drop down list strings and values */
@@ -372,6 +373,7 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		STR_TRACE_RESTRICT_WAIT_AT_PBS,
 		STR_TRACE_RESTRICT_SLOT_OP,
 		STR_TRACE_RESTRICT_REVERSE,
+		STR_TRACE_RESTRICT_SPEED_RESTRICTION,
 		INVALID_STRING_ID,
 	};
 	static const uint val_action[] = {
@@ -382,6 +384,7 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		TRIT_WAIT_AT_PBS,
 		TRIT_SLOT,
 		TRIT_REVERSE,
+		TRIT_SPEED_RESTRICTION,
 	};
 	static const TraceRestrictDropDownListSet set_action = {
 		str_action, val_action,
@@ -443,7 +446,7 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		if (_settings_client.gui.show_adv_tracerestrict_features) {
 			*hide_mask = 0;
 		} else {
-			*hide_mask = is_conditional ? 0xE0000 : 0x70;
+			*hide_mask = is_conditional ? 0xE0000 : 0xF0;
 		}
 	}
 	return is_conditional ? &set_cond : &set_action;
@@ -480,8 +483,7 @@ static DropDownList GetGroupDropDownList(Owner owner, GroupID group_id, int &sel
 
 	GUIGroupList list;
 
-	const Group *g;
-	FOR_ALL_GROUPS(g) {
+	for (const Group *g : Group::Iterate()) {
 		if (g->owner == owner && g->vehicle_type == VEH_TRAIN) {
 			list.push_back(g);
 		}
@@ -523,8 +525,7 @@ DropDownList GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int &
 	GUIList<const TraceRestrictSlot*> list;
 	DropDownList dlist;
 
-	const TraceRestrictSlot *slot;
-	FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
+	for (const TraceRestrictSlot *slot : TraceRestrictSlot::Iterate()) {
 		if (slot->owner == owner) {
 			list.push_back(slot);
 		}
@@ -1232,6 +1233,15 @@ static void DrawInstructionString(const TraceRestrictProgram *prog, TraceRestric
 				}
 				break;
 
+			case TRIT_SPEED_RESTRICTION:
+				if (GetTraceRestrictValue(item) != 0) {
+					SetDParam(0, GetTraceRestrictValue(item));
+					instruction_string = STR_TRACE_RESTRICT_SET_SPEED_RESTRICTION;
+				} else {
+					instruction_string = STR_TRACE_RESTRICT_REMOVE_SPEED_RESTRICTION;
+				}
+				break;
+
 			default:
 				NOT_REACHED();
 				break;
@@ -1355,7 +1365,7 @@ public:
 						if (ElseIfInsertionDryRun(false)) disabled &= ~_program_insert_or_if_hide_mask;
 					}
 				}
-				if (!_settings_client.gui.show_adv_tracerestrict_features) hidden |= _program_slot_hide_mask | _program_wait_pbs_hide_mask | _program_reverse_hide_mask;
+				if (!_settings_client.gui.show_adv_tracerestrict_features) hidden |= _program_slot_hide_mask | _program_wait_pbs_hide_mask | _program_reverse_hide_mask | _program_speed_res_hide_mask;
 
 				this->ShowDropDownListWithValue(&_program_insert, 0, true, TR_WIDGET_INSERT, disabled, hidden, 0);
 				break;
@@ -1877,6 +1887,8 @@ public:
 		}
 
 		if (IsRailDepotTile(tile)) {
+			// OK
+		} else if (IsTileType(tile, MP_TUNNELBRIDGE) && IsTunnelBridgeWithSignalSimulation(tile)) {
 			// OK
 		} else {
 			if (!IsPlainRailTile(tile)) {
@@ -2459,8 +2471,7 @@ private:
 								this->EnableWidget(TR_WIDGET_SLOT_OP);
 							}
 
-							const TraceRestrictSlot *slot;
-							FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
+							for (const TraceRestrictSlot *slot : TraceRestrictSlot::Iterate()) {
 								if (slot->owner == this->GetOwner()) {
 									this->EnableWidget(TR_WIDGET_VALUE_DROPDOWN);
 									break;
@@ -2486,8 +2497,7 @@ private:
 							left_aux_sel->SetDisplayedPlane(DPLA_DROPDOWN);
 							this->EnableWidget(TR_WIDGET_VALUE_INT);
 
-							const TraceRestrictSlot *slot;
-							FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
+							for (const TraceRestrictSlot *slot : TraceRestrictSlot::Iterate()) {
 								if (slot->owner == this->GetOwner()) {
 									this->EnableWidget(TR_WIDGET_LEFT_AUX_DROPDOWN);
 									break;
@@ -2556,8 +2566,7 @@ private:
 	{
 		DropDownList list;
 
-		Company *c;
-		FOR_ALL_COMPANIES(c) {
+		for (Company *c : Company::Iterate()) {
 			list.emplace_back(MakeCompanyDropDownListItem(c->index));
 			if (c->index == value) missing_ok = true;
 		}
@@ -2855,8 +2864,7 @@ private:
 
 		this->slots.clear();
 
-		const TraceRestrictSlot *slot;
-		FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
+		for (const TraceRestrictSlot *slot : TraceRestrictSlot::Iterate()) {
 			if (slot->owner == owner) {
 				this->slots.push_back(slot);
 			}

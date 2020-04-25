@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -1270,6 +1268,7 @@ void VideoDriver_Win32::MainLoop()
 			if (_draw_threaded) draw_lock.unlock();
 			GameLoop();
 			if (_draw_threaded) draw_lock.lock();
+			GameLoopPaletteAnimations();
 
 			if (_force_full_redraw) MarkWholeScreenDirty();
 

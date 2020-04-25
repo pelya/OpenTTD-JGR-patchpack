@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -1833,7 +1831,7 @@ private:
 	StringID GetChangeOrderStringID() const
 	{
 		if (VehicleListIdentifier::UnPack(this->window_number).type == VL_STATION_LIST) {
-			return (Station::Get(this->vli.index)->facilities & FACIL_WAYPOINT) ? STR_VEHICLE_LIST_CHANGE_ORDER_WAYPOINT : STR_VEHICLE_LIST_CHANGE_ORDER_STATION;
+			return (BaseStation::Get(this->vli.index)->facilities & FACIL_WAYPOINT) ? STR_VEHICLE_LIST_CHANGE_ORDER_WAYPOINT : STR_VEHICLE_LIST_CHANGE_ORDER_STATION;
 		} else if (VehicleListIdentifier::UnPack(this->window_number).type == VL_DEPOT_LIST) {
 			return STR_VEHICLE_LIST_CHANGE_ORDER_TRAIN_DEPOT + this->vli.vtype;
 		} else {
@@ -2043,7 +2041,13 @@ public:
 				if (id_v >= this->vehicles.size()) return; // click out of list bound
 
 				const Vehicle *v = this->vehicles[id_v];
-				if (!VehicleClicked(v)) ShowVehicleViewWindow(v);
+				if (!VehicleClicked(v)) {
+					if (_ctrl_pressed) {
+						ShowCompanyGroupForVehicle(v);
+					} else {
+						ShowVehicleViewWindow(v);
+					}
+				}
 				break;
 			}
 
@@ -2366,6 +2370,7 @@ struct VehicleDetailsWindow : Window {
 	bool vehicle_group_line_shown;
 	bool vehicle_weight_ratio_line_shown;
 	bool vehicle_slots_line_shown;
+	bool vehicle_speed_restriction_line_shown;
 
 	/** Initialize a newly created vehicle details window */
 	VehicleDetailsWindow(WindowDesc *desc, WindowNumber window_number) : Window(desc)
@@ -2380,7 +2385,7 @@ struct VehicleDetailsWindow : Window {
 
 		this->owner = v->owner;
 		this->tab = TDW_TAB_CARGO;
-		if (v->type == VEH_TRAIN && _ctrl_pressed) this->tab = TDW_TAB_TOTALS;
+		if (v->type == VEH_TRAIN && _shift_pressed) this->tab = TDW_TAB_TOTALS;
 	}
 
 	~VehicleDetailsWindow()
@@ -2462,6 +2467,12 @@ struct VehicleDetailsWindow : Window {
 		return HasBit(Train::From(v)->flags, VRF_HAVE_SLOT);
 	}
 
+	bool ShouldShowSpeedRestrictionLine(const Vehicle *v) const
+	{
+		if (v->type != VEH_TRAIN) return false;
+		return Train::From(v)->speed_restriction != 0;
+	}
+
 	void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
 	{
 		switch (widget) {
@@ -2471,10 +2482,12 @@ struct VehicleDetailsWindow : Window {
 				this->vehicle_group_line_shown = ShouldShowGroupLine(v);
 				this->vehicle_weight_ratio_line_shown = ShouldShowWeightRatioLine(v);
 				this->vehicle_slots_line_shown = ShouldShowSlotsLine(v);
+				this->vehicle_speed_restriction_line_shown = ShouldShowSpeedRestrictionLine(v);
 				int lines = 4;
 				if (this->vehicle_group_line_shown) lines++;
 				if (this->vehicle_weight_ratio_line_shown) lines++;
 				if (this->vehicle_slots_line_shown) lines++;
+				if (this->vehicle_speed_restriction_line_shown) lines++;
 				size->height = WD_FRAMERECT_TOP + lines * FONT_HEIGHT_NORMAL + WD_FRAMERECT_BOTTOM;
 
 				for (uint i = 0; i < 5; i++) SetDParamMaxValue(i, INT16_MAX);
@@ -2725,9 +2738,17 @@ struct VehicleDetailsWindow : Window {
 					y += FONT_HEIGHT_NORMAL;
 				}
 
+				bool should_show_speed_restriction = this->ShouldShowSpeedRestrictionLine(v);
+				if (should_show_speed_restriction) {
+					SetDParam(0, Train::From(v)->speed_restriction);
+					DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_VEHICLE_INFO_SPEED_RESTRICTION);
+					y += FONT_HEIGHT_NORMAL;
+				}
+
 				if (this->vehicle_weight_ratio_line_shown != should_show_weight_ratio ||
 						this->vehicle_weight_ratio_line_shown != should_show_weight_ratio ||
-						this->vehicle_slots_line_shown != should_show_slots) {
+						this->vehicle_slots_line_shown != should_show_slots ||
+						this->vehicle_speed_restriction_line_shown != should_show_speed_restriction) {
 					const_cast<VehicleDetailsWindow *>(this)->ReInit();
 				}
 				break;
@@ -3473,7 +3494,11 @@ public:
 				}
 				break;
 			case WID_VV_SHOW_DETAILS: // show details
-				ShowVehicleDetailsWindow(v);
+				if (_ctrl_pressed) {
+					ShowCompanyGroupForVehicle(v);
+				} else {
+					ShowVehicleDetailsWindow(v);
+				}
 				break;
 			case WID_VV_CLONE: // clone vehicle
 				/* Suppress the vehicle GUI when share-cloning.

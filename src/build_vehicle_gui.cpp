@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -128,6 +126,9 @@ static bool EngineIntroDateSorter(const EngineID &a, const EngineID &b)
 	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
+/* cached values for EngineNameSorter to spare many GetString() calls */
+static EngineID _last_engine[2] = { INVALID_ENGINE, INVALID_ENGINE };
+
 /**
  * Determines order of engines by name
  * @param a first engine to compare
@@ -136,17 +137,16 @@ static bool EngineIntroDateSorter(const EngineID &a, const EngineID &b)
  */
 static bool EngineNameSorter(const EngineID &a, const EngineID &b)
 {
-	static EngineID last_engine[2] = { INVALID_ENGINE, INVALID_ENGINE };
-	static char     last_name[2][64] = { "\0", "\0" };
+	static char     last_name[2][64] = { "", "" };
 
-	if (a != last_engine[0]) {
-		last_engine[0] = a;
+	if (a != _last_engine[0]) {
+		_last_engine[0] = a;
 		SetDParam(0, a);
 		GetString(last_name[0], STR_ENGINE_NAME, lastof(last_name[0]));
 	}
 
-	if (b != last_engine[1]) {
-		last_engine[1] = b;
+	if (b != _last_engine[1]) {
+		_last_engine[1] = b;
 		SetDParam(0, b);
 		GetString(last_name[1], STR_ENGINE_NAME, lastof(last_name[1]));
 	}
@@ -931,6 +931,14 @@ int DrawVehiclePurchaseInfo(int left, int right, int y, EngineID engine_number, 
 	/* Additional text from NewGRF */
 	y = ShowAdditionalText(left, right, y, engine_number);
 
+	/* The NewGRF's name which the vehicle comes from */
+	const GRFConfig *config = GetGRFConfig(e->GetGRFID());
+	if (_settings_client.gui.show_newgrf_name && config != nullptr)
+	{
+		DrawString(left, right, y, config->GetName(), TC_BLACK);
+		y += FONT_HEIGHT_NORMAL;
+	}
+
 	return y;
 }
 
@@ -1272,8 +1280,7 @@ struct BuildVehicleWindow : Window {
 		 * Also check to see if the previously selected engine is still available,
 		 * and if not, reset selection to INVALID_ENGINE. This could be the case
 		 * when engines become obsolete and are removed */
-		const Engine *e;
-		FOR_ALL_ENGINES_OF_TYPE(e, VEH_TRAIN) {
+		for (const Engine *e : Engine::IterateType(VEH_TRAIN)) {
 			if (!this->show_hidden_engines && e->IsHidden(_local_company)) continue;
 			EngineID eid = e->index;
 			const RailVehicleInfo *rvi = &e->u.rail;
@@ -1297,6 +1304,9 @@ struct BuildVehicleWindow : Window {
 
 		this->SelectEngine(sel_id);
 
+		/* invalidate cached values for name sorter - engine names could change */
+		_last_engine[0] = _last_engine[1] = INVALID_ENGINE;
+
 		/* make engines first, and then wagons, sorted by selected sort_criteria */
 		_engine_sort_direction = false;
 		EngList_Sort(&this->eng_list, TrainEnginesThenWagonsSorter);
@@ -1316,8 +1326,7 @@ struct BuildVehicleWindow : Window {
 
 		this->eng_list.clear();
 
-		const Engine *e;
-		FOR_ALL_ENGINES_OF_TYPE(e, VEH_ROAD) {
+		for (const Engine *e : Engine::IterateType(VEH_ROAD)) {
 			if (!this->show_hidden_engines && e->IsHidden(_local_company)) continue;
 			EngineID eid = e->index;
 			if (!IsEngineBuildable(eid, VEH_ROAD, _local_company)) continue;
@@ -1336,8 +1345,7 @@ struct BuildVehicleWindow : Window {
 		EngineID sel_id = INVALID_ENGINE;
 		this->eng_list.clear();
 
-		const Engine *e;
-		FOR_ALL_ENGINES_OF_TYPE(e, VEH_SHIP) {
+		for (const Engine *e : Engine::IterateType(VEH_SHIP)) {
 			if (!this->show_hidden_engines && e->IsHidden(_local_company)) continue;
 			EngineID eid = e->index;
 			if (!IsEngineBuildable(eid, VEH_SHIP, _local_company)) continue;
@@ -1361,8 +1369,7 @@ struct BuildVehicleWindow : Window {
 		 * Also check to see if the previously selected plane is still available,
 		 * and if not, reset selection to INVALID_ENGINE. This could be the case
 		 * when planes become obsolete and are removed */
-		const Engine *e;
-		FOR_ALL_ENGINES_OF_TYPE(e, VEH_AIRCRAFT) {
+		for (const Engine *e : Engine::IterateType(VEH_AIRCRAFT)) {
 			if (!this->show_hidden_engines && e->IsHidden(_local_company)) continue;
 			EngineID eid = e->index;
 			if (!IsEngineBuildable(eid, VEH_AIRCRAFT, _local_company)) continue;

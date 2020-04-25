@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -778,8 +776,15 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::Receive_SERVER_ERROR(Packet *p
 
 	StringID err = STR_NETWORK_ERROR_LOSTCONNECTION;
 	if (error < (ptrdiff_t)lengthof(network_error_strings)) err = network_error_strings[error];
-
-	ShowErrorMessage(err, INVALID_STRING_ID, WL_CRITICAL);
+	/* In case of kicking a client, we assume there is a kick message in the packet if we can read one byte */
+	if (error == NETWORK_ERROR_KICKED && p->CanReadFromPacket(1)) {
+		char kick_msg[255];
+		p->Recv_string(kick_msg, sizeof(kick_msg));
+		SetDParamStr(0, kick_msg);
+		ShowErrorMessage(err, STR_NETWORK_ERROR_KICK_MESSAGE, WL_CRITICAL);
+	} else {
+		ShowErrorMessage(err, INVALID_STRING_ID, WL_CRITICAL);
+	}
 
 	/* Perform an emergency save if we had already entered the game */
 	if (this->status == STATUS_ACTIVE) ClientNetworkEmergencySave();
@@ -1371,8 +1376,7 @@ void NetworkClientsToSpectators(CompanyID cid)
 	/* If our company is changing owner, go to spectators */
 	if (cid == _local_company) SetLocalCompany(COMPANY_SPECTATOR);
 
-	NetworkClientInfo *ci;
-	FOR_ALL_CLIENT_INFOS(ci) {
+	for (NetworkClientInfo *ci : NetworkClientInfo::Iterate()) {
 		if (ci->client_playas != cid) continue;
 		NetworkTextMessage(NETWORK_ACTION_COMPANY_SPECTATOR, CC_DEFAULT, false, ci->client_name);
 		ci->client_playas = COMPANY_SPECTATOR;
@@ -1436,8 +1440,7 @@ bool NetworkClientPreferTeamChat(const NetworkClientInfo *cio)
 	/* Only companies actually playing can speak to team. Eg spectators cannot */
 	if (!_settings_client.gui.prefer_teamchat || !Company::IsValidID(cio->client_playas)) return false;
 
-	const NetworkClientInfo *ci;
-	FOR_ALL_CLIENT_INFOS(ci) {
+	for (const NetworkClientInfo *ci : NetworkClientInfo::Iterate()) {
 		if (ci->client_playas == cio->client_playas && ci != cio) return true;
 	}
 

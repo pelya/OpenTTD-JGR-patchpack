@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -110,6 +108,7 @@ GRFConfig::~GRFConfig()
 		free(this->filename);
 		delete this->error;
 	}
+	free(this->full_filename);
 	this->name->Release();
 	this->info->Release();
 	this->url->Release();
@@ -660,7 +659,7 @@ GRFListCompatibility IsGoodGRFConfigList(GRFConfig *grfconfig)
 			f = FindGRFConfig(c->ident.grfid, FGCM_COMPATIBLE, nullptr, c->version);
 			if (f != nullptr) {
 				md5sumToString(buf, lastof(buf), c->ident.md5sum);
-				DEBUG(grf, 1, "NewGRF %08X (%s) not found; checksum %s. Compatibility mode on", BSWAP32(c->ident.grfid), c->filename, buf);
+				DEBUG(grf, 1, "NewGRF %08X (%s) not found; checksum %s. Compatibility mode on", BSWAP32(c->ident.grfid), c->GetDisplayPath(), buf);
 				if (!HasBit(c->flags, GCF_COMPATIBLE)) {
 					/* Preserve original_md5sum after it has been assigned */
 					SetBit(c->flags, GCF_COMPATIBLE);
@@ -674,13 +673,13 @@ GRFListCompatibility IsGoodGRFConfigList(GRFConfig *grfconfig)
 
 			/* No compatible grf was found, mark it as disabled */
 			md5sumToString(buf, lastof(buf), c->ident.md5sum);
-			DEBUG(grf, 0, "NewGRF %08X (%s) not found; checksum %s", BSWAP32(c->ident.grfid), c->filename, buf);
+			DEBUG(grf, 0, "NewGRF %08X (%s) not found; checksum %s", BSWAP32(c->ident.grfid), c->GetDisplayPath(), buf);
 
 			c->status = GCS_NOT_FOUND;
 			res = GLC_NOT_FOUND;
 		} else {
 compatible_grf:
-			DEBUG(grf, 1, "Loading GRF %08X from %s", BSWAP32(f->ident.grfid), f->filename);
+			DEBUG(grf, 1, "Loading GRF %08X from %s", BSWAP32(f->ident.grfid), f->GetDisplayPath());
 			/* The filename could be the filename as in the savegame. As we need
 			 * to load the GRF here, we need the correct filename, so overwrite that
 			 * in any case and set the name and info when it is not set already.
@@ -722,8 +721,13 @@ class GRFFileScanner : FileScanner {
 	std::vector<GRFConfig *> grfs;
 
 public:
-	GRFFileScanner() : next_update(_realtime_tick), num_scanned(0)
+	GRFFileScanner() : num_scanned(0)
 	{
+#if defined(__GNUC__) || defined(__clang__)
+		this->next_update = __atomic_load_n(&_realtime_tick, __ATOMIC_RELAXED);
+#else
+		this->next_update = _realtime_tick;
+#endif
 	}
 
 	bool AddFile(const char *filename, size_t basepath_length, const char *tar_filename) override;
@@ -784,7 +788,12 @@ bool GRFFileScanner::AddFile(const char *filename, size_t basepath_length, const
 	}
 
 	this->num_scanned++;
-	if (this->next_update <= _realtime_tick) {
+#if defined(__GNUC__) || defined(__clang__)
+	const uint32 now = __atomic_load_n(&_realtime_tick, __ATOMIC_RELAXED);
+#else
+	const uint32 now = _realtime_tick;
+#endif
+	if (this->next_update <= now) {
 		_modal_progress_work_mutex.unlock();
 		_modal_progress_paint_mutex.lock();
 
@@ -796,7 +805,7 @@ bool GRFFileScanner::AddFile(const char *filename, size_t basepath_length, const
 		_modal_progress_work_mutex.lock();
 		_modal_progress_paint_mutex.unlock();
 
-		this->next_update = _realtime_tick + MODAL_PROGRESS_REDRAW_TIMEOUT;
+		this->next_update = now + MODAL_PROGRESS_REDRAW_TIMEOUT;
 	}
 
 	if (!added) {

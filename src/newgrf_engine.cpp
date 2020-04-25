@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -954,6 +952,22 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 	return in_motion ? group->loaded[set] : group->loading[set];
 }
 
+GrfSpecFeature VehicleResolverObject::GetFeature() const
+{
+	switch (Engine::Get(this->self_scope.self_type)->type) {
+		case VEH_TRAIN: return GSF_TRAINS;
+		case VEH_ROAD: return GSF_ROADVEHICLES;
+		case VEH_SHIP: return GSF_SHIPS;
+		case VEH_AIRCRAFT: return GSF_AIRCRAFT;
+		default: return GSF_INVALID;
+	}
+}
+
+uint32 VehicleResolverObject::GetDebugID() const
+{
+	return Engine::Get(this->self_scope.self_type)->grf_prop.local_id;
+}
+
 /**
  * Get the grf file associated with an engine type.
  * @param engine_type Engine to query.
@@ -1244,8 +1258,7 @@ void CommitVehicleListOrderChanges()
 {
 	/* Pre-sort engines by scope-grfid and local index */
 	std::vector<EngineID> ordering;
-	Engine *e;
-	FOR_ALL_ENGINES(e) {
+	for (const Engine *e : Engine::Iterate()) {
 		ordering.push_back(e->index);
 	}
 	std::sort(ordering.begin(), ordering.end(), EnginePreSort);

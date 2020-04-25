@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -27,6 +25,7 @@
 #include "network/network.h"
 #include <list>
 #include <map>
+#include <unordered_map>
 
 CommandCost CmdRefitVehicle(TileIndex, DoCommandFlag, uint32, uint32, const char*);
 
@@ -135,7 +134,8 @@ enum GroundVehicleSubtypeFlags {
  */
 enum VehicleCacheFlags {
 	VCF_LAST_VISUAL_EFFECT      = 0, ///< Last vehicle in the consist with a visual effect.
-	VCF_GV_ZERO_SLOPE_RESIST    = 1, ///< GrounVehicle: Consist has zero slope resistance (valid only for the first engine), may be false negative.
+	VCF_GV_ZERO_SLOPE_RESIST    = 1, ///< GroundVehicle: Consist has zero slope resistance (valid only for the first engine), may be false negative.
+	VCF_IS_DRAWN                = 2, ///< Vehicle is currently drawn
 };
 
 /** Cached often queried values common to all vehicles. */
@@ -204,6 +204,18 @@ struct VehicleSpriteSeq {
 	void Draw(int x, int y, PaletteID default_pal, bool force_pal) const;
 };
 
+enum PendingSpeedRestrictionChangeFlags {
+	PSRCF_DIAGONAL                    = 0,
+};
+
+struct PendingSpeedRestrictionChange {
+	uint16 distance;
+	uint16 new_speed;
+	uint16 prev_speed;
+	uint16 flags;
+};
+extern std::unordered_multimap<VehicleID, PendingSpeedRestrictionChange> pending_speed_restriction_change_map;
+
 /** A vehicle pool for a little over 1 million vehicles. */
 typedef Pool<Vehicle, VehicleID, 512, 0xFF000> VehiclePool;
 extern VehiclePool _vehicle_pool;
@@ -238,6 +250,8 @@ public:
 	friend void FixOldVehicles();
 	friend void AfterLoadVehicles(bool part_of_load);             ///< So we can set the #previous and #first pointers while loading
 	friend bool LoadOldVehicle(LoadgameState *ls, int num);       ///< So we can set the proper next pointer while loading
+
+	static void PreCleanPool();
 
 	TileIndex tile;                     ///< Current tile index
 
@@ -767,6 +781,17 @@ public:
 		return set;
 	}
 
+	/**
+	 * Get the next station the vehicle will stop at.
+	 * @return ID of the next station the vehicle will stop at or INVALID_STATION.
+	 */
+	inline StationIDStack GetNextStoppingStationCargoIndependent() const
+	{
+		StationIDStack set;
+		if (this->orders.list != nullptr) set = this->orders.list->GetNextStoppingStation(this, 0).station;
+		return set;
+	}
+
 	void RecalculateOrderOccupancyAverage();
 
 	inline uint8 GetOrderOccupancyAverage() const
@@ -839,7 +864,16 @@ public:
 	void UpdateVisualEffect(bool allow_power_change = true);
 	void ShowVisualEffect() const;
 
-	void UpdatePosition();
+	/**
+	 * Update the position of the vehicle. This will update the hash that tells
+	 *  which vehicles are on a tile.
+	 */
+	void UpdatePosition()
+	{
+		extern void UpdateVehicleTileHash(Vehicle *v, bool remove);
+		if (this->type < VEH_COMPANY_END) UpdateVehicleTileHash(this, false);
+	}
+
 	void UpdateViewport(bool dirty);
 	void UpdatePositionAndViewport();
 	void MarkAllViewportsDirty() const;
@@ -855,6 +889,8 @@ public:
 	inline void SetServiceIntervalIsCustom(bool on) { SB(this->vehicle_flags, VF_SERVINT_IS_CUSTOM, 1, on); }
 
 	inline void SetServiceIntervalIsPercent(bool on) { SB(this->vehicle_flags, VF_SERVINT_IS_PERCENT, 1, on); }
+
+	VehicleOrderID GetFirstWaitingLocation(bool require_wait_timetabled) const;
 
 private:
 	/**
@@ -1067,7 +1103,12 @@ public:
 		return v;
 	}
 
-	bool IsDrawn() const;
+	bool IsDrawn() const
+	{
+		return HasBit(this->vcache.cached_veh_flags, VCF_IS_DRAWN);
+	}
+
+	void UpdateIsDrawn();
 
 	inline void UpdateSpriteSeqBound()
 	{
@@ -1076,19 +1117,6 @@ public:
 
 	char *DumpVehicleFlags(char *b, const char *last) const;
 };
-
-/**
- * Iterate over all vehicles from a given point.
- * @param var   The variable used to iterate over.
- * @param start The vehicle to start the iteration at.
- */
-#define FOR_ALL_VEHICLES_FROM(var, start) FOR_ALL_ITEMS_FROM(Vehicle, vehicle_index, var, start)
-
-/**
- * Iterate over all vehicles.
- * @param var The variable used to iterate over.
- */
-#define FOR_ALL_VEHICLES(var) FOR_ALL_VEHICLES_FROM(var, 0)
 
 /**
  * Class defining several overloaded accessors so we don't
@@ -1265,16 +1293,14 @@ struct SpecializedVehicle : public Vehicle {
 			this->Vehicle::UpdateViewport(true);
 		}
 	}
-};
 
-/**
- * Iterate over all vehicles of a particular type.
- * @param name The type of vehicle to iterate over.
- * @param var  The variable used to iterate over.
- */
-#define FOR_ALL_VEHICLES_OF_TYPE(name, var) \
-	for (size_t vehicle_index = 0; var = nullptr, vehicle_index < name::GetPoolSize(); vehicle_index++) \
-		if ((var = name::GetIfValid(vehicle_index)) != nullptr)
+	/**
+	 * Returns an iterable ensemble of all valid vehicles of type T
+	 * @param from index of the first vehicle to consider
+	 * @return an iterable ensemble of all valid vehicles of type T
+	 */
+	static Pool::IterateWrapper<T> Iterate(size_t from = 0) { return Pool::IterateWrapper<T>(from); }
+};
 
 /** Generates sequence of free UnitID numbers */
 struct FreeUnitIDGenerator {
@@ -1300,5 +1326,6 @@ inline void InvalidateVehicleTickCaches()
 
 void ClearVehicleTickCaches();
 void RemoveFromOtherVehicleTickCache(const Vehicle *v);
+void UpdateAllVehiclesIsDrawn();
 
 #endif /* VEHICLE_BASE_H */

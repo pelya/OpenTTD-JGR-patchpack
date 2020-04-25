@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -308,7 +306,7 @@ public:
 
 					int y = 4 - this->vscroll->GetPosition();
 					bool buildable = true;
-					for (Train *train = this->virtual_train; train != nullptr; train = train->Next()) {
+					for (Train *train = this->virtual_train; train != nullptr; train = train->GetNextUnit()) {
 						if (!IsEngineBuildable(train->engine_type, VEH_TRAIN, train->owner)) buildable = false;
 					}
 					if (!buildable) {

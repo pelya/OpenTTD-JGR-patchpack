@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -52,6 +50,7 @@
 #include "framerate_type.h"
 #include "zoning.h"
 #include "guitimer_func.h"
+#include "screenshot_gui.h"
 
 #include "widgets/toolbar_widget.h"
 
@@ -772,10 +771,9 @@ static CallBackFunction MenuClickIndustry(int index)
 
 static void ToolbarVehicleClick(Window *w, VehicleType veh)
 {
-	const Vehicle *v;
 	int dis = ~0;
 
-	FOR_ALL_VEHICLES(v) {
+	for (const Vehicle *v : Vehicle::Iterate()) {
 		if (v->type == veh && v->IsPrimaryVehicle()) ClrBit(dis, v->owner);
 	}
 	PopupMainCompanyToolbMenu(w, WID_TN_VEHICLE_START + veh, dis);
@@ -955,6 +953,7 @@ static CallBackFunction ToolbarBuildWaterClick(Window *w)
 	DropDownList list;
 	list.emplace_back(new DropDownListIconItem(SPR_IMG_BUILD_CANAL, PAL_NONE, STR_WATERWAYS_MENU_WATERWAYS_CONSTRUCTION, 0, false));
 	ShowDropDownList(w, std::move(list), 0, WID_TN_WATER, 140, true, true);
+	if (_settings_client.sound.click_beep) SndPlayFx(SND_15_BEEP);
 	return CBF_NONE;
 }
 
@@ -977,6 +976,7 @@ static CallBackFunction ToolbarBuildAirClick(Window *w)
 	DropDownList list;
 	list.emplace_back(new DropDownListIconItem(SPR_IMG_AIRPORT, PAL_NONE, STR_AIRCRAFT_MENU_AIRPORT_CONSTRUCTION, 0, false));
 	ShowDropDownList(w, std::move(list), 0, WID_TN_AIR, 140, true, true);
+	if (_settings_client.sound.click_beep) SndPlayFx(SND_15_BEEP);
 	return CBF_NONE;
 }
 
@@ -1001,6 +1001,7 @@ static CallBackFunction ToolbarForestClick(Window *w)
 	list.emplace_back(new DropDownListIconItem(SPR_IMG_PLANTTREES, PAL_NONE, STR_LANDSCAPING_MENU_PLANT_TREES, 1, false));
 	list.emplace_back(new DropDownListIconItem(SPR_IMG_SIGN, PAL_NONE, STR_LANDSCAPING_MENU_PLACE_SIGN, 2, false));
 	ShowDropDownList(w, std::move(list), 0, WID_TN_LANDSCAPE, 100, true, true);
+	if (_settings_client.sound.click_beep) SndPlayFx(SND_15_BEEP);
 	return CBF_NONE;
 }
 
@@ -1079,13 +1080,8 @@ static CallBackFunction PlaceLandBlockInfo()
 
 static CallBackFunction ToolbarHelpClick(Window *w)
 {
-	PopupMainToolbMenu(w, _game_mode == GM_EDITOR ? (int)WID_TE_HELP : (int)WID_TN_HELP, STR_ABOUT_MENU_LAND_BLOCK_INFO, _settings_client.gui.newgrf_developer_tools ? 14 : 11);
+	PopupMainToolbMenu(w, _game_mode == GM_EDITOR ? (int)WID_TE_HELP : (int)WID_TN_HELP, STR_ABOUT_MENU_LAND_BLOCK_INFO, _settings_client.gui.newgrf_developer_tools ? 11 : 8);
 	return CBF_NONE;
-}
-
-static void MenuClickSmallScreenshot()
-{
-	MakeScreenshot(SC_VIEWPORT, nullptr);
 }
 
 /**
@@ -1103,7 +1099,7 @@ static void ScreenshotConfirmCallback(Window *w, bool confirmed)
  * Ask for confirmation if the screenshot will be huge.
  * @param t Screenshot type: World or viewport screenshot
  */
-static void MenuClickLargeWorldScreenshot(ScreenshotType t)
+static void MenuClickScreenshot(ScreenshotType t)
 {
 	ViewPort vp;
 	SetupScreenshotViewport(t, &vp);
@@ -1177,16 +1173,13 @@ static CallBackFunction MenuClickHelp(int index)
 		case  0: return PlaceLandBlockInfo();
 		case  2: IConsoleSwitch();                 break;
 		case  3: ShowAIDebugWindow();              break;
-		case  4: MenuClickSmallScreenshot();       break;
-		case  5: MenuClickLargeWorldScreenshot(SC_ZOOMEDIN);    break;
-		case  6: MenuClickLargeWorldScreenshot(SC_DEFAULTZOOM); break;
-		case  7: MenuClickLargeWorldScreenshot(SC_WORLD);       break;
-		case  8: ShowFramerateWindow();            break;
-		case  9: ShowModifierKeyToggleWindow();    break;
-		case 10: ShowAboutWindow();                break;
-		case 11: ShowSpriteAlignerWindow();        break;
-		case 12: ToggleBoundingBoxes();            break;
-		case 13: ToggleDirtyBlocks();              break;
+		case  4: ShowScreenshotWindow();           break;
+		case  5: ShowFramerateWindow();            break;
+		case  6: ShowModifierKeyToggleWindow();    break;
+		case  7: ShowAboutWindow();                break;
+		case  8: ShowSpriteAlignerWindow();        break;
+		case  9: ToggleBoundingBoxes();            break;
+		case 10: ToggleDirtyBlocks();              break;
 	}
 	return CBF_NONE;
 }
@@ -1519,6 +1512,21 @@ public:
 			if (nwid != nullptr) return nwid;
 		}
 		return nullptr;
+	}
+
+
+	void FillDirtyWidgets(std::vector<NWidgetBase *> &dirty_widgets) override
+	{
+		if (this->base_flags & WBF_DIRTY) {
+			dirty_widgets.push_back(this);
+		} else {
+			for (NWidgetBase *child_wid = this->head; child_wid != nullptr; child_wid = child_wid->next) {
+				if (child_wid->type == NWID_SPACER) continue;
+				if (!this->visible[((NWidgetCore*)child_wid)->index]) continue;
+
+				child_wid->FillDirtyWidgets(dirty_widgets);
+			}
+		}
 	}
 
 	/**
@@ -2039,6 +2047,7 @@ enum MainToolbarHotkeys {
 	MTHK_BUILD_AIRPORT,
 	MTHK_BUILD_TREES,
 	MTHK_MUSIC,
+	MTHK_LANDINFO,
 	MTHK_AI_DEBUG,
 	MTHK_SMALL_SCREENSHOT,
 	MTHK_ZOOMEDIN_SCREENSHOT,
@@ -2109,6 +2118,7 @@ struct MainToolbarWindow : Window {
 
 	EventState OnHotkey(int hotkey) override
 	{
+		CallBackFunction cbf = CBF_NONE;
 		switch (hotkey) {
 			case MTHK_PAUSE: ToolbarPauseClick(this); break;
 			case MTHK_FASTFORWARD: ToolbarFastForwardClick(this); break;
@@ -2140,18 +2150,20 @@ struct MainToolbarWindow : Window {
 			case MTHK_BUILD_TREES: ShowBuildTreesToolbar(); break;
 			case MTHK_MUSIC: ShowMusicWindow(); break;
 			case MTHK_AI_DEBUG: ShowAIDebugWindow(); break;
-			case MTHK_SMALL_SCREENSHOT: MenuClickSmallScreenshot(); break;
-			case MTHK_ZOOMEDIN_SCREENSHOT: MenuClickLargeWorldScreenshot(SC_ZOOMEDIN); break;
-			case MTHK_DEFAULTZOOM_SCREENSHOT: MenuClickLargeWorldScreenshot(SC_DEFAULTZOOM); break;
-			case MTHK_GIANT_SCREENSHOT: MenuClickLargeWorldScreenshot(SC_WORLD); break;
+			case MTHK_SMALL_SCREENSHOT: MenuClickScreenshot(SC_VIEWPORT); break;
+			case MTHK_ZOOMEDIN_SCREENSHOT: MenuClickScreenshot(SC_ZOOMEDIN); break;
+			case MTHK_DEFAULTZOOM_SCREENSHOT: MenuClickScreenshot(SC_DEFAULTZOOM); break;
+			case MTHK_GIANT_SCREENSHOT: MenuClickScreenshot(SC_WORLD); break;
 			case MTHK_CHEATS: if (!_networking) ShowCheatWindow(); break;
 			case MTHK_TERRAFORM: ShowTerraformToolbar(); break;
 			case MTHK_EXTRA_VIEWPORT: ShowExtraViewPortWindowForTileUnderCursor(); break;
 			case MTHK_CLIENT_LIST: if (_networking) ShowClientList(); break;
 			case MTHK_SIGN_LIST: ShowSignList(); break;
+			case MTHK_LANDINFO: cbf = PlaceLandBlockInfo(); break;
 			case MTHK_PLAN_LIST: ShowPlansWindow(); break;
 			default: return ES_NOT_HANDLED;
 		}
+		if (cbf != CBF_NONE) _last_started_action = cbf;
 		return ES_HANDLED;
 	}
 
@@ -2262,6 +2274,7 @@ static Hotkey maintoolbar_hotkeys[] = {
 	Hotkey('V', "extra_viewport", MTHK_EXTRA_VIEWPORT),
 	Hotkey((uint16)0, "client_list", MTHK_CLIENT_LIST),
 	Hotkey((uint16)0, "sign_list", MTHK_SIGN_LIST),
+	Hotkey((uint16)0, "land_info", MTHK_LANDINFO),
 	Hotkey('P', "plan_list", MTHK_PLAN_LIST),
 	HOTKEY_LIST_END
 };
@@ -2514,10 +2527,10 @@ struct ScenarioEditorToolbarWindow : Window {
 			case MTEHK_SIGN:                   cbf = ToolbarScenPlaceSign(this); break;
 			case MTEHK_MUSIC:                  ShowMusicWindow(); break;
 			case MTEHK_LANDINFO:               cbf = PlaceLandBlockInfo(); break;
-			case MTEHK_SMALL_SCREENSHOT:       MenuClickSmallScreenshot(); break;
-			case MTEHK_ZOOMEDIN_SCREENSHOT:    MenuClickLargeWorldScreenshot(SC_ZOOMEDIN); break;
-			case MTEHK_DEFAULTZOOM_SCREENSHOT: MenuClickLargeWorldScreenshot(SC_DEFAULTZOOM); break;
-			case MTEHK_GIANT_SCREENSHOT:       MenuClickLargeWorldScreenshot(SC_WORLD); break;
+			case MTEHK_SMALL_SCREENSHOT:       MenuClickScreenshot(SC_VIEWPORT); break;
+			case MTEHK_ZOOMEDIN_SCREENSHOT:    MenuClickScreenshot(SC_ZOOMEDIN); break;
+			case MTEHK_DEFAULTZOOM_SCREENSHOT: MenuClickScreenshot(SC_DEFAULTZOOM); break;
+			case MTEHK_GIANT_SCREENSHOT:       MenuClickScreenshot(SC_WORLD); break;
 			case MTEHK_ZOOM_IN:                ToolbarZoomInClick(this); break;
 			case MTEHK_ZOOM_OUT:               ToolbarZoomOutClick(this); break;
 			case MTEHK_TERRAFORM:              ShowEditorTerraformToolbar(); break;

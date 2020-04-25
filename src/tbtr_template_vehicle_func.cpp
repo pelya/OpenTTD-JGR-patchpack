@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -49,8 +47,7 @@ Vehicle *vhead, *vtmp;
 // debugging printing functions for convenience, usually called from gdb
 void tbtr_debug_pat()
 {
-	TemplateVehicle *tv;
-	FOR_ALL_TEMPLATES(tv) {
+	for (TemplateVehicle *tv : TemplateVehicle::Iterate()) {
 		if (tv->Prev()) continue;
 		tbtr_debug_ptv(tv);
 		printf("__________\n");
@@ -59,8 +56,7 @@ void tbtr_debug_pat()
 
 void tbtr_debug_pav()
 {
-	Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (Train *t : Train::Iterate()) {
 		if (t->Previous()) continue;
 		tbtr_debug_pvt(t);
 		printf("__________\n");
@@ -92,9 +88,7 @@ void tbtr_debug_pvt (const Train *printme)
 void BuildTemplateGuiList(GUITemplateList *list, Scrollbar *vscroll, Owner oid, RailType railtype)
 {
 	list->clear();
-	const TemplateVehicle *tv;
-
-	FOR_ALL_TEMPLATES(tv) {
+	for (const TemplateVehicle *tv : TemplateVehicle::Iterate()) {
 		if (tv->owner == oid && (tv->IsPrimaryVehicle() || tv->IsFreeWagonChain()) && TemplateVehicleContainsEngineOfRailtype(tv, railtype)) {
 			list->push_back(tv);
 		}
@@ -210,13 +204,14 @@ Train* DeleteVirtualTrain(Train *chain, Train *to_del) {
 // retrieve template vehicle from template replacement that belongs to the given group
 TemplateVehicle* GetTemplateVehicleByGroupID(GroupID gid) {
 	if (gid >= NEW_GROUP) return nullptr;
-	TemplateReplacement *tr;
-	FOR_ALL_TEMPLATE_REPLACEMENTS(tr) {
-		if (tr->Group() == gid) {
-			return TemplateVehicle::GetIfValid(tr->Template()); // there can be only one
-		}
-	}
-	return nullptr;
+	const TemplateID tid = GetTemplateIDByGroupID(gid);
+	return tid != INVALID_TEMPLATE ? TemplateVehicle::GetIfValid(tid) : nullptr;
+}
+
+TemplateVehicle* GetTemplateVehicleByGroupIDRecursive(GroupID gid) {
+	if (gid >= NEW_GROUP) return nullptr;
+	const TemplateID tid = GetTemplateIDByGroupIDRecursive(gid);
+	return tid != INVALID_TEMPLATE ? TemplateVehicle::GetIfValid(tid) : nullptr;
 }
 
 /**
@@ -268,8 +263,7 @@ Train* ChainContainsEngine(EngineID eid, Train *chain) {
 // has O(n^2)
 Train* DepotContainsEngine(TileIndex tile, EngineID eid, Train *not_in = nullptr)
 {
-	Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (Train *t : Train::Iterate()) {
 		// conditions: v is stopped in the given depot, has the right engine and if 'not_in' is given v must not be contained within 'not_in'
 		// if 'not_in' is nullptr, no check is needed
 		if (t->tile == tile
@@ -350,8 +344,7 @@ int NumTrainsNeedTemplateReplacement(GroupID g_id, const TemplateVehicle *tv)
 	int count = 0;
 	if (!tv) return count;
 
-	const Train *t;
-	FOR_ALL_TRAINS(t) {
+	for (Train *t : Train::Iterate()) {
 		if (t->IsPrimaryVehicle() && t->group_id == g_id && (!TrainMatchesTemplate(t, tv) || !TrainMatchesTemplateRefit(t, tv))) {
 			count++;
 		}
@@ -359,18 +352,21 @@ int NumTrainsNeedTemplateReplacement(GroupID g_id, const TemplateVehicle *tv)
 	return count;
 }
 // refit each vehicle in t as is in tv, assume t and tv contain the same types of vehicles
-void CmdRefitTrainFromTemplate(Train *t, TemplateVehicle *tv, DoCommandFlag flags)
+CommandCost CmdRefitTrainFromTemplate(Train *t, TemplateVehicle *tv, DoCommandFlag flags)
 {
+	CommandCost cost(t->GetExpenseType(false));
+
 	while (t && tv) {
 		// refit t as tv
 		uint32 cb = GetCmdRefitVeh(t);
 
-		DoCommand(t->tile, t->index, tv->cargo_type | tv->cargo_subtype << 8 | (1 << 16) | (1 << 31), flags, cb);
+		cost.AddCost(DoCommand(t->tile, t->index, tv->cargo_type | tv->cargo_subtype << 8 | (1 << 16) | (1 << 31), flags, cb));
 
 		// next
 		t = t->GetNextUnit();
 		tv = tv->GetNextUnit();
 	}
+	return cost;
 }
 
 /** using cmdtemplatereplacevehicle as test-function (i.e. with flag DC_NONE) is not a good idea as that function relies on

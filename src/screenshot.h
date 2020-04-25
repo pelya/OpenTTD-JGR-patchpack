@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -24,6 +22,7 @@ enum ScreenshotType {
 	SC_DEFAULTZOOM, ///< Zoomed to default zoom level screenshot of the visible area.
 	SC_WORLD,       ///< World screenshot.
 	SC_HEIGHTMAP,   ///< Heightmap of the world.
+	SC_MINIMAP,     ///< Minimap screenshot.
 };
 
 class SmallMapWindow;
@@ -32,7 +31,7 @@ void SetupScreenshotViewport(ScreenshotType t, struct ViewPort *vp);
 bool MakeHeightmapScreenshot(const char *filename);
 bool MakeSmallMapScreenshot(unsigned int width, unsigned int height, SmallMapWindow *window);
 bool MakeScreenshot(ScreenshotType t, const char *name);
-void SaveMinimap(const char *name);
+bool MakeMinimapWorldScreenshot(const char *name);
 void SetScreenshotAuxiliaryText(const char *key, const char *value);
 inline void ClearScreenshotAuxiliaryText() { SetScreenshotAuxiliaryText(nullptr, nullptr); }
 

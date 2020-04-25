@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -37,8 +35,10 @@
 /* printf format specification for 32/64-bit addresses. */
 #ifdef _M_AMD64
 #define PRINTF_PTR "0x%016IX"
+#define PRINTF_LOC "%.16IX"
 #else
 #define PRINTF_PTR "0x%08X"
+#define PRINTF_LOC "%.8IX"
 #endif
 
 /**
@@ -110,21 +110,51 @@ public:
 
 }
 
+static const char *GetAccessViolationTypeString(uint type)
+{
+	switch (type) {
+		case 0:
+			return "read";
+		case 1:
+			return "write";
+		case 8:
+			return "user-mode DEP";
+		default:
+			return "???";
+	}
+}
+
 /* virtual */ char *CrashLogWindows::LogError(char *buffer, const char *last, const char *message) const
 {
-	return buffer + seprintf(buffer, last,
-			"Crash reason:\n"
-			" Exception: %.8X\n"
-#ifdef _M_AMD64
-			" Location:  %.16IX\n"
-#else
-			" Location:  %.8X\n"
-#endif
-			" Message:   %s\n\n",
-			(int)ep->ExceptionRecord->ExceptionCode,
-			(size_t)ep->ExceptionRecord->ExceptionAddress,
-			message == nullptr ? "<none>" : message
-	);
+	buffer += seprintf(buffer, last, "Crash reason:\n");
+	for (auto record = ep->ExceptionRecord; record != nullptr; record = record->ExceptionRecord) {
+		buffer += seprintf(buffer, last,
+				" Exception:  %.8X\n"
+				" Location:   " PRINTF_LOC "\n",
+				(int)record->ExceptionCode,
+				(size_t)record->ExceptionAddress
+		);
+		if (record->ExceptionCode == 0xC0000005 && record->NumberParameters == 2) {
+			buffer += seprintf(buffer, last,
+					" Fault type: %u (%s)\n"
+					" Fault addr: " PRINTF_LOC "\n",
+					(uint) record->ExceptionInformation[0],
+					GetAccessViolationTypeString(record->ExceptionInformation[0]),
+					record->ExceptionInformation[1]
+			);
+		} else {
+			for (uint i = 0; i < (uint) record->NumberParameters; i++) {
+				buffer += seprintf(buffer, last,
+						" Info %u:     " PRINTF_LOC "\n",
+						i,
+						record->ExceptionInformation[i]
+				);
+			}
+		}
+	}
+	buffer += seprintf(buffer, last, " Message:    %s\n\n",
+			message == nullptr ? "<none>" : message);
+	return buffer;
 }
 
 struct DebugFileInfo {
@@ -270,7 +300,7 @@ static char *PrintModuleInfo(char *output, const char *last, HMODULE mod)
 		ep->ContextRecord->Rip,
 		ep->ContextRecord->EFlags
 	);
-#else
+#elif defined(_M_IX86)
 	buffer += seprintf(buffer, last,
 		" EAX: %.8X EBX: %.8X ECX: %.8X EDX: %.8X\n"
 		" ESI: %.8X EDI: %.8X EBP: %.8X ESP: %.8X\n"
@@ -286,13 +316,57 @@ static char *PrintModuleInfo(char *output, const char *last, HMODULE mod)
 		(int)ep->ContextRecord->Eip,
 		(int)ep->ContextRecord->EFlags
 	);
+#elif defined(_M_ARM64)
+	buffer += seprintf(buffer, last,
+		" X0:  %.16I64X X1:  %.16I64X X2:  %.16I64X X3:  %.16I64X\n"
+		" X4:  %.16I64X X5:  %.16I64X X6:  %.16I64X X7:  %.16I64X\n"
+		" X8:  %.16I64X X9:  %.16I64X X10: %.16I64X X11: %.16I64X\n"
+		" X12: %.16I64X X13: %.16I64X X14: %.16I64X X15: %.16I64X\n"
+		" X16: %.16I64X X17: %.16I64X X18: %.16I64X X19: %.16I64X\n"
+		" X20: %.16I64X X21: %.16I64X X22: %.16I64X X23: %.16I64X\n"
+		" X24: %.16I64X X25: %.16I64X X26: %.16I64X X27: %.16I64X\n"
+		" X28: %.16I64X Fp:  %.16I64X Lr:  %.16I64X\n",
+		ep->ContextRecord->X0,
+		ep->ContextRecord->X1,
+		ep->ContextRecord->X2,
+		ep->ContextRecord->X3,
+		ep->ContextRecord->X4,
+		ep->ContextRecord->X5,
+		ep->ContextRecord->X6,
+		ep->ContextRecord->X7,
+		ep->ContextRecord->X8,
+		ep->ContextRecord->X9,
+		ep->ContextRecord->X10,
+		ep->ContextRecord->X11,
+		ep->ContextRecord->X12,
+		ep->ContextRecord->X13,
+		ep->ContextRecord->X14,
+		ep->ContextRecord->X15,
+		ep->ContextRecord->X16,
+		ep->ContextRecord->X17,
+		ep->ContextRecord->X18,
+		ep->ContextRecord->X19,
+		ep->ContextRecord->X20,
+		ep->ContextRecord->X21,
+		ep->ContextRecord->X22,
+		ep->ContextRecord->X23,
+		ep->ContextRecord->X24,
+		ep->ContextRecord->X25,
+		ep->ContextRecord->X26,
+		ep->ContextRecord->X27,
+		ep->ContextRecord->X28,
+		ep->ContextRecord->Fp,
+		ep->ContextRecord->Lr
+	);
 #endif
 
 	buffer += seprintf(buffer, last, "\n Bytes at instruction pointer:\n");
 #ifdef _M_AMD64
 	byte *b = (byte*)ep->ContextRecord->Rip;
-#else
+#elif defined(_M_IX86)
 	byte *b = (byte*)ep->ContextRecord->Eip;
+#elif defined(_M_ARM64)
+	byte *b = (byte*)ep->ContextRecord->Pc;
 #endif
 	for (int i = 0; i != 24; i++) {
 		if (IsBadReadPtr(b, 1)) {
@@ -310,8 +384,10 @@ static char *PrintModuleInfo(char *output, const char *last, HMODULE mod)
 	buffer += seprintf(buffer, last, "Stack trace:\n");
 #ifdef _M_AMD64
 	uint32 *b = (uint32*)ep->ContextRecord->Rsp;
-#else
+#elif defined(_M_IX86)
 	uint32 *b = (uint32*)ep->ContextRecord->Esp;
+#elif defined(_M_ARM64)
+	uint32 *b = (uint32*)ep->ContextRecord->Sp;
 #endif
 	for (int j = 0; j != 24; j++) {
 		for (int i = 0; i != 8; i++) {
@@ -385,10 +461,14 @@ char *CrashLogWindows::AppendDecodedStacktrace(char *buffer, const char *last) c
 		frame.AddrPC.Offset = ep->ContextRecord->Rip;
 		frame.AddrFrame.Offset = ep->ContextRecord->Rbp;
 		frame.AddrStack.Offset = ep->ContextRecord->Rsp;
-#else
+#elif defined(_M_IX86)
 		frame.AddrPC.Offset = ep->ContextRecord->Eip;
 		frame.AddrFrame.Offset = ep->ContextRecord->Ebp;
 		frame.AddrStack.Offset = ep->ContextRecord->Esp;
+#elif defined(_M_ARM64)
+		frame.AddrPC.Offset = ep->ContextRecord->Pc;
+		frame.AddrFrame.Offset = ep->ContextRecord->Fp;
+		frame.AddrStack.Offset = ep->ContextRecord->Sp;
 #endif
 		frame.AddrPC.Mode = AddrModeFlat;
 		frame.AddrFrame.Mode = AddrModeFlat;
@@ -569,9 +649,12 @@ static LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS *ep)
 #ifdef _M_AMD64
 		ep->ContextRecord->Rip = (DWORD64)ShowCrashlogWindow;
 		ep->ContextRecord->Rsp = (DWORD64)_safe_esp;
-#else
+#elif defined(_M_IX86)
 		ep->ContextRecord->Eip = (DWORD)ShowCrashlogWindow;
 		ep->ContextRecord->Esp = (DWORD)_safe_esp;
+#elif defined(_M_ARM64)
+		ep->ContextRecord->Pc = (DWORD64)ShowCrashlogWindow;
+		ep->ContextRecord->Sp = (DWORD64)_safe_esp;
 #endif
 		return EXCEPTION_CONTINUE_EXECUTION;
 	}
@@ -598,7 +681,7 @@ static void CDECL CustomAbort(int signal)
 
 /* static */ void CrashLog::InitialiseCrashLog()
 {
-#ifdef _M_AMD64
+#if defined(_M_AMD64) || defined(_M_ARM64)
 	CONTEXT ctx;
 	RtlCaptureContext(&ctx);
 
@@ -606,7 +689,11 @@ static void CDECL CustomAbort(int signal)
 	 * function. As we are simulating a function call with the safe ESP value,
 	 * we need to subtract 8 for the imaginary return address otherwise stack
 	 * alignment would be wrong in the called function. */
+#if defined(_M_ARM64)
+	_safe_esp = (void *)(ctx.Sp - 8);
+#else
 	_safe_esp = (void *)(ctx.Rsp - 8);
+#endif
 #else
 #if defined(_MSC_VER)
 	_asm {
@@ -624,7 +711,12 @@ static void CDECL CustomAbort(int signal)
 	_set_abort_behavior(0, _WRITE_ABORT_MSG);
 #endif
 	SetUnhandledExceptionFilter(ExceptionHandler);
-	AddVectoredExceptionHandler(1, VectoredExceptionHandler);
+
+	using VEX_HANDLER_TYPE = LONG WINAPI (EXCEPTION_POINTERS *);
+	void* (WINAPI *AddVectoredExceptionHandler)(ULONG, VEX_HANDLER_TYPE*);
+	if (LoadLibraryList((Function*)&AddVectoredExceptionHandler, "kernel32.dll\0AddVectoredExceptionHandler\0\0")) {
+		AddVectoredExceptionHandler(1, VectoredExceptionHandler);
+	}
 
 	BOOL (WINAPI *SetThreadStackGuarantee)(PULONG);
 	if (LoadLibraryList((Function*)&SetThreadStackGuarantee, "kernel32.dll\0SetThreadStackGuarantee\0\0")) {

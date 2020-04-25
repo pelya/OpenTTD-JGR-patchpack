@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -121,8 +119,7 @@ struct PlansWindow : Window {
 				}
 				break;
 			case WID_PLN_HIDE_ALL: {
-				Plan *p;
-				FOR_ALL_PLANS(p) {
+				for (Plan *p : Plan::Iterate()) {
 					if (p->IsListable()) p->SetVisibility(false);
 				}
 				this->SetWidgetDirty(WID_PLN_LIST);
@@ -139,8 +136,7 @@ struct PlansWindow : Window {
 			}
 
 			case WID_PLN_SHOW_ALL: {
-				Plan *p;
-				FOR_ALL_PLANS(p) {
+				for (Plan *p : Plan::Iterate()) {
 					if (p->IsListable()) p->SetVisibility(true);
 				}
 				this->SetWidgetDirty(WID_PLN_LIST);
@@ -208,8 +204,7 @@ struct PlansWindow : Window {
 
 	bool AllPlansHidden() const
 	{
-		Plan *p;
-		FOR_ALL_PLANS(p) {
+		for (Plan *p : Plan::Iterate()) {
 			if (p->IsVisible()) return false;
 		}
 		return true;
@@ -334,8 +329,7 @@ struct PlansWindow : Window {
 
 		int sbcnt = 0;
 		this->list.clear();
-		Plan *p;
-		FOR_ALL_PLANS(p) {
+		for (Plan *p : Plan::Iterate()) {
 			if (!p->IsListable()) continue;
 
 			ListItem li;

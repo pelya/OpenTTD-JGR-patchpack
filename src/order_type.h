@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -145,6 +143,8 @@ enum OrderConditionVariable {
 	OCV_PERCENT,            ///< Skip xx percent of times
 	OCV_SLOT_OCCUPANCY,     ///< Test if train slot is fully occupied
 	OCV_TRAIN_IN_SLOT,      ///< Test if train is in slot
+	OCV_CARGO_LOAD_PERCENTAGE, ///< Skip based on the amount of load of a specific cargo
+	OCV_CARGO_WAITING_AMOUNT,  ///< Skip based on the amount of a specific cargo waiting at next station
 	OCV_END
 };
 
@@ -176,6 +176,7 @@ enum ModifyOrderFlags {
 	MOF_COND_VARIABLE,   ///< A conditional variable changes.
 	MOF_COND_COMPARATOR, ///< A comparator changes.
 	MOF_COND_VALUE,      ///< The value to set the condition to.
+	MOF_COND_VALUE_2,    ///< The secondary value to set the condition to.
 	MOF_COND_DESTINATION,///< Change the destination of a conditional order.
 	MOF_WAYPOINT_FLAGS,  ///< Change the waypoint flags
 	MOF_CARGO_TYPE_UNLOAD, ///< Passes an OrderUnloadType and a CargoID.

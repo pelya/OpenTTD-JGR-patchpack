@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -270,7 +268,7 @@ public:
 	{
 		uint *count = (uint *)data;
 		/* Ignore other vehicles (aircraft) and ships inside depot. */
-		if (v->type == VEH_SHIP && (v->vehstatus & VS_HIDDEN) == 0) (*count)++;
+		if ((v->vehstatus & VS_HIDDEN) == 0) (*count)++;
 
 		return nullptr;
 	}
@@ -290,7 +288,7 @@ public:
 		if (IsDockingTile(n.GetTile())) {
 			/* Check docking tile for occupancy */
 			uint count = 1;
-			HasVehicleOnPos(n.GetTile(), &count, &CountShipProc);
+			HasVehicleOnPos(n.GetTile(), VEH_SHIP, &count, &CountShipProc);
 			c += count * 3 * YAPF_TILE_LENGTH;
 		}
 

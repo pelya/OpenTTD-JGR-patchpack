@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -35,6 +33,7 @@
 #include "ai/ai.hpp"
 #include "ai/ai_config.hpp"
 #include "newgrf.h"
+#include "newgrf_profiling.h"
 #include "console_func.h"
 #include "engine_base.h"
 #include "game/game.hpp"
@@ -527,7 +526,7 @@ DEF_CONSOLE_CMD(ConClearBuffer)
  * Network Core Console Commands
  **********************************/
 
-static bool ConKickOrBan(const char *argv, bool ban)
+static bool ConKickOrBan(const char *argv, bool ban, const char *reason)
 {
 	uint n;
 
@@ -551,14 +550,14 @@ static bool ConKickOrBan(const char *argv, bool ban)
 
 		if (!ban) {
 			/* Kick only this client, not all clients with that IP */
-			NetworkServerKickClient(client_id);
+			NetworkServerKickClient(client_id, reason);
 			return true;
 		}
 
 		/* When banning, kick+ban all clients with that IP */
-		n = NetworkServerKickOrBanIP(client_id, ban);
+		n = NetworkServerKickOrBanIP(client_id, ban, reason);
 	} else {
-		n = NetworkServerKickOrBanIP(argv, ban);
+		n = NetworkServerKickOrBanIP(argv, ban, reason);
 	}
 
 	if (n == 0) {
@@ -573,28 +572,48 @@ static bool ConKickOrBan(const char *argv, bool ban)
 DEF_CONSOLE_CMD(ConKick)
 {
 	if (argc == 0) {
-		IConsoleHelp("Kick a client from a network game. Usage: 'kick <ip | client-id>'");
+		IConsoleHelp("Kick a client from a network game. Usage: 'kick <ip | client-id> [<kick-reason>]'");
 		IConsoleHelp("For client-id's, see the command 'clients'");
 		return true;
 	}
 
-	if (argc != 2) return false;
+	if (argc != 2 && argc != 3) return false;
 
-	return ConKickOrBan(argv[1], false);
+	/* No reason supplied for kicking */
+	if (argc == 2) return ConKickOrBan(argv[1], false, nullptr);
+
+	/* Reason for kicking supplied */
+	size_t kick_message_length = strlen(argv[2]);
+	if (kick_message_length >= 255) {
+		IConsolePrintF(CC_ERROR, "ERROR: Maximum kick message length is 254 characters. You entered " PRINTF_SIZE " characters.", kick_message_length);
+		return false;
+	} else {
+		return ConKickOrBan(argv[1], false, argv[2]);
+	}
 }
 
 DEF_CONSOLE_CMD(ConBan)
 {
 	if (argc == 0) {
-		IConsoleHelp("Ban a client from a network game. Usage: 'ban <ip | client-id>'");
+		IConsoleHelp("Ban a client from a network game. Usage: 'ban <ip | client-id> [<ban-reason>]'");
 		IConsoleHelp("For client-id's, see the command 'clients'");
 		IConsoleHelp("If the client is no longer online, you can still ban his/her IP");
 		return true;
 	}
 
-	if (argc != 2) return false;
+	if (argc != 2 && argc != 3) return false;
 
-	return ConKickOrBan(argv[1], true);
+	/* No reason supplied for kicking */
+	if (argc == 2) return ConKickOrBan(argv[1], true, nullptr);
+
+	/* Reason for kicking supplied */
+	size_t kick_message_length = strlen(argv[2]);
+	if (kick_message_length >= 255) {
+		IConsolePrintF(CC_ERROR, "ERROR: Maximum kick message length is 254 characters. You entered " PRINTF_SIZE " characters.", kick_message_length);
+		return false;
+	} else {
+		return ConKickOrBan(argv[1], true, argv[2]);
+	}
 }
 
 DEF_CONSOLE_CMD(ConUnBan)
@@ -1209,9 +1228,8 @@ DEF_CONSOLE_CMD(ConStartAI)
 	}
 
 	int n = 0;
-	Company *c;
 	/* Find the next free slot */
-	FOR_ALL_COMPANIES(c) {
+	for (const Company *c : Company::Iterate()) {
 		if (c->index != n) break;
 		n++;
 	}
@@ -1415,10 +1433,11 @@ DEF_CONSOLE_CMD(ConAlias)
 DEF_CONSOLE_CMD(ConScreenShot)
 {
 	if (argc == 0) {
-		IConsoleHelp("Create a screenshot of the game. Usage: 'screenshot [big | giant | no_con] [file name]'");
+		IConsoleHelp("Create a screenshot of the game. Usage: 'screenshot [big | giant | no_con | minimap] [file name]'");
 		IConsoleHelp("'big' makes a zoomed-in screenshot of the visible area, 'giant' makes a screenshot of the "
 				"whole map, 'no_con' hides the console to create the screenshot. 'big' or 'giant' "
-				"screenshots are always drawn without console");
+				"screenshots are always drawn without console. "
+				"'minimap' makes a top-viewed minimap screenshot of whole world which represents one tile by one pixel.");
 		return true;
 	}
 
@@ -1435,6 +1454,10 @@ DEF_CONSOLE_CMD(ConScreenShot)
 		} else if (strcmp(argv[1], "giant") == 0) {
 			/* screenshot giant [filename] */
 			type = SC_WORLD;
+			if (argc > 2) name = argv[2];
+		} else if (strcmp(argv[1], "minimap") == 0) {
+			/* screenshot minimap [filename] */
+			type = SC_MINIMAP;
 			if (argc > 2) name = argv[2];
 		} else if (strcmp(argv[1], "no_con") == 0) {
 			/* screenshot no_con [filename] */
@@ -1472,7 +1495,7 @@ DEF_CONSOLE_CMD(ConMinimap)
 		name = argv[2];
 	}
 
-	SaveMinimap(name);
+	MakeMinimapWorldScreenshot(name);
 	return true;
 }
 
@@ -1623,8 +1646,7 @@ DEF_CONSOLE_CMD(ConCompanies)
 		return true;
 	}
 
-	Company *c;
-	FOR_ALL_COMPANIES(c) {
+	for (const Company *c : Company::Iterate()) {
 		/* Grab the company name */
 		char company_name[512];
 		SetDParam(0, c->index);
@@ -1973,15 +1995,13 @@ DEF_CONSOLE_CMD(ConResetBlockedHeliports)
 	}
 
 	unsigned int count = 0;
-	Station *st;
-	FOR_ALL_STATIONS(st) {
+	for (Station *st : Station::Iterate()) {
 		if (st->airport.tile == INVALID_TILE) continue;
 		if (st->airport.HasHangar()) continue;
 		if (!st->airport.flags) continue;
 
 		bool occupied = false;
-		const Aircraft *a;
-		FOR_ALL_AIRCRAFT(a) {
+		for (const Aircraft *a : Aircraft::Iterate()) {
 			if (a->targetairport == st->index && a->state != FLYING) {
 				occupied = true;
 				break;
@@ -2198,6 +2218,45 @@ DEF_CONSOLE_CMD(ConShowIndustryWindow)
 	return true;
 }
 
+DEF_CONSOLE_CMD(ConViewportDebug)
+{
+	if (argc < 1 || argc > 2) {
+		IConsoleHelp("Debug: viewports flags.  Usage: 'viewport_debug [<flags>]'");
+		return true;
+	}
+
+	extern uint32 _viewport_debug_flags;
+	if (argc == 1) {
+		IConsolePrintF(CC_DEFAULT, "Viewport debug flags: %X", _viewport_debug_flags);
+	} else {
+		_viewport_debug_flags = strtoul(argv[1], nullptr, 16);
+	}
+
+	return true;
+}
+
+DEF_CONSOLE_CMD(ConViewportMarkDirty)
+{
+	if (argc < 3 || argc > 5) {
+		IConsoleHelp("Debug: Mark main viewport dirty.  Usage: 'viewport_mark_dirty <x> <y> [<w> <h>]'");
+		return true;
+	}
+
+	ViewPort *vp = FindWindowByClass(WC_MAIN_WINDOW)->viewport;
+	uint l = strtoul(argv[1], nullptr, 0);
+	uint t = strtoul(argv[2], nullptr, 0);
+	uint r = min<uint>(l + ((argc > 3) ? strtoul(argv[3], nullptr, 0) : 1), vp->dirty_blocks_per_row);
+	uint b = min<uint>(t + ((argc > 4) ? strtoul(argv[4], nullptr, 0) : 1), vp->dirty_blocks_per_column);
+	for (uint x = l; x < r; x++) {
+		for (uint y = t; y < b; y++) {
+			vp->dirty_blocks[(x * vp->dirty_blocks_per_column) + y] = true;
+		}
+	}
+	vp->is_dirty = true;
+
+	return true;
+}
+
 DEF_CONSOLE_CMD(ConDoDisaster)
 {
 	if (argc == 0) {
@@ -2266,6 +2325,135 @@ DEF_CONSOLE_CMD(ConDeleteCompany)
 	IConsolePrint(CC_DEFAULT, "Company deleted.");
 
 	return true;
+}
+
+DEF_CONSOLE_CMD(ConNewGRFProfile)
+{
+	if (argc == 0) {
+		IConsoleHelp("Collect performance data about NewGRF sprite requests and callbacks. Sub-commands can be abbreviated.");
+		IConsoleHelp("Usage: newgrf_profile [list]");
+		IConsoleHelp("  List all NewGRFs that can be profiled, and their status.");
+		IConsoleHelp("Usage: newgrf_profile select <grf-num>...");
+		IConsoleHelp("  Select one or more GRFs for profiling.");
+		IConsoleHelp("Usage: newgrf_profile unselect <grf-num>...");
+		IConsoleHelp("  Unselect one or more GRFs from profiling. Use the keyword \"all\" instead of a GRF number to unselect all. Removing an active profiler aborts data collection.");
+		IConsoleHelp("Usage: newgrf_profile start [<num-days>]");
+		IConsoleHelp("  Begin profiling all selected GRFs. If a number of days is provided, profiling stops after that many in-game days.");
+		IConsoleHelp("Usage: newgrf_profile stop");
+		IConsoleHelp("  End profiling and write the collected data to CSV files.");
+		IConsoleHelp("Usage: newgrf_profile abort");
+		IConsoleHelp("  End profiling and discard all collected data.");
+		return true;
+	}
+
+	extern const std::vector<GRFFile *> &GetAllGRFFiles();
+	const std::vector<GRFFile *> &files = GetAllGRFFiles();
+
+	/* "list" sub-command */
+	if (argc == 1 || strncasecmp(argv[1], "lis", 3) == 0) {
+		IConsolePrint(CC_INFO, "Loaded GRF files:");
+		int i = 1;
+		for (GRFFile *grf : files) {
+			auto profiler = std::find_if(_newgrf_profilers.begin(), _newgrf_profilers.end(), [&](NewGRFProfiler &pr) { return pr.grffile == grf; });
+			bool selected = profiler != _newgrf_profilers.end();
+			bool active = selected && profiler->active;
+			TextColour tc = active ? TC_LIGHT_BLUE : selected ? TC_GREEN : CC_INFO;
+			const char *statustext = active ? " (active)" : selected ? " (selected)" : "";
+			IConsolePrintF(tc, "%d: [%08X] %s%s", i, BSWAP32(grf->grfid), grf->filename, statustext);
+			i++;
+		}
+		return true;
+	}
+
+	/* "select" sub-command */
+	if (strncasecmp(argv[1], "sel", 3) == 0 && argc >= 3) {
+		for (size_t argnum = 2; argnum < argc; ++argnum) {
+			int grfnum = atoi(argv[argnum]);
+			if (grfnum < 1 || grfnum > (int)files.size()) { // safe cast, files.size() should not be larger than a few hundred in the most extreme cases
+				IConsolePrintF(CC_WARNING, "GRF number %d out of range, not added.", grfnum);
+				continue;
+			}
+			GRFFile *grf = files[grfnum - 1];
+			if (std::any_of(_newgrf_profilers.begin(), _newgrf_profilers.end(), [&](NewGRFProfiler &pr) { return pr.grffile == grf; })) {
+				IConsolePrintF(CC_WARNING, "GRF number %d [%08X] is already selected for profiling.", grfnum, BSWAP32(grf->grfid));
+				continue;
+			}
+			_newgrf_profilers.emplace_back(grf);
+		}
+		return true;
+	}
+
+	/* "unselect" sub-command */
+	if (strncasecmp(argv[1], "uns", 3) == 0 && argc >= 3) {
+		for (size_t argnum = 2; argnum < argc; ++argnum) {
+			if (strcasecmp(argv[argnum], "all") == 0) {
+				_newgrf_profilers.clear();
+				break;
+			}
+			int grfnum = atoi(argv[argnum]);
+			if (grfnum < 1 || grfnum > (int)files.size()) {
+				IConsolePrintF(CC_WARNING, "GRF number %d out of range, not removing.", grfnum);
+				continue;
+			}
+			GRFFile *grf = files[grfnum - 1];
+			auto pos = std::find_if(_newgrf_profilers.begin(), _newgrf_profilers.end(), [&](NewGRFProfiler &pr) { return pr.grffile == grf; });
+			if (pos != _newgrf_profilers.end()) _newgrf_profilers.erase(pos);
+		}
+		return true;
+	}
+
+	/* "start" sub-command */
+	if (strncasecmp(argv[1], "sta", 3) == 0) {
+		std::string grfids;
+		size_t started = 0;
+		for (NewGRFProfiler &pr : _newgrf_profilers) {
+			if (!pr.active) {
+				pr.Start();
+				started++;
+
+				if (!grfids.empty()) grfids += ", ";
+				char grfidstr[12]{ 0 };
+				seprintf(grfidstr, lastof(grfidstr), "[%08X]", BSWAP32(pr.grffile->grfid));
+				grfids += grfidstr;
+			}
+		}
+		if (started > 0) {
+			IConsolePrintF(CC_DEBUG, "Started profiling for GRFID%s %s", (started > 1) ? "s" : "", grfids.c_str());
+			if (argc >= 3) {
+				int days = max(atoi(argv[2]), 1);
+				_newgrf_profile_end_date = _date + days;
+
+				char datestrbuf[32]{ 0 };
+				SetDParam(0, _newgrf_profile_end_date);
+				GetString(datestrbuf, STR_JUST_DATE_ISO, lastof(datestrbuf));
+				IConsolePrintF(CC_DEBUG, "Profiling will automatically stop on game date %s", datestrbuf);
+			} else {
+				_newgrf_profile_end_date = MAX_DAY;
+			}
+		} else if (_newgrf_profilers.empty()) {
+			IConsolePrintF(CC_WARNING, "No GRFs selected for profiling, did not start.");
+		} else {
+			IConsolePrintF(CC_WARNING, "Did not start profiling for any GRFs, all selected GRFs are already profiling.");
+		}
+		return true;
+	}
+
+	/* "stop" sub-command */
+	if (strncasecmp(argv[1], "sto", 3) == 0) {
+		NewGRFProfiler::FinishAll();
+		return true;
+	}
+
+	/* "abort" sub-command */
+	if (strncasecmp(argv[1], "abo", 3) == 0) {
+		for (NewGRFProfiler &pr : _newgrf_profilers) {
+			pr.Abort();
+		}
+		_newgrf_profile_end_date = MAX_DAY;
+		return true;
+	}
+
+	return false;
 }
 
 #ifdef _DEBUG
@@ -2463,9 +2651,12 @@ void IConsoleStdLibRegister()
 	IConsoleCmdRegister("show_town_window", ConShowTownWindow, nullptr, true);
 	IConsoleCmdRegister("show_station_window", ConShowStationWindow, nullptr, true);
 	IConsoleCmdRegister("show_industry_window", ConShowIndustryWindow, nullptr, true);
+	IConsoleCmdRegister("viewport_debug", ConViewportDebug, nullptr, true);
+	IConsoleCmdRegister("viewport_mark_dirty", ConViewportMarkDirty, nullptr, true);
 
 	/* NewGRF development stuff */
 	IConsoleCmdRegister("reload_newgrfs",  ConNewGRFReload, ConHookNewGRFDeveloperTool);
+	IConsoleCmdRegister("newgrf_profile",  ConNewGRFProfile, ConHookNewGRFDeveloperTool);
 	IConsoleCmdRegister("do_disaster", ConDoDisaster, ConHookNewGRFDeveloperTool, true);
 	IConsoleCmdRegister("bankrupt_company", ConBankruptCompany, ConHookNewGRFDeveloperTool, true);
 	IConsoleCmdRegister("delete_company", ConDeleteCompany, ConHookNewGRFDeveloperTool, true);

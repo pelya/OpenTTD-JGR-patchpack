@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * This file is part of OpenTTD.
  * OpenTTD is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 2.
@@ -68,6 +66,11 @@
 
 /** List of all loaded GRF files */
 static std::vector<GRFFile *> _grf_files;
+
+const std::vector<GRFFile *> &GetAllGRFFiles()
+{
+	return _grf_files;
+}
 
 /** Miscellaneous GRF features, set by Action 0x0D, parameter 0x9E */
 byte _misc_grf_features = 0;
@@ -388,7 +391,7 @@ void CDECL _intl_grfmsg(int severity, const char *str, ...)
 	vseprintf(buf, lastof(buf), str, va);
 	va_end(va);
 
-	DEBUG(grf, severity, "[%s:%d] %s", _cur.grfconfig->filename, _cur.nfo_line, buf);
+	DEBUG(grf, severity, "[%s:%d] %s", _cur.grfconfig->GetDisplayPath(), _cur.nfo_line, buf);
 }
 
 /**
@@ -4629,8 +4632,6 @@ static ChangeInfoResult RoadTypeReserveInfo(uint id, int numinfo, int prop, cons
 				break;
 
 			case 0x10: // Road Type flags
-			case 0x12: // Station graphic
-			case 0x15: // Acceleration model
 			case 0x16: // Map colour
 			case 0x1A: // Sort order
 				buf->ReadByte();
@@ -5111,6 +5112,7 @@ static void NewSpriteGroup(ByteReader *buf)
 
 			assert(DeterministicSpriteGroup::CanAllocateItem());
 			DeterministicSpriteGroup *group = new DeterministicSpriteGroup();
+			group->nfo_line = _cur.nfo_line;
 			act_group = group;
 			group->var_scope = HasBit(type, 1) ? VSG_SCOPE_PARENT : VSG_SCOPE_SELF;
 
@@ -5227,6 +5229,7 @@ static void NewSpriteGroup(ByteReader *buf)
 		{
 			assert(RandomizedSpriteGroup::CanAllocateItem());
 			RandomizedSpriteGroup *group = new RandomizedSpriteGroup();
+			group->nfo_line = _cur.nfo_line;
 			act_group = group;
 			group->var_scope = HasBit(type, 1) ? VSG_SCOPE_PARENT : VSG_SCOPE_SELF;
 
@@ -5275,6 +5278,7 @@ static void NewSpriteGroup(ByteReader *buf)
 
 					assert(RealSpriteGroup::CanAllocateItem());
 					RealSpriteGroup *group = new RealSpriteGroup();
+					group->nfo_line = _cur.nfo_line;
 					act_group = group;
 
 					group->num_loaded  = num_loaded;
@@ -5308,6 +5312,7 @@ static void NewSpriteGroup(ByteReader *buf)
 
 					assert(TileLayoutSpriteGroup::CanAllocateItem());
 					TileLayoutSpriteGroup *group = new TileLayoutSpriteGroup();
+					group->nfo_line = _cur.nfo_line;
 					act_group = group;
 
 					/* On error, bail out immediately. Temporary GRF data was already freed */
@@ -5323,6 +5328,7 @@ static void NewSpriteGroup(ByteReader *buf)
 
 					assert(IndustryProductionSpriteGroup::CanAllocateItem());
 					IndustryProductionSpriteGroup *group = new IndustryProductionSpriteGroup();
+					group->nfo_line = _cur.nfo_line;
 					act_group = group;
 					group->version = type;
 					if (type == 0) {
@@ -6745,15 +6751,26 @@ static void SkipIf(ByteReader *buf)
 				break;
 			case 0x0E: result = GetRailTypeByLabel(BSWAP32(cond_val)) != INVALID_RAILTYPE;
 				break;
-			case 0x0F: result = GetRoadTypeByLabel(BSWAP32(cond_val)) == INVALID_ROADTYPE;
+			case 0x0F: {
+				RoadType rt = GetRoadTypeByLabel(BSWAP32(cond_val));
+				result = rt == INVALID_ROADTYPE || !RoadTypeIsRoad(rt);
 				break;
-			case 0x10: result = GetRoadTypeByLabel(BSWAP32(cond_val)) != INVALID_ROADTYPE;
+			}
+			case 0x10: {
+				RoadType rt = GetRoadTypeByLabel(BSWAP32(cond_val));
+				result = rt != INVALID_ROADTYPE && RoadTypeIsRoad(rt);
 				break;
-			case 0x11: result = GetRoadTypeByLabel(BSWAP32(cond_val)) == INVALID_ROADTYPE;
+			}
+			case 0x11: {
+				RoadType rt = GetRoadTypeByLabel(BSWAP32(cond_val));
+				result = rt == INVALID_ROADTYPE || !RoadTypeIsTram(rt);
 				break;
-			case 0x12: result = GetRoadTypeByLabel(BSWAP32(cond_val)) != INVALID_ROADTYPE;
+			}
+			case 0x12: {
+				RoadType rt = GetRoadTypeByLabel(BSWAP32(cond_val));
+				result = rt != INVALID_ROADTYPE && RoadTypeIsTram(rt);
 				break;
-
+			}
 			default: grfmsg(1, "SkipIf: Unsupported condition type %02X. Ignoring", condtype); return;
 		}
 	}
@@ -6816,7 +6833,7 @@ static void ScanInfo(ByteReader *buf)
 
 	if (grf_version < 2 || grf_version > 8) {
 		SetBit(_cur.grfconfig->flags, GCF_INVALID);
-		DEBUG(grf, 0, "%s: NewGRF \"%s\" (GRFID %08X) uses GRF version %d, which is incompatible with this version of OpenTTD.", _cur.grfconfig->filename, name, BSWAP32(grfid), grf_version);
+		DEBUG(grf, 0, "%s: NewGRF \"%s\" (GRFID %08X) uses GRF version %d, which is incompatible with this version of OpenTTD.", _cur.grfconfig->GetDisplayPath(), name, BSWAP32(grfid), grf_version);
 	}
 
 	/* GRF IDs starting with 0xFF are reserved for internal TTDPatch use */
@@ -7521,7 +7538,7 @@ static void GRFInhibit(ByteReader *buf)
 
 		/* Unset activation flag */
 		if (file != nullptr && file != _cur.grfconfig) {
-			grfmsg(2, "GRFInhibit: Deactivating file '%s'", file->filename);
+			grfmsg(2, "GRFInhibit: Deactivating file '%s'", file->GetDisplayPath());
 			GRFError *error = DisableGrf(STR_NEWGRF_ERROR_FORCEFULLY_DISABLED, file);
 			error->data = stredup(_cur.grfconfig->GetName());
 		}
@@ -8062,8 +8079,14 @@ static bool ChangeGRFParamLimits(size_t len, ByteReader *buf)
 		grfmsg(2, "StaticGRFInfo: expected 8 bytes for 'INFO'->'PARA'->'LIMI' but got " PRINTF_SIZE ", ignoring this field", len);
 		buf->Skip(len);
 	} else {
-		_cur_parameter->min_value = buf->ReadDWord();
-		_cur_parameter->max_value = buf->ReadDWord();
+		uint32 min_value = buf->ReadDWord();
+		uint32 max_value = buf->ReadDWord();
+		if (min_value <= max_value) {
+			_cur_parameter->min_value = min_value;
+			_cur_parameter->max_value = max_value;
+		} else {
+			grfmsg(2, "StaticGRFInfo: 'INFO'->'PARA'->'LIMI' values are incoherent, ignoring this field");
+		}
 	}
 	return true;
 }
@@ -8447,7 +8470,7 @@ static const GRFPropertyMapDefinition _grf_action0_remappable_properties[] = {
 
 /** Action14 Action5 remappable type list */
 static const Action5TypeRemapDefinition _grf_action5_remappable_types[] = {
-	Action5TypeRemapDefinition("programmable_signals", A5BLOCK_ALLOW_OFFSET, SPR_PROGSIGNAL_BASE, 1, 32, "Programmable signal graphics"),
+	Action5TypeRemapDefinition("programmable_signals", A5BLOCK_ALLOW_OFFSET, SPR_PROGSIGNAL_BASE, 1, 32, "Programmable pre-signal graphics"),
 	Action5TypeRemapDefinition(),
 };
 
@@ -9112,8 +9135,7 @@ void ResetNewGRFData()
 	_gted = CallocT<GRFTempEngineData>(Engine::GetPoolSize());
 
 	/* Fill rail type label temporary data for default trains */
-	Engine *e;
-	FOR_ALL_ENGINES_OF_TYPE(e, VEH_TRAIN) {
+	for (const Engine *e : Engine::IterateType(VEH_TRAIN)) {
 		_gted[e->index].railtypelabel = GetRailTypeInfo(e->u.rail.railtype)->label;
 	}
 
@@ -9329,9 +9351,7 @@ static const CargoLabel * const _default_refitmasks[] = {
  */
 static void CalculateRefitMasks()
 {
-	Engine *e;
-
-	FOR_ALL_ENGINES(e) {
+	for (Engine *e : Engine::Iterate()) {
 		EngineID engine = e->index;
 		EngineInfo *ei = &e->info;
 		bool only_defaultcargo; ///< Set if the vehicle shall carry only the default cargo
@@ -9445,9 +9465,7 @@ static void FinaliseCanals()
 /** Check for invalid engines */
 static void FinaliseEngineArray()
 {
-	Engine *e;
-
-	FOR_ALL_ENGINES(e) {
+	for (Engine *e : Engine::Iterate()) {
 		if (e->GetGRF() == nullptr) {
 			const EngineIDMapping &eid = _engine_mngr[e->index];
 			if (eid.grfid != INVALID_GRFID || eid.internal_id != eid.substitute_id) {
@@ -9918,13 +9936,15 @@ void LoadNewGRFFile(GRFConfig *config, uint file_index, GrfLoadingStage stage, S
 		return;
 	}
 
-	FioOpenFile(file_index, filename, subdir);
+	free(config->full_filename);
+	config->full_filename = nullptr;
+	FioOpenFile(file_index, filename, subdir, &(config->full_filename));
 	_cur.file_index = file_index; // XXX
 	_palette_remap_grf[_cur.file_index] = (config->palette & GRFP_USE_MASK);
 
 	_cur.grfconfig = config;
 
-	DEBUG(grf, 2, "LoadNewGRFFile: Reading NewGRF-file '%s'", filename);
+	DEBUG(grf, 2, "LoadNewGRFFile: Reading NewGRF-file '%s'", config->GetDisplayPath());
 
 	_cur.grf_container_ver = GetGRFContainerVersion();
 	if (_cur.grf_container_ver == 0) {
@@ -10241,8 +10261,7 @@ static void AfterLoadGRFs()
 	InitRailTypes();
 	InitRoadTypes();
 
-	Engine *e;
-	FOR_ALL_ENGINES_OF_TYPE(e, VEH_ROAD) {
+	for (Engine *e : Engine::IterateType(VEH_ROAD)) {
 		if (_gted[e->index].rv_max_speed != 0) {
 			/* Set RV maximum speed from the mph/0.8 unit value */
 			e->u.road.max_speed = _gted[e->index].rv_max_speed * 4;
@@ -10274,7 +10293,7 @@ static void AfterLoadGRFs()
 		e->info.climates = 0;
 	}
 
-	FOR_ALL_ENGINES_OF_TYPE(e, VEH_TRAIN) {
+	for (Engine *e : Engine::IterateType(VEH_TRAIN)) {
 		RailType railtype = GetRailTypeByLabel(_gted[e->index].railtypelabel);
 		if (railtype == INVALID_RAILTYPE) {
 			/* Rail type is not available, so disable this engine */
