@@ -206,6 +206,15 @@ struct PolylineInfo {
 	uint second_len;       ///< size of the second segment - number of track pieces.
 };
 
+struct TunnelToMap {
+	TunnelBridgeToMap tb;
+	int y_intercept;
+	uint8 tunnel_z;
+};
+struct TunnelToMapStorage {
+	std::vector<TunnelToMap> tunnels;
+};
+
 struct BridgeSetXComparator {
 	bool operator() (const TileIndex a, const TileIndex b) const
 	{
@@ -229,8 +238,8 @@ struct ViewportDrawer {
 	ParentSpriteToDrawVector parent_sprites_to_draw;
 	ParentSpriteToSortVector parent_sprites_to_sort; ///< Parent sprite pointer array used for sorting
 	ChildScreenSpriteToDrawVector child_screen_sprites_to_draw;
-	TunnelBridgeToMapVector tunnel_to_map;
-	btree::btree_set<TileIndex> tunnel_tiles;
+	TunnelToMapStorage tunnel_to_map_x;
+	TunnelToMapStorage tunnel_to_map_y;
 	btree::btree_map<TileIndex, TileIndex, BridgeSetXComparator> bridge_to_map_x;
 	btree::btree_map<TileIndex, TileIndex, BridgeSetYComparator> bridge_to_map_y;
 
@@ -249,7 +258,7 @@ struct ViewportDrawer {
 	Point foundation_offset[FOUNDATION_PART_END];    ///< Pixel offset for ground sprites on the foundations.
 };
 
-static void MarkViewportDirty(const ViewPort * const vp, int left, int top, int right, int bottom);
+static void MarkViewportDirty(ViewPort * const vp, int left, int top, int right, int bottom);
 static void MarkRouteStepDirty(RouteStepsMap::const_iterator cit);
 static void MarkRouteStepDirty(const TileIndex tile, uint order_nr);
 
@@ -311,12 +320,33 @@ static void SetRailSnapMode(RailSnapMode mode);
 static TileIndex GetRailSnapTile();
 static void SetRailSnapTile(TileIndex tile);
 
+enum ViewportDebugFlags {
+	VDF_DIRTY_BLOCK_PER_DRAW,
+	VDF_DIRTY_WHOLE_VIEWPORT,
+};
+uint32 _viewport_debug_flags;
+
 static Point MapXYZToViewport(const ViewPort *vp, int x, int y, int z)
 {
 	Point p = RemapCoords(x, y, z);
 	p.x -= vp->virtual_width / 2;
 	p.y -= vp->virtual_height / 2;
 	return p;
+}
+
+void ClearViewPortCache(ViewPort *vp)
+{
+	if (vp->zoom >= ZOOM_LVL_DRAW_MAP) {
+		memset(vp->map_draw_vehicles_cache.done_hash_bits, 0, sizeof(vp->map_draw_vehicles_cache.done_hash_bits));
+		vp->map_draw_vehicles_cache.vehicle_pixels.assign(vp->map_draw_vehicles_cache.vehicle_pixels.size(), false);
+	}
+}
+
+void ClearViewPortCaches()
+{
+	for (ViewPort *vp : _viewport_window_cache) {
+		ClearViewPortCache(vp);
+	}
 }
 
 void DeleteWindowViewport(Window *w)
@@ -358,10 +388,12 @@ void InitializeWindowViewport(Window *w, int x, int y,
 
 	vp->virtual_left = 0;
 	vp->virtual_top = 0;
-	vp->virtual_width = ScaleByZoom(width, zoom);
-	vp->virtual_height = ScaleByZoom(height, zoom);
+	vp->virtual_width = ScaleByZoom(width, vp->zoom);
+	vp->virtual_height = ScaleByZoom(height, vp->zoom);
 
 	vp->map_type = VPMT_BEGIN;
+
+	UpdateViewportSizeZoom(vp);
 
 	Point pt;
 
@@ -495,11 +527,10 @@ static void DoSetViewportPositionFillRegion(int left, int top, int width, int he
 	DrawOverlappedWindowForAll(left, top, left + width, top + height);
 };
 
-static void DoSetViewportPosition(const Window *w, const int left, const int top, const int width, const int height)
+static void DoSetViewportPosition(Window *w, const int left, const int top, const int width, const int height)
 {
 	const int xo = _vp_move_offs.x;
 	const int yo = _vp_move_offs.y;
-	if (xo == 0 && yo == 0) return;
 
 
 	IncrementWindowUpdateNumber();
@@ -522,11 +553,11 @@ static void DoSetViewportPosition(const Window *w, const int left, const int top
 	if (_networking) NetworkUndrawChatMessage();
 
 	std::sort(_vp_redraw_regions.begin(), _vp_redraw_regions.end(), [&](const ViewportRedrawRegion &a, const ViewportRedrawRegion &b) {
-		if (a.coords.right <= b.coords.left) return xo > 0;
-		if (a.coords.left >= b.coords.right) return xo < 0;
-		if (a.coords.bottom <= b.coords.top) return yo > 0;
-		if (a.coords.top >= b.coords.bottom) return yo < 0;
-		NOT_REACHED();
+		if (a.coords.right <= b.coords.left && xo > 0) return true;
+		if (a.coords.left >= b.coords.right && xo < 0) return true;
+		if (a.coords.bottom <= b.coords.top && yo > 0) return true;
+		if (a.coords.top >= b.coords.bottom && yo < 0) return true;
+		return false;
 	});
 
 	while (!_vp_redraw_regions.empty()) {
@@ -566,8 +597,21 @@ static void DoSetViewportPosition(const Window *w, const int left, const int top
 	}
 }
 
+inline void UpdateViewportDirtyBlockLeftMargin(ViewPort *vp)
+{
+	if (vp->zoom >= ZOOM_LVL_DRAW_MAP) {
+		vp->dirty_block_left_margin = 0;
+	} else {
+		vp->dirty_block_left_margin = UnScaleByZoomLower((-vp->virtual_left) & 127, vp->zoom);
+	}
+}
+
 static void SetViewportPosition(Window *w, int x, int y, bool force_update_overlay)
 {
+	if (unlikely(HasBit(_viewport_debug_flags, VDF_DIRTY_WHOLE_VIEWPORT))) {
+		w->flags |= WF_DIRTY;
+	}
+
 	ViewPort *vp = w->viewport;
 	int old_left = vp->virtual_left;
 	int old_top = vp->virtual_top;
@@ -576,6 +620,7 @@ static void SetViewportPosition(Window *w, int x, int y, bool force_update_overl
 
 	vp->virtual_left = x;
 	vp->virtual_top = y;
+	UpdateViewportDirtyBlockLeftMargin(vp);
 
 	if (force_update_overlay || IsViewportOverlayOutsideCachedRegion(w)) RebuildViewportOverlay(w, true);
 
@@ -617,7 +662,10 @@ static void SetViewportPosition(Window *w, int x, int y, bool force_update_overl
 		i = top + height - _screen.height;
 		if (i >= 0) height -= i;
 
-		if (height > 0) DoSetViewportPosition((const Window *) w->z_front, left, top, width, height);
+		if (height > 0 && (_vp_move_offs.x != 0 || _vp_move_offs.y != 0)) {
+			DoSetViewportPosition((Window *) w->z_front, left, top, width, height);
+			ClearViewPortCache(w->viewport);
+		}
 	}
 }
 
@@ -1470,8 +1518,8 @@ static void ViewportAddLandscape()
 	 *  - Right column is column of upper_right (rounded up) and one column to the right.
 	 * Note: Integer-division does not round down for negative numbers, so ensure rounding with another increment/decrement.
 	 */
-	int left_column = (upper_left.y - upper_left.x) / (int)TILE_SIZE - 2;
-	int right_column = (upper_right.y - upper_right.x) / (int)TILE_SIZE + 2;
+	int left_column = DivTowardsNegativeInf(upper_left.y - upper_left.x, (int)TILE_SIZE) - 1;
+	int right_column = DivTowardsPositiveInf(upper_right.y - upper_right.x, (int)TILE_SIZE) + 1;
 
 	int potential_bridge_height = ZOOM_LVL_BASE * TILE_HEIGHT * _settings_game.construction.max_bridge_height;
 
@@ -1479,7 +1527,7 @@ static void ViewportAddLandscape()
 	 * The first row that could possibly be visible is the row above upper_left (if it is at height 0).
 	 * Due to integer-division not rounding down for negative numbers, we need another decrement.
 	 */
-	int row = (upper_left.x + upper_left.y) / (int)TILE_SIZE - 2;
+	int row = DivTowardsNegativeInf(upper_left.y + upper_left.x, (int)TILE_SIZE) - 1;
 	bool last_row = false;
 	for (; !last_row; row++) {
 		last_row = true;
@@ -1556,8 +1604,9 @@ static void ViewportAddLandscape()
 				_vd.last_foundation_child[0] = nullptr;
 				_vd.last_foundation_child[1] = nullptr;
 
-				_tile_type_procs[tile_type]->draw_tile_proc(&tile_info);
-				if (tile_info.tile != INVALID_TILE) {
+				bool no_ground_tiles = (column == left_column || column == right_column) || min_visible_height > 0;
+				_tile_type_procs[tile_type]->draw_tile_proc(&tile_info, { min_visible_height, no_ground_tiles });
+				if (tile_info.tile != INVALID_TILE && min_visible_height <= 0) {
 					DrawTileSelection(&tile_info);
 					DrawTileZoning(&tile_info);
 				}
@@ -1759,7 +1808,8 @@ void ViewportSign::MarkDirty(ZoomLevel maxzoom) const
 	Rect zoomlevels[ZOOM_LVL_COUNT];
 
 	for (ZoomLevel zoom = ZOOM_LVL_BEGIN; zoom != ZOOM_LVL_END; zoom++) {
-		const int width = zoom >= ZOOM_LVL_OUT_16X ? this->width_small : this->width_normal ;
+		const ZoomLevel small_from = (maxzoom == ZOOM_LVL_OUT_8X) ? ZOOM_LVL_OUT_8X : ZOOM_LVL_OUT_16X;
+		const int width = (zoom >= small_from) ? this->width_small : this->width_normal ;
 		zoomlevels[zoom].left   = this->center - ScaleByZoom(width / 2 + 1, zoom);
 		zoomlevels[zoom].top    = this->top    - ScaleByZoom(1, zoom);
 		zoomlevels[zoom].right  = this->center + ScaleByZoom(width / 2 + 1, zoom);
@@ -1940,7 +1990,7 @@ static void ViewportMapStoreBridge(const ViewPort * const vp, const TileIndex ti
 	}
 }
 
-static void ViewportMapStoreTunnel(const ViewPort * const vp, const TileIndex tile)
+void ViewportMapStoreTunnel(const TileIndex tile, const TileIndex tile_south, const int tunnel_z, const bool insert_sorted)
 {
 	extern LegendAndColour _legend_land_owners[NUM_NO_COMPANY_ENTRIES + MAX_COMPANIES + 1];
 	extern uint _company_to_list_pos[MAX_COMPANIES];
@@ -1950,42 +2000,65 @@ static void ViewportMapStoreTunnel(const ViewPort * const vp, const TileIndex ti
 	const Owner o = GetTileOwner(tile);
 	if (o < MAX_COMPANIES && !_legend_land_owners[_company_to_list_pos[o]].show_on_map) return;
 
-	/* Check if already stored */
-	if (_vd.tunnel_tiles.count(tile)) return;
-
-	/* It's a new one, add it to the list */
-	_vd.tunnel_to_map.emplace_back();
-	TunnelBridgeToMap &tbtm = _vd.tunnel_to_map.back();
-	TileIndex other_end = GetOtherTunnelBridgeEnd(tile);
-	_vd.tunnel_tiles.insert(tile);
-	_vd.tunnel_tiles.insert(other_end);
+	const Axis axis = (TileX(tile) == TileX(tile_south)) ? AXIS_Y : AXIS_X;
+	const Point viewport_pt = RemapCoords(TileX(tile) * TILE_SIZE, TileY(tile) * TILE_SIZE, tunnel_z);
+	int y_intercept;
+	if (axis == AXIS_X) {
+		/* NE to SW */
+		y_intercept = viewport_pt.y + (viewport_pt.x / 2);
+	} else {
+		/* NW to SE */
+		y_intercept = viewport_pt.y - (viewport_pt.x / 2);
+	}
+	TunnelToMapStorage &storage = (axis == AXIS_X) ? _vd.tunnel_to_map_x : _vd.tunnel_to_map_y;
+	TunnelToMap *tbtm;
+	if (insert_sorted) {
+		auto iter = std::upper_bound(storage.tunnels.begin(), storage.tunnels.end(), y_intercept, [](int a, const TunnelToMap &b) -> bool {
+			return a < b.y_intercept;
+		});
+		tbtm = &(*(storage.tunnels.emplace(iter)));
+	} else {
+		storage.tunnels.emplace_back();
+		tbtm = &(storage.tunnels.back());
+	}
 
 	/* ensure deterministic ordering, to avoid render flicker */
-	if (other_end > tile) {
-		tbtm.from_tile = other_end;
-		tbtm.to_tile = tile;
-	} else {
-		tbtm.from_tile = tile;
-		tbtm.to_tile = other_end;
-	}
+	tbtm->tb.from_tile = tile;
+	tbtm->tb.to_tile = tile_south;
+	tbtm->y_intercept = y_intercept;
+	tbtm->tunnel_z = tunnel_z;
 }
 
 void ViewportMapClearTunnelCache()
 {
-	_vd.tunnel_to_map.clear();
-	_vd.tunnel_tiles.clear();
+	_vd.tunnel_to_map_x.tunnels.clear();
+	_vd.tunnel_to_map_y.tunnels.clear();
 }
 
-void ViewportMapInvalidateTunnelCacheByTile(const TileIndex tile)
+void ViewportMapInvalidateTunnelCacheByTile(const TileIndex tile, const Axis axis)
 {
-	if (!_vd.tunnel_tiles.count(tile)) return;
-	TunnelBridgeToMapVector * const tbtmv = &_vd.tunnel_to_map;
-	for (auto tbtm = tbtmv->begin(); tbtm != tbtmv->end(); tbtm++) {
-		if (tbtm->from_tile == tile || tbtm->to_tile == tile) {
-			*tbtm = tbtmv->back();
-			tbtmv->pop_back();
+	if (!_settings_client.gui.show_tunnels_on_map) return;
+	std::vector<TunnelToMap> &tbtmv = (axis == AXIS_X) ? _vd.tunnel_to_map_x.tunnels : _vd.tunnel_to_map_y.tunnels;
+	for (auto tbtm = tbtmv.begin(); tbtm != tbtmv.end(); tbtm++) {
+		if (tbtm->tb.from_tile == tile) {
+			tbtmv.erase(tbtm);
 			return;
 		}
+	}
+}
+
+void ViewportMapBuildTunnelCache()
+{
+	ViewportMapClearTunnelCache();
+	if (_settings_client.gui.show_tunnels_on_map) {
+		for (Tunnel *tunnel : Tunnel::Iterate()) {
+			ViewportMapStoreTunnel(tunnel->tile_n, tunnel->tile_s, tunnel->height, false);
+		}
+		auto sorter = [](const TunnelToMap &a, const TunnelToMap &b) -> bool {
+			return a.y_intercept < b.y_intercept;
+		};
+		std::sort(_vd.tunnel_to_map_x.tunnels.begin(), _vd.tunnel_to_map_x.tunnels.end(), sorter);
+		std::sort(_vd.tunnel_to_map_y.tunnels.begin(), _vd.tunnel_to_map_y.tunnels.end(), sorter);
 	}
 }
 
@@ -2149,41 +2222,29 @@ static bool ViewportMapPrepareVehicleRoute(const Vehicle * const veh)
 /** Draw the route of a vehicle. */
 static void ViewportMapDrawVehicleRoute(const ViewPort *vp)
 {
-	const Vehicle *veh = GetVehicleFromWindow(_focused_window);
-	if (!veh) {
-		if (!_vp_route_paths.empty()) {
-			// make sure we remove any leftover paths
-			MarkRoutePathsDirty(_vp_route_paths);
-			_vp_route_paths.clear();
-			_vp_route_paths_last_mark_dirty.clear();
-			DEBUG(misc, 1, "ViewportMapDrawVehicleRoute: redrawing dirty paths 0");
-		}
-		return;
-	}
-
 	switch (_settings_client.gui.show_vehicle_route) {
 		/* case 0: return; // No */
 		case 1: { // Simple
-			if (!ViewportMapPrepareVehicleRoute(veh)) {
-				if (!_vp_route_paths.empty()) {
-					// make sure we remove any leftover paths
-					MarkRoutePathsDirty(_vp_route_paths);
-					_vp_route_paths.clear();
-					DEBUG(misc, 1, "ViewportMapDrawVehicleRoute: redrawing dirty paths 1");
-				}
-				return;
-			}
-
 			DrawPixelInfo *old_dpi = _cur_dpi;
 			_cur_dpi = &_dpi_for_text;
 
 			for (const auto &iter : _vp_route_paths) {
-				const Point from_pt = RemapCoords2(TileX(iter.from_tile) * TILE_SIZE + TILE_SIZE / 2, TileY(iter.from_tile) * TILE_SIZE + TILE_SIZE / 2);
+				const int from_tile_x = TileX(iter.from_tile) * TILE_SIZE + TILE_SIZE / 2;
+				const int from_tile_y = TileY(iter.from_tile) * TILE_SIZE + TILE_SIZE / 2;
+				Point from_pt = RemapCoords(from_tile_x, from_tile_y, 0);
 				const int from_x = UnScaleByZoom(from_pt.x, vp->zoom);
-				const int from_y = UnScaleByZoom(from_pt.y, vp->zoom);
 
-				const Point to_pt = RemapCoords2(TileX(iter.to_tile) * TILE_SIZE + TILE_SIZE / 2, TileY(iter.to_tile) * TILE_SIZE + TILE_SIZE / 2);
+				const int to_tile_x = TileX(iter.to_tile) * TILE_SIZE + TILE_SIZE / 2;
+				const int to_tile_y = TileY(iter.to_tile) * TILE_SIZE + TILE_SIZE / 2;
+				Point to_pt = RemapCoords(to_tile_x, to_tile_y, 0);
 				const int to_x = UnScaleByZoom(to_pt.x, vp->zoom);
+
+				if (from_x < _cur_dpi->left - 1 && to_x < _cur_dpi->left - 1) continue;
+				if (from_x > _cur_dpi->left + _cur_dpi->width + 1 && to_x > _cur_dpi->left + _cur_dpi->width + 1) continue;
+
+				from_pt.y -= GetSlopePixelZ(from_tile_x, from_tile_y) * ZOOM_LVL_BASE;
+				to_pt.y -= GetSlopePixelZ(to_tile_x, to_tile_y) * ZOOM_LVL_BASE;
+				const int from_y = UnScaleByZoom(from_pt.y, vp->zoom);
 				const int to_y = UnScaleByZoom(to_pt.y, vp->zoom);
 
 				int line_width = 3;
@@ -2192,13 +2253,6 @@ static void ViewportMapDrawVehicleRoute(const ViewPort *vp)
 					line_width = 1;
 				}
 				GfxDrawLine(from_x, from_y, to_x, to_y, iter.order_match ? PC_WHITE : PC_YELLOW, line_width, _settings_client.gui.dash_level_of_route_lines);
-			}
-
-			if (_vp_route_paths_last_mark_dirty != _vp_route_paths) {
-				// make sure we're not drawing a partial path
-				MarkRoutePathsDirty(_vp_route_paths);
-				_vp_route_paths_last_mark_dirty = _vp_route_paths;
-				DEBUG(misc, 1, "ViewportMapDrawVehicleRoute: redrawing dirty paths 2");
 			}
 
 			_cur_dpi = old_dpi;
@@ -2211,11 +2265,16 @@ static inline void DrawRouteStep(const ViewPort * const vp, const TileIndex tile
 {
 	if (tile == INVALID_TILE) return;
 	const uint step_count = list.size() > max_rank_order_type_count ? 1 : list.size();
-	const Point pt = RemapCoords2(TileX(tile) * TILE_SIZE + TILE_SIZE / 2, TileY(tile) * TILE_SIZE + TILE_SIZE / 2);
+	const int x_pos = TileX(tile) * TILE_SIZE + TILE_SIZE / 2;
+	const int y_pos = TileY(tile) * TILE_SIZE + TILE_SIZE / 2;
+	Point pt = RemapCoords(x_pos, y_pos, 0);
 	const int x = UnScaleByZoomLower(pt.x - _vd.dpi.left, _vd.dpi.zoom) - (_vp_route_step_width / 2);
+	if (x >= _cur_dpi->width || (x + _vp_route_step_width) <= 0) return;
+	pt.y -= GetSlopePixelZ(x_pos, y_pos) * ZOOM_LVL_BASE;
 	const int char_height = GetCharacterHeight(FS_SMALL) + 1;
 	const int rsth = _vp_route_step_height_top + (int) step_count * char_height + _vp_route_step_height_bottom;
 	const int y = UnScaleByZoomLower(pt.y - _vd.dpi.top,  _vd.dpi.zoom) - rsth;
+	if (y >= _cur_dpi->height || (y + rsth) <= 0) return;
 
 	/* Draw the background. */
 	DrawSprite(SPR_ROUTE_STEP_TOP, PAL_NONE, _cur_dpi->left + x, _cur_dpi->top + y);
@@ -2289,20 +2348,52 @@ static bool ViewportPrepareVehicleRouteSteps(const Vehicle * const veh)
 	return true;
 }
 
-/** Draw the route steps of a vehicle. */
-static void ViewportDrawVehicleRouteSteps(const ViewPort * const vp)
+void ViewportPrepareVehicleRoute()
 {
+	if (!_settings_client.gui.show_vehicle_route_steps && !_settings_client.gui.show_vehicle_route) return;
 	const Vehicle * const veh = GetVehicleFromWindow(_focused_window);
-	if (veh && ViewportPrepareVehicleRouteSteps(veh)) {
+	if (_settings_client.gui.show_vehicle_route_steps && veh && ViewportPrepareVehicleRouteSteps(veh)) {
 		if (_vp_route_steps != _vp_route_steps_last_mark_dirty) {
 			for (RouteStepsMap::const_iterator cit = _vp_route_steps.begin(); cit != _vp_route_steps.end(); cit++) {
 				MarkRouteStepDirty(cit);
 			}
 			_vp_route_steps_last_mark_dirty = _vp_route_steps;
 		}
-		for (RouteStepsMap::const_iterator cit = _vp_route_steps.begin(); cit != _vp_route_steps.end(); cit++) {
-			DrawRouteStep(vp, cit->first, cit->second);
+	}
+	if (_settings_client.gui.show_vehicle_route) {
+		if (!veh) {
+			if (!_vp_route_paths.empty()) {
+				// make sure we remove any leftover paths
+				MarkRoutePathsDirty(_vp_route_paths);
+				_vp_route_paths.clear();
+				_vp_route_paths_last_mark_dirty.clear();
+			}
+			return;
+		} else {
+			if (ViewportMapPrepareVehicleRoute(veh)) {
+				if (_vp_route_paths_last_mark_dirty != _vp_route_paths) {
+					// make sure we're not drawing a partial path
+					MarkRoutePathsDirty(_vp_route_paths);
+					_vp_route_paths_last_mark_dirty = _vp_route_paths;
+				}
+			} else {
+				if (!_vp_route_paths.empty()) {
+					// make sure we remove any leftover paths
+					MarkRoutePathsDirty(_vp_route_paths);
+					_vp_route_paths.clear();
+					_vp_route_paths_last_mark_dirty.clear();
+				}
+				return;
+			}
 		}
+	}
+}
+
+/** Draw the route steps of a vehicle. */
+static void ViewportDrawVehicleRouteSteps(const ViewPort * const vp)
+{
+	for (RouteStepsMap::const_iterator cit = _vp_route_steps.begin(); cit != _vp_route_steps.end(); cit++) {
+		DrawRouteStep(vp, cit->first, cit->second);
 	}
 }
 
@@ -2591,9 +2682,7 @@ static inline TileIndex ViewportMapGetMostSignificantTileType(const ViewPort * c
 			*tile_type = ttype;
 			if (IsBridgeAbove(from_tile)) ViewportMapStoreBridgeAboveTile(vp, from_tile);
 		} else {
-			if (IsTunnel(from_tile)) {
-				ViewportMapStoreTunnel(vp, from_tile);
-			} else {
+			if (IsBridge(from_tile)) {
 				ViewportMapStoreBridge(vp, from_tile);
 			}
 			switch (GetTunnelBridgeTransportType(from_tile)) {
@@ -2628,9 +2717,7 @@ static inline TileIndex ViewportMapGetMostSignificantTileType(const ViewPort * c
 	/* Store bridges and tunnels. */
 	*tile_type = GetTileType(result);
 	if (*tile_type == MP_TUNNELBRIDGE) {
-		if (IsTunnel(result)) {
-			ViewportMapStoreTunnel(vp, result);
-		} else {
+		if (IsBridge(result)) {
 			ViewportMapStoreBridge(vp, result);
 		}
 		switch (GetTunnelBridgeTransportType(result)) {
@@ -2837,12 +2924,15 @@ void ViewportMapDraw(const ViewPort * const vp)
 		b += incr_b;
 	} while (++j < h);
 
-	/* Render tunnels */
-	if (_settings_client.gui.show_tunnels_on_map && _vd.tunnel_to_map.size() != 0) {
-		for (const TunnelBridgeToMap &tbtm : _vd.tunnel_to_map) { // For each tunnel
-			const int tunnel_z = GetTileZ(tbtm.from_tile) * TILE_HEIGHT;
-			const Point pt_from = RemapCoords(TileX(tbtm.from_tile) * TILE_SIZE, TileY(tbtm.from_tile) * TILE_SIZE, tunnel_z);
-			const Point pt_to = RemapCoords(TileX(tbtm.to_tile) * TILE_SIZE, TileY(tbtm.to_tile) * TILE_SIZE, tunnel_z);
+	auto draw_tunnels = [&](const int y_intercept_min, const int y_intercept_max, const TunnelToMapStorage &storage) {
+		auto iter = std::lower_bound(storage.tunnels.begin(), storage.tunnels.end(), y_intercept_min, [](const TunnelToMap &a, int b) -> bool {
+			return a.y_intercept < b;
+		});
+		for (; iter != storage.tunnels.end() && iter->y_intercept <= y_intercept_max; ++iter) {
+			const TunnelToMap &ttm = *iter;
+			const int tunnel_z = ttm.tunnel_z * TILE_HEIGHT;
+			const Point pt_from = RemapCoords(TileX(ttm.tb.from_tile) * TILE_SIZE, TileY(ttm.tb.from_tile) * TILE_SIZE, tunnel_z);
+			const Point pt_to = RemapCoords(TileX(ttm.tb.to_tile) * TILE_SIZE, TileY(ttm.tb.to_tile) * TILE_SIZE, tunnel_z);
 
 			/* check if tunnel is wholly outside redrawing area */
 			const int x_from = UnScaleByZoomLower(pt_from.x - _vd.dpi.left, _vd.dpi.zoom);
@@ -2852,8 +2942,20 @@ void ViewportMapDraw(const ViewPort * const vp)
 			const int y_to = UnScaleByZoomLower(pt_to.y - _vd.dpi.top, _vd.dpi.zoom);
 			if ((y_from < 0 && y_to < 0) || (y_from > h && y_to > h)) continue;
 
-			ViewportMapDrawBridgeTunnel(vp, &tbtm, tunnel_z, true, w, h, blitter);
+			ViewportMapDrawBridgeTunnel(vp, &ttm.tb, tunnel_z, true, w, h, blitter);
 		}
+	};
+
+	/* Render tunnels */
+	if (_settings_client.gui.show_tunnels_on_map && _vd.tunnel_to_map_x.tunnels.size() != 0) {
+		const int y_intercept_min = _vd.dpi.top + (_vd.dpi.left / 2);
+		const int y_intercept_max = _vd.dpi.top + _vd.dpi.height + ((_vd.dpi.left + _vd.dpi.width) / 2);
+		draw_tunnels(y_intercept_min, y_intercept_max, _vd.tunnel_to_map_x);
+	}
+	if (_settings_client.gui.show_tunnels_on_map && _vd.tunnel_to_map_y.tunnels.size() != 0) {
+		const int y_intercept_min = _vd.dpi.top - ((_vd.dpi.left + _vd.dpi.width) / 2);
+		const int y_intercept_max = _vd.dpi.top + _vd.dpi.height - (_vd.dpi.left / 2);
+		draw_tunnels(y_intercept_min, y_intercept_max, _vd.tunnel_to_map_y);
 	}
 
 	/* Render bridges */
@@ -2942,7 +3044,7 @@ static void ViewportProcessParentSprites()
 	}
 }
 
-void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom)
+void ViewportDoDraw(ViewPort *vp, int left, int top, int right, int bottom)
 {
 	DrawPixelInfo *old_dpi = _cur_dpi;
 	_cur_dpi = &_vd.dpi;
@@ -2959,8 +3061,8 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
 	_vd.dpi.pitch = old_dpi->pitch;
 	_vd.last_child = nullptr;
 
-	int x = UnScaleByZoom(_vd.dpi.left - (vp->virtual_left & mask), vp->zoom) + vp->left;
-	int y = UnScaleByZoom(_vd.dpi.top - (vp->virtual_top & mask), vp->zoom) + vp->top;
+	int x = UnScaleByZoomLower(_vd.dpi.left - (vp->virtual_left & mask), vp->zoom) + vp->left;
+	int y = UnScaleByZoomLower(_vd.dpi.top - (vp->virtual_top & mask), vp->zoom) + vp->top;
 
 	_vd.dpi.dst_ptr = BlitterFactory::GetCurrentBlitter()->MoveTo(old_dpi->dst_ptr, x - old_dpi->left, y - old_dpi->top);
 
@@ -2981,7 +3083,7 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
 			if (_settings_client.gui.show_slopes_on_viewport_map) ViewportMapDraw<false, true>(vp);
 			else ViewportMapDraw<false, false>(vp);
 		}
-		ViewportMapDrawVehicles(&_vd.dpi);
+		ViewportMapDrawVehicles(&_vd.dpi, vp);
 		if (_scrolling_viewport && _settings_client.gui.show_scrolling_viewport_on_map) ViewportMapDrawScrollingViewportBox(vp);
 		if (vp->zoom < ZOOM_LVL_OUT_256X) ViewportAddKdtreeSigns(&_vd.dpi, true);
 	} else {
@@ -2995,15 +3097,28 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
 
 		if (_vd.tile_sprites_to_draw.size() != 0) ViewportDrawTileSprites(&_vd.tile_sprites_to_draw);
 
-		for (auto &psd : _vd.parent_sprites_to_draw) {
-			_vd.parent_sprites_to_sort.push_back(&psd);
+		{
+			const int vd_left = _vd.dpi.left;
+			const int vd_top = _vd.dpi.top;
+			const int vd_right = _vd.dpi.left + _vd.dpi.width;
+			const int vd_bottom = _vd.dpi.top + _vd.dpi.height;
+			for (auto &psd : _vd.parent_sprites_to_draw) {
+				if (psd.left >= vd_right) continue;
+				if (psd.top >= vd_bottom) continue;
+				if (psd.left + psd.width <= vd_left) continue;
+				if (psd.top + psd.height <= vd_top) continue;
+				_vd.parent_sprites_to_sort.push_back(&psd);
+			}
 		}
 
 		ViewportProcessParentSprites();
 
 		if (_draw_bounding_boxes) ViewportDrawBoundingBoxes(&_vd.parent_sprites_to_sort);
 	}
-	if (_draw_dirty_blocks) ViewportDrawDirtyBlocks();
+	if (_draw_dirty_blocks) {
+		ViewportDrawDirtyBlocks();
+		if (HasBit(_viewport_debug_flags, VDF_DIRTY_BLOCK_PER_DRAW)) ++_dirty_block_colour;
+	}
 
 	DrawPixelInfo dp = _vd.dpi;
 	ZoomLevel zoom = _vd.dpi.zoom;
@@ -3044,9 +3159,9 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
  * Make sure we don't draw a too big area at a time.
  * If we do, the sprite sorter will run into major performance problems and the sprite memory may overflow.
  */
-static void ViewportDrawChk(const ViewPort *vp, int left, int top, int right, int bottom)
+void ViewportDrawChk(ViewPort *vp, int left, int top, int right, int bottom)
 {
-	if ((vp->zoom < ZOOM_LVL_DRAW_MAP) && ((int64)ScaleByZoom(bottom - top, vp->zoom) * (int64)ScaleByZoom(right - left, vp->zoom) > (int64)(180000 * ZOOM_LVL_BASE * ZOOM_LVL_BASE))) {
+	if ((vp->zoom < ZOOM_LVL_DRAW_MAP) && ((int64)ScaleByZoom(bottom - top, vp->zoom) * (int64)ScaleByZoom(right - left, vp->zoom) > (int64)(1000000 * ZOOM_LVL_BASE * ZOOM_LVL_BASE))) {
 		if ((bottom - top) > (right - left)) {
 			int t = (top + bottom) >> 1;
 			ViewportDrawChk(vp, left, top, right, t);
@@ -3066,7 +3181,7 @@ static void ViewportDrawChk(const ViewPort *vp, int left, int top, int right, in
 	}
 }
 
-static inline void ViewportDraw(const ViewPort *vp, int left, int top, int right, int bottom)
+static inline void ViewportDraw(ViewPort *vp, int left, int top, int right, int bottom)
 {
 	if (right <= vp->left || bottom <= vp->top) return;
 
@@ -3079,6 +3194,8 @@ static inline void ViewportDraw(const ViewPort *vp, int left, int top, int right
 
 	if (top < vp->top) top = vp->top;
 	if (bottom > vp->top + vp->height) bottom = vp->top + vp->height;
+
+	vp->is_drawn = true;
 
 	ViewportDrawChk(vp, left, top, right, bottom);
 }
@@ -3176,6 +3293,21 @@ void UpdateViewportPosition(Window *w)
 	}
 }
 
+void UpdateViewportSizeZoom(ViewPort *vp)
+{
+	vp->dirty_blocks_per_column = CeilDiv(vp->height, vp->GetDirtyBlockHeight());
+	vp->dirty_blocks_per_row = CeilDiv(vp->width, vp->GetDirtyBlockWidth());
+	uint size = vp->dirty_blocks_per_row * vp->dirty_blocks_per_column;
+	vp->dirty_blocks.assign(size, false);
+	UpdateViewportDirtyBlockLeftMargin(vp);
+	if (vp->zoom >= ZOOM_LVL_DRAW_MAP) {
+		memset(vp->map_draw_vehicles_cache.done_hash_bits, 0, sizeof(vp->map_draw_vehicles_cache.done_hash_bits));
+		vp->map_draw_vehicles_cache.vehicle_pixels.assign(vp->width * vp->height, false);
+	} else {
+		vp->map_draw_vehicles_cache.vehicle_pixels.clear();
+	}
+}
+
 void UpdateActiveScrollingViewport(Window *w)
 {
 	if (w && (!_settings_client.gui.show_scrolling_viewport_on_map || w->viewport->zoom >= ZOOM_LVL_DRAW_MAP)) w = nullptr;
@@ -3229,7 +3361,7 @@ void UpdateActiveScrollingViewport(Window *w)
  * @param bottom Bottom edge of area to repaint
  * @ingroup dirty
  */
-static void MarkViewportDirty(const ViewPort * const vp, int left, int top, int right, int bottom)
+static void MarkViewportDirty(ViewPort * const vp, int left, int top, int right, int bottom)
 {
 	/* Rounding wrt. zoom-out level */
 	right  += (1 << vp->zoom) - 1;
@@ -3251,12 +3383,21 @@ static void MarkViewportDirty(const ViewPort * const vp, int left, int top, int 
 
 	if (top >= vp->virtual_height) return;
 
-	SetDirtyBlocks(
-		UnScaleByZoomLower(left, vp->zoom) + vp->left,
-		UnScaleByZoomLower(top, vp->zoom) + vp->top,
-		UnScaleByZoom(right, vp->zoom) + vp->left + 1,
-		UnScaleByZoom(bottom, vp->zoom) + vp->top + 1
-	);
+	uint x = max<int>(0, UnScaleByZoomLower(left, vp->zoom) - vp->dirty_block_left_margin) >> vp->GetDirtyBlockWidthShift();
+	uint y = UnScaleByZoomLower(top, vp->zoom) >> vp->GetDirtyBlockHeightShift();
+	uint w = (max<int>(0, UnScaleByZoomLower(right, vp->zoom) - 1 - vp->dirty_block_left_margin) >> vp->GetDirtyBlockWidthShift()) + 1 - x;
+	uint h = ((UnScaleByZoom(bottom, vp->zoom) - 1) >> vp->GetDirtyBlockHeightShift()) + 1 - y;
+
+	uint column_skip = vp->dirty_blocks_per_column - h;
+	uint pos = (x * vp->dirty_blocks_per_column) + y;
+	for (uint i = 0; i < w; i++) {
+		for (uint j = 0; j < h; j++) {
+			vp->dirty_blocks[pos] = true;
+			pos++;
+		}
+		pos += column_skip;
+	}
+	vp->is_dirty = true;
 }
 
 /**
@@ -3270,7 +3411,7 @@ static void MarkViewportDirty(const ViewPort * const vp, int left, int top, int 
  */
 void MarkAllViewportsDirty(int left, int top, int right, int bottom, const ZoomLevel mark_dirty_if_zoomlevel_is_below)
 {
-	for (const ViewPort * const vp : _viewport_window_cache) {
+	for (ViewPort * const vp : _viewport_window_cache) {
 		if (vp->zoom >= mark_dirty_if_zoomlevel_is_below) continue;
 		MarkViewportDirty(vp, left, top, right, bottom);
 	}
@@ -3287,7 +3428,7 @@ static void MarkRouteStepDirty(const TileIndex tile, uint order_nr)
 	assert(tile != INVALID_TILE);
 	const Point pt = RemapCoords2(TileX(tile) * TILE_SIZE + TILE_SIZE / 2, TileY(tile) * TILE_SIZE + TILE_SIZE / 2);
 	const int char_height = GetCharacterHeight(FS_SMALL) + 1;
-	for (const ViewPort * const vp : _viewport_window_cache) {
+	for (ViewPort * const vp : _viewport_window_cache) {
 		const int half_width = ScaleByZoom((_vp_route_step_width / 2) + 1, vp->zoom);
 		const int height = ScaleByZoom(_vp_route_step_height_top + char_height * order_nr + _vp_route_step_height_bottom, vp->zoom);
 		MarkViewportDirty(vp, pt.x - half_width, pt.y - height, pt.x + half_width, pt.y);
@@ -3316,7 +3457,7 @@ void MarkAllViewportMapsDirty(int left, int top, int right, int bottom)
 {
 	Window *w;
 	FOR_ALL_WINDOWS_FROM_BACK(w) {
-		const ViewPort *vp = w->viewport;
+		ViewPort *vp = w->viewport;
 		if (vp != nullptr && vp->zoom >= ZOOM_LVL_DRAW_MAP) {
 			assert(vp->width != 0);
 			MarkViewportDirty(vp, left, top, right, bottom);
