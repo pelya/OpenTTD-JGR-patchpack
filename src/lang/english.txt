@@ -945,6 +945,7 @@ STR_GAME_OPTIONS_CURRENCY_MXN                                   :Mexican Peso (M
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :New Taiwan Dollar (NTD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Chinese Renminbi (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Hong Kong Dollar (HKD)
+STR_GAME_OPTIONS_CURRENCY_INR                                   :Indian Rupee (INR)
 ############ end of currency region
 
 STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Road vehicles
@@ -1188,6 +1189,8 @@ STR_CONFIG_SETTING_DISASTERS                                    :Disasters: {STR
 STR_CONFIG_SETTING_DISASTERS_HELPTEXT                           :Toggle disasters which may occasionally block or destroy vehicles or infrastructure
 STR_CONFIG_SETTING_CITY_APPROVAL                                :Town council's attitude towards area restructuring: {STRING2}
 STR_CONFIG_SETTING_CITY_APPROVAL_HELPTEXT                       :Choose how much noise and environmental damage by companies affect their town rating and further construction actions in their area
+STR_CONFIG_SETTING_MONEY_CHEAT_MULTIPLAYER                      :Allow multiplayer clients to use the money cheat: {STRING2}
+STR_CONFIG_SETTING_MONEY_CHEAT_MULTIPLAYER_HELPTEXT             :If enabled, non-admin multiplayer clients can use the money cheat. The money cheat is always available in single-player mode, and to the multiplayer server admin.
 
 STR_CONFIG_SETTING_MAX_HEIGHTLEVEL                              :Maximum map height: {STRING2}
 STR_CONFIG_SETTING_MAX_HEIGHTLEVEL_HELPTEXT                     :Set the maximum allowed height for mountains on the map
@@ -2078,6 +2081,10 @@ STR_CHEAT_SWITCH_CLIMATE_TOYLAND_LANDSCAPE                      :Toyland landsca
 STR_CHEAT_CHANGE_DATE                                           :{LTBLUE}Change date: {ORANGE}{DATE_SHORT}
 STR_CHEAT_CHANGE_DATE_QUERY_CAPT                                :{WHITE}Change current year
 STR_CHEAT_SETUP_PROD                                            :{LTBLUE}Enable modifying production values: {ORANGE}{STRING1}
+STR_CHEAT_INFLATION_COST                                        :{LTBLUE}Change inflation cost factor: {ORANGE}{DECIMAL}
+STR_CHEAT_INFLATION_COST_QUERY_CAPT                             :{WHITE}Change inflation cost factor
+STR_CHEAT_INFLATION_INCOME                                      :{LTBLUE}Change inflation income factor: {ORANGE}{DECIMAL}
+STR_CHEAT_INFLATION_INCOME_QUERY_CAPT                           :{WHITE}Change inflation income factor
 
 # Livery window
 STR_LIVERY_CAPTION                                              :{WHITE}{COMPANY} - Colour Scheme
@@ -3288,7 +3295,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Company-owned l
 STR_ABOUT_OPENTTD                                               :{WHITE}About OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Original copyright {COPYRIGHT} 1995 Chris Sawyer, All rights reserved
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD version {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 The OpenTTD team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{RAW_STRING} The OpenTTD team
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Frame rate
@@ -4648,7 +4655,7 @@ STR_ORDERS_TIMETABLE_VIEW_TOOLTIP                               :{BLACK}Switch t
 
 STR_ORDERS_LIST_TOOLTIP                                         :{BLACK}Order list - click on an order to highlight it. Ctrl+Click scrolls to the order's destination
 STR_ORDER_INDEX                                                 :{COMMA}:{NBSP}
-STR_ORDER_TEXT                                                  :{STRING5} {STRING4} {STRING}
+STR_ORDER_TEXT                                                  :{STRING6} {STRING4} {STRING}
 
 STR_ORDERS_END_OF_ORDERS                                        :- - End of Orders - -
 STR_ORDERS_END_OF_SHARED_ORDERS                                 :- - End of Shared Orders - -
@@ -4737,6 +4744,9 @@ STR_ORDER_CONDITIONAL_CARGO_TOOLTIP                             :{BLACK}The carg
 STR_ORDER_CONDITIONAL_SLOT_TOOLTIP                              :{BLACK}The train slot to check the occupancy of
 STR_ORDER_CONDITIONAL_VALUE_CAPT                                :{WHITE}Enter value to compare against
 
+STR_ORDER_CONDITIONAL_VIA                                       :{BLACK}Via
+STR_ORDER_CONDITIONAL_VIA_TOOLTIP                               :{BLACK}The via station to check the waiting cargo amount for
+
 STR_ORDER_CONDITIONAL_COMPARATOR_ACCEPTS                        :accepts
 STR_ORDER_CONDITIONAL_COMPARATOR_DOES_NOT_ACCEPT                :does not accept
 STR_ORDER_CONDITIONAL_COMPARATOR_HAS                            :has
@@ -4749,6 +4759,8 @@ STR_ORDER_CONDITIONAL_COMPARATOR_FULLY_OCCUPIED                 :is fully occupi
 STR_ORDER_CONDITIONAL_COMPARATOR_NOT_YET_FULLY_OCCUPIED         :is not fully occupied
 STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_IN_SLOT                  :train is in
 STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_NOT_IN_SLOT              :train is not in
+STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_IN_ACQUIRE_SLOT          :train is in/acquire
+STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_NOT_IN_ACQUIRE_SLOT      :train is not in/can't acquire
 
 STR_ORDERS_SKIP_BUTTON                                          :{BLACK}Skip
 STR_ORDERS_SKIP_TOOLTIP                                         :{BLACK}Skip the current order, and start the next. Ctrl+Click skips to the selected order
@@ -4866,6 +4878,7 @@ STR_ORDER_CONDITIONAL_IN_INVALID_SLOT                           :Jump to order {
 STR_ORDER_CONDITIONAL_TRUE_FALSE                                :Jump to order {COMMA} when {STRING} {STRING}
 STR_ORDER_CONDITIONAL_LOAD_PERCENTAGE_DISPLAY                   :Jump to order {COMMA} when Load percentage of {STRING} {STRING} {COMMA}
 STR_ORDER_CONDITIONAL_CARGO_WAITING_AMOUNT_DISPLAY              :Jump to order {COMMA} when {STRING} at next station {STRING} {CARGO_SHORT}
+STR_ORDER_CONDITIONAL_CARGO_WAITING_AMOUNT_VIA_DISPLAY          :Jump to order {COMMA} when {STRING} at next station via {STATION} {STRING} {CARGO_SHORT}
 
 STR_INVALID_ORDER                                               :{RED} (Invalid Order)
 

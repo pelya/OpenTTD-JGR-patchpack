@@ -129,10 +129,12 @@ class CrashLogOSX : public CrashLog {
 				" Name:     Mac OS X\n"
 				" Release:  %d.%d.%d\n"
 				" Machine:  %s\n"
-				" Min Ver:  %d\n",
+				" Min Ver:  %d\n"
+				" Max Ver:  %d\n",
 				ver_maj, ver_min, ver_bug,
 				arch != nullptr ? arch->description : "unknown",
-				MAC_OS_X_VERSION_MIN_REQUIRED
+				MAC_OS_X_VERSION_MIN_REQUIRED,
+				MAC_OS_X_VERSION_MAX_ALLOWED
 		);
 	}
 
@@ -401,6 +403,7 @@ public:
 
 		printf("Writing crash savegame...\n");
 		_savegame_DBGL_data = buffer;
+		_save_DBGC_data = true;
 		if (!this->WriteSavegame(filename_save, lastof(filename_save))) {
 			filename_save[0] = '\0';
 			ret = false;

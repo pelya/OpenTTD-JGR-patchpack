@@ -12,6 +12,8 @@
 
 #include "fileio_type.h"
 
+#include <string>
+
 /** Types of groups */
 enum IniGroupType {
 	IGT_VARIABLES = 0, ///< Values of the form "landscape = hilly".
@@ -62,7 +64,7 @@ struct IniLoadFile {
 	IniGroup *GetGroup(const char *name, size_t len = 0, bool create_new = true);
 	void RemoveGroup(const char *name);
 
-	void LoadFromDisk(const char *filename, Subdirectory subdir);
+	void LoadFromDisk(const char *filename, Subdirectory subdir, std::string *save = nullptr);
 
 	/**
 	 * Open the INI file.
