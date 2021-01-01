@@ -736,6 +736,13 @@ static bool CanPlantExtraTrees(TileIndex tile)
 		_settings_game.construction.extra_tree_placement == ETP_ALL);
 }
 
+static bool CanPlantExtraTrees(TileIndex tile)
+{
+	return ((_settings_game.game_creation.landscape == LT_TROPIC && GetTropicZone(tile) == TROPICZONE_RAINFOREST) ?
+		_settings_game.construction.extra_tree_placement != ETP_NONE :
+		_settings_game.construction.extra_tree_placement == ETP_ALL);
+}
+
 static void TileLoop_Trees(TileIndex tile)
 {
 	if (GetTreeGround(tile) == TREE_GROUND_SHORE) {
