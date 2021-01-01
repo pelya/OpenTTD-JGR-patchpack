@@ -65,7 +65,7 @@ void SetRailStationPlatformReservation(TileIndex start, DiagDirection dir, bool 
 
 	do {
 		SetRailStationReservation(tile, b);
-		MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+		MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 		tile = TILE_ADD(tile, diff);
 	} while (IsCompatibleTrainStationTile(tile, start));
 }
@@ -84,6 +84,7 @@ bool TryReserveRailTrackdir(TileIndex tile, Trackdir td, bool trigger_stations)
 	bool success = TryReserveRailTrack(tile, TrackdirToTrack(td), trigger_stations);
 	if (success && HasPbsSignalOnTrackdir(tile, td)) {
 		SetSignalStateByTrackdir(tile, td, SIGNAL_STATE_GREEN);
+		MarkSingleSignalDirty(tile, td);
 	}
 	return success;
 }
@@ -104,9 +105,9 @@ bool TryReserveRailTrack(TileIndex tile, Track t, bool trigger_stations)
 	if (_settings_client.gui.show_track_reservation) {
 		/* show the reserved rail if needed */
 		if (IsBridgeTile(tile)) {
-			MarkBridgeDirty(tile, ZOOM_LVL_DRAW_MAP);
+			MarkBridgeDirty(tile, VMDF_NOT_MAP_MODE);
 		} else {
-			MarkTileGroundDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+			MarkTileGroundDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 		}
 	}
 
@@ -116,7 +117,7 @@ bool TryReserveRailTrack(TileIndex tile, Track t, bool trigger_stations)
 			if (IsRailDepot(tile)) {
 				if (!HasDepotReservation(tile)) {
 					SetDepotReservation(tile, true);
-					MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP); // some GRFs change their appearance when tile is reserved
+					MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE); // some GRFs change their appearance when tile is reserved
 					return true;
 				}
 			}
@@ -146,7 +147,7 @@ bool TryReserveRailTrack(TileIndex tile, Track t, bool trigger_stations)
 			if (HasStationRail(tile) && !HasStationReservation(tile)) {
 				SetRailStationReservation(tile, true);
 				if (trigger_stations && IsRailStation(tile)) TriggerStationRandomisation(nullptr, tile, SRT_PATH_RESERVATION);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP); // some GRFs need redraw after reserving track
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE); // some GRFs need redraw after reserving track
 				return true;
 			}
 			break;
@@ -155,12 +156,12 @@ bool TryReserveRailTrack(TileIndex tile, Track t, bool trigger_stations)
 			if (GetTunnelBridgeTransportType(tile) == TRANSPORT_RAIL) {
 				if (IsTunnel(tile) && !HasTunnelReservation(tile)) {
 					SetTunnelReservation(tile, true);
-					MarkTileGroundDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+					MarkTileGroundDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 					return true;
 				}
 				if (IsBridge(tile)) {
 					if (TryReserveRailBridgeHead(tile, t)) {
-						MarkBridgeOrTunnelDirtyOnReservationChange(tile, ZOOM_LVL_DRAW_MAP);
+						MarkBridgeOrTunnelDirtyOnReservationChange(tile, VMDF_NOT_MAP_MODE);
 						return true;
 					}
 				}
@@ -183,6 +184,7 @@ void UnreserveRailTrackdir(TileIndex tile, Trackdir td)
 {
 	if (HasPbsSignalOnTrackdir(tile, td)) {
 		SetSignalStateByTrackdir(tile, td, SIGNAL_STATE_RED);
+		MarkSingleSignalDirty(tile, td);
 	}
 	UnreserveRailTrack(tile, TrackdirToTrack(td));
 }
@@ -198,9 +200,9 @@ void UnreserveRailTrack(TileIndex tile, Track t)
 
 	if (_settings_client.gui.show_track_reservation) {
 		if (IsBridgeTile(tile)) {
-			MarkBridgeDirty(tile, ZOOM_LVL_DRAW_MAP);
+			MarkBridgeDirty(tile, VMDF_NOT_MAP_MODE);
 		} else {
-			MarkTileGroundDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+			MarkTileGroundDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 		}
 	}
 
@@ -208,7 +210,7 @@ void UnreserveRailTrack(TileIndex tile, Track t)
 		case MP_RAILWAY:
 			if (IsRailDepot(tile)) {
 				SetDepotReservation(tile, false);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 				break;
 			}
 			if (IsPlainRail(tile)) UnreserveTrack(tile, t);
@@ -224,7 +226,7 @@ void UnreserveRailTrack(TileIndex tile, Track t)
 		case MP_STATION:
 			if (HasStationRail(tile)) {
 				SetRailStationReservation(tile, false);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 			}
 			break;
 
@@ -236,7 +238,7 @@ void UnreserveRailTrack(TileIndex tile, Track t)
 					UnreserveRailBridgeHeadTrack(tile, t);
 				}
 				if (IsTunnelBridgeSignalSimulationExit(tile) && IsTunnelBridgePBS(tile) && IsTrackAcrossTunnelBridge(tile, t)) SetTunnelBridgeExitSignalState(tile, SIGNAL_STATE_RED);
-				MarkBridgeOrTunnelDirtyOnReservationChange(tile, ZOOM_LVL_DRAW_MAP);
+				MarkBridgeOrTunnelDirtyOnReservationChange(tile, VMDF_NOT_MAP_MODE);
 			}
 			break;
 
@@ -328,7 +330,7 @@ static Vehicle *FindTrainOnTrackEnum(Vehicle *v, void *data)
 {
 	FindTrainOnTrackInfo *info = (FindTrainOnTrackInfo *)data;
 
-	if (v->type != VEH_TRAIN || (v->vehstatus & VS_CRASHED)) return nullptr;
+	if ((v->vehstatus & VS_CRASHED)) return nullptr;
 
 	Train *t = Train::From(v);
 	if (t->track & TRACK_BIT_WORMHOLE) {
@@ -367,10 +369,10 @@ PBSTileInfo FollowTrainReservation(const Train *v, Vehicle **train_on_res)
 	if (IsRailDepotTile(tile) && !GetDepotReservationTrackBits(tile)) return PBSTileInfo(tile, trackdir, false);
 
 	FindTrainOnTrackInfo ftoti;
-	ftoti.res = FollowReservation(v->owner, GetRailTypeInfo(v->railtype)->compatible_railtypes, tile, trackdir);
+	ftoti.res = FollowReservation(v->owner, GetRailTypeInfo(v->railtype)->all_compatible_railtypes, tile, trackdir);
 	ftoti.res.okay = IsSafeWaitingPosition(v, ftoti.res.tile, ftoti.res.trackdir, true, _settings_game.pf.forbid_90_deg);
 	if (train_on_res != nullptr) {
-		FindVehicleOnPos(ftoti.res.tile, &ftoti, FindTrainOnTrackEnum);
+		FindVehicleOnPos(ftoti.res.tile, VEH_TRAIN, &ftoti, FindTrainOnTrackEnum);
 		if (ftoti.best != nullptr) *train_on_res = ftoti.best->First();
 		if (*train_on_res == nullptr && IsRailStationTile(ftoti.res.tile)) {
 			/* The target tile is a rail station. The track follower
@@ -379,13 +381,13 @@ PBSTileInfo FollowTrainReservation(const Train *v, Vehicle **train_on_res)
 			 * for a possible train. */
 			TileIndexDiff diff = TileOffsByDiagDir(TrackdirToExitdir(ReverseTrackdir(ftoti.res.trackdir)));
 			for (TileIndex st_tile = ftoti.res.tile + diff; *train_on_res == nullptr && IsCompatibleTrainStationTile(st_tile, ftoti.res.tile); st_tile += diff) {
-				FindVehicleOnPos(st_tile, &ftoti, FindTrainOnTrackEnum);
+				FindVehicleOnPos(st_tile, VEH_TRAIN, &ftoti, FindTrainOnTrackEnum);
 				if (ftoti.best != nullptr) *train_on_res = ftoti.best->First();
 			}
 		}
 		if (*train_on_res == nullptr && IsTileType(ftoti.res.tile, MP_TUNNELBRIDGE) && IsTrackAcrossTunnelBridge(ftoti.res.tile, TrackdirToTrack(ftoti.res.trackdir)) && !IsTunnelBridgeWithSignalSimulation(ftoti.res.tile)) {
 			/* The target tile is a bridge/tunnel, also check the other end tile. */
-			FindVehicleOnPos(GetOtherTunnelBridgeEnd(ftoti.res.tile), &ftoti, FindTrainOnTrackEnum);
+			FindVehicleOnPos(GetOtherTunnelBridgeEnd(ftoti.res.tile), VEH_TRAIN, &ftoti, FindTrainOnTrackEnum);
 			if (ftoti.best != nullptr) *train_on_res = ftoti.best->First();
 		}
 	}
@@ -404,7 +406,7 @@ Train *GetTrainForReservation(TileIndex tile, Track track)
 	assert_msg_tile(HasReservedTracks(tile, TrackToTrackBits(track)), tile, "track: %u", track);
 	Trackdir  trackdir = TrackToTrackdir(track);
 
-	RailTypes rts = GetRailTypeInfo(GetTileRailTypeByTrack(tile, track))->compatible_railtypes;
+	RailTypes rts = GetRailTypeInfo(GetTileRailTypeByTrack(tile, track))->all_compatible_railtypes;
 
 	/* Follow the path from tile to both ends, one of the end tiles should
 	 * have a train on it. We need FollowReservation to ignore one-way signals
@@ -417,21 +419,21 @@ Train *GetTrainForReservation(TileIndex tile, Track track)
 		FindTrainOnTrackInfo ftoti;
 		ftoti.res = FollowReservation(GetTileOwner(tile), rts, tile, trackdir, true);
 
-		FindVehicleOnPos(ftoti.res.tile, &ftoti, FindTrainOnTrackEnum);
+		FindVehicleOnPos(ftoti.res.tile, VEH_TRAIN, &ftoti, FindTrainOnTrackEnum);
 		if (ftoti.best != nullptr) return ftoti.best;
 
 		/* Special case for stations: check the whole platform for a vehicle. */
 		if (IsRailStationTile(ftoti.res.tile)) {
 			TileIndexDiff diff = TileOffsByDiagDir(TrackdirToExitdir(ReverseTrackdir(ftoti.res.trackdir)));
 			for (TileIndex st_tile = ftoti.res.tile + diff; IsCompatibleTrainStationTile(st_tile, ftoti.res.tile); st_tile += diff) {
-				FindVehicleOnPos(st_tile, &ftoti, FindTrainOnTrackEnum);
+				FindVehicleOnPos(st_tile, VEH_TRAIN, &ftoti, FindTrainOnTrackEnum);
 				if (ftoti.best != nullptr) return ftoti.best;
 			}
 		}
 
 		/* Special case for bridges/tunnels: check the other end as well. */
 		if (IsTileType(ftoti.res.tile, MP_TUNNELBRIDGE) && IsTrackAcrossTunnelBridge(ftoti.res.tile, TrackdirToTrack(ftoti.res.trackdir))) {
-			FindVehicleOnPos(GetOtherTunnelBridgeEnd(ftoti.res.tile), &ftoti, FindTrainOnTrackEnum);
+			FindVehicleOnPos(GetOtherTunnelBridgeEnd(ftoti.res.tile), VEH_TRAIN, &ftoti, FindTrainOnTrackEnum);
 			if (ftoti.best != nullptr) return ftoti.best;
 		}
 	}
@@ -512,7 +514,7 @@ bool IsSafeWaitingPosition(const Train *v, TileIndex tile, Trackdir trackdir, bo
 	}
 
 	/* Check next tile. For performance reasons, we check for 90 degree turns ourself. */
-	CFollowTrackRail ft(v, GetRailTypeInfo(v->railtype)->compatible_railtypes);
+	CFollowTrackRail ft(v, GetRailTypeInfo(v->railtype)->all_compatible_railtypes);
 
 	/* End of track? */
 	if (!ft.Follow(tile, trackdir)) {
@@ -606,8 +608,7 @@ bool IsWaitingPositionFree(const Train *v, TileIndex tile, Trackdir trackdir, bo
 			TileIndex other_end = GetOtherTunnelBridgeEnd(tile);
 			if (HasAcrossTunnelBridgeReservation(other_end) && GetTunnelBridgeExitSignalState(other_end) == SIGNAL_STATE_RED) return false;
 			Direction dir = DiagDirToDir(GetTunnelBridgeDirection(other_end));
-			if (HasVehicleOnPos(other_end, &dir, [](Vehicle *v, void *data) -> Vehicle * {
-				if (v->type != VEH_TRAIN) return nullptr;
+			if (HasVehicleOnPos(other_end, VEH_TRAIN, &dir, [](Vehicle *v, void *data) -> Vehicle * {
 				DirDiff diff = DirDifference(v->direction, *((Direction *) data));
 				if (diff == DIRDIFF_SAME) return v;
 				if (diff == DIRDIFF_45RIGHT || diff == DIRDIFF_45LEFT) {
@@ -620,7 +621,7 @@ bool IsWaitingPositionFree(const Train *v, TileIndex tile, Trackdir trackdir, bo
 	}
 
 	/* Check the next tile, if it's a PBS signal, it has to be free as well. */
-	CFollowTrackRail ft(v, GetRailTypeInfo(v->railtype)->compatible_railtypes);
+	CFollowTrackRail ft(v, GetRailTypeInfo(v->railtype)->all_compatible_railtypes);
 
 	if (!ft.Follow(tile, trackdir)) return true;
 

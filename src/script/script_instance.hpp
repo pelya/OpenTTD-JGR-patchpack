@@ -174,16 +174,19 @@ public:
 	 */
 	SQInteger GetOpsTillSuspend();
 
+	void LimitOpsTillSuspend(SQInteger suspend);
+
 	/**
 	 * DoCommand callback function for all commands executed by scripts.
 	 * @param result The result of the command.
 	 * @param tile The tile on which the command was executed.
 	 * @param p1 p1 as given to DoCommandPInternal.
 	 * @param p2 p2 as given to DoCommandPInternal.
+	 * @param p3 p3 as given to DoCommandPInternal.
 	 * @param cmd cmd as given to DoCommandPInternal.
 	 * @return true if we handled result.
 	 */
-	bool DoCommandCallback(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd);
+	bool DoCommandCallback(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd);
 
 	/**
 	 * Insert an event for this script.
@@ -199,6 +202,19 @@ public:
 	bool IsSleeping() { return this->suspend != 0; }
 
 	size_t GetAllocatedMemory() const;
+
+	void SetMemoryAllocationLimit(size_t limit) const;
+
+	/**
+	 * Indicate whether this instance is currently being destroyed.
+	 */
+	inline bool InShutdown() const { return this->in_shutdown; }
+
+	/**
+	 * Decrease the ref count of a squirrel object.
+	 * @param obj The object to release.
+	 **/
+	void ReleaseSQObject(HSQOBJECT *obj);
 
 protected:
 	class Squirrel *engine;               ///< A wrapper around the squirrel vm.
@@ -242,8 +258,10 @@ private:
 	bool is_save_data_on_stack;           ///< Is the save data still on the squirrel stack?
 	int suspend;                          ///< The amount of ticks to suspend this script before it's allowed to continue.
 	bool is_paused;                       ///< Is the script paused? (a paused script will not be executed until unpaused)
+	bool in_shutdown;                     ///< Is this instance currently being destructed?
 	Script_SuspendCallbackProc *callback; ///< Callback that should be called in the next tick the script runs.
 	size_t last_allocated_memory;         ///< Last known allocated memory value (for display for crashed scripts)
+	const char *APIName;                  ///< Name of the API used for this squirrel.
 
 	/**
 	 * Call the script Load function if it exists and data was loaded

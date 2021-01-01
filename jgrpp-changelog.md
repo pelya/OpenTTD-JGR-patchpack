@@ -2,6 +2,281 @@
 
 * * *
 
+### v0.39.2 (2020-12-29)
+* Fix crash which could occur when loading older scenarios or savegames which do not already have a company.
+* Fix crash which could occur when using the restart command after opening the save/load window.
+* Fix crash which could occur when landing a helicopter at 180° rotated intercontinental airport.
+* Fix aircraft landing at a 180° rotated intercontinental airport taxiing at the wrong height if the northernmost missing tile is at a different height.
+* Fix road/tram type conversion when loading JokerPP v1.27 savegames.
+* Fix rendering artefacts in colour news window viewports.
+* Fix viewport map mode using the wrong colours when using extra-zoomed-in ground tile GRFs.
+* Fix decimal settings not permitting typing a '-' character.
+* Fix multiplayer clients printing spurious warning messages to the console.
+* Fix cloning a vehicle with a name ending in a very large number resulting in the new vehicle having the wrong number in its name.
+* Add setting to scale primary industry cargo production.
+* Template-based train replacement:
+  * Fix editing a template not refitting the first engine and any articulated or rear engine parts.
+  * Fix templates using the wrong colouring scheme in various circumstances.
+* Add console commands for conditional execution from game date.
+* Allow AI/GS developers to reload GSs.
+* Fix CMake looking for fctix on Apple patforms.
+* Bump trunk base from commit 0a9aed052295a98f1c1438cf1fa05b9a7e6b6607 to commit b7851e51adf0fb0d39ed34a579cf6fe68d8949be.
+
+### v0.39.1 (2020-11-28)
+* Fix crash which could occur with very large numbers of orders per vehicle.
+* Fix scrollbar functionality in schedule dispatch window.
+* Fix map-mode viewports not updating when changing company and land colours.
+* Fix case where unsuccessfully attempting to build a rail could possibly change the railtype of the existing rail on the tile.
+* Routing restrictions:
+  * Fix crash which could occur when using the set counter value action in a conditional block.
+  * Add current time conditional.
+* Prevent various types of multiplayer desync caused by incorrectly implemented NewGRFs.
+* Change tunnel/bridge signal simulation spacing to be a company setting.
+* Improve performance of animated tiles (industries, stations, objects, houses).
+* Add Korean translations by TELK.
+* Bump trunk base from commit cf29d23ba4ca2b9e6b638720e186bf33e11d5a0f to commit 0a9aed052295a98f1c1438cf1fa05b9a7e6b6607.
+
+### v0.39.0 (2020-11-08)
+* Fix crash when mousing over the vehicle UI order bar for a stopped vehicle which is heading for sale at a depot.
+* Fix crash which could occur when re-drawing a window element which is entirely off-screen.
+* Fix crash which could occur with very large numbers of orders per vehicle.
+* Fix crash which could occur when dragging after cancelling dragging vehicles/groups in the vehicle list window.
+* Fix crash when scrolling a non-map mode extra viewport, when a shaded map mode extra viewport is present.
+* Fix multiplayer desync which could occur after programming a new programmable pre-signal.
+* Fix clearing timetable travel time clearing wait time instead.
+* Fix smallmap not refreshing when paused.
+* Fix changing tree transparency not updating vegetation map mode viewports.
+* Road vehicles/one-way roads:
+  * Allow overtaking inside (non-custom) bridges/tunnels.
+  * Allow drive-through road stops to be one-way.
+  * Road segments with no junctions between one-way road tiles in the same direction, are now also one-way.
+  * T-junctions on the driving side with one-way road tiles either side, are now also one-way.
+  * Road vehicles on one-way roads may now stay in the overtaking lane as long as necessary, and have fewer constraints to start overtaking.
+  * Various other improvements to overtaking.
+  * Add zoning mode to show one-way roads.
+* Plans:
+  * Fix selected plan not being unselected when closing window.
+  * Allow changing the colour of plans.
+* Add features to reverse the order of an order list, and to append the reverse of an order list.
+* Increase the maximum allowed value for cargo waiting amount conditional orders.
+* No longer charge vehicle running costs when waiting in depot due to timetable.
+* Upgrading an airport to an identical configuration now returns an error instead of charging the full amount again.
+* AI/GS script: Add date methods for getting time in minutes.
+* Add setting to disable continuously updating NewGRF vehicle image.
+* Improve performance of trains and road vehicles with a continuously updating NewGRF vehicle image.
+* Add Korean translations by TELK.
+* Bump trunk base from commit 313141d2f1218e487a546514831b91d794c20fde to commit cf29d23ba4ca2b9e6b638720e186bf33e11d5a0f.
+
+### v0.38.1 (2020-10-21)
+* Orders:
+  * Fix crash when saving or joining network server games with order backups.
+  * Fix conditional order jumps to orders at positions greater than 256.
+  * Fix inserting or modifying orders at positions greater than 4096.
+  * Fix currently selected order being de-selected when inserting/moving orders.
+* Fix crash when skipping suppressed unreached implicit orders when beginning loading at a station.
+* Fix NewGRF load error when using custom rail/road/tram type properties.
+* Add display setting for income/cost text effects.
+
+### v0.38.0 (2020-10-16)
+* Fix crash when placing object, when object class has no available objects.
+* Template-based train replacement:
+  * Fix various crashes which could occur in multiplayer when multiple template move/delete operations are in flight at the same time.
+  * Fix crash which could occur when replacing template.
+  * Fix appending to template not refreshing window in multiplayer.
+* Fix crash in download base graphics bootstrap mode.
+* Fix changing smallmap legends not updating viewport maps.
+* Fix PBS handling of mixed rail type layouts which could cause train crashes, when using NewGRFs which don't correctly define rail type compatibilities.
+* Signals on bridges/tunnels:
+  * Fix reversing train inside signalled bridge/tunnel not unreserving exit.
+  * Fix PBS detection outwards from PBS bridge/tunnel exit.
+* Add drive-through train depot emulation.
+* Increase per-vehicle order limit from 254 to 64k.
+* Add viewport map mode: transport routes (similar to smallmap transport routes mode).
+* Allow converting track type under trains when compatible with the new rail type.
+* Add sort by vehicle count to the vehicle purchase window.
+* Add company setting for whether to add vehicle to group on copy-clone.
+* Plans:
+  * Improve performance of plan rendering.
+  * Fix adding plan lines in viewport map mode.
+  * Fix marking plans visible/invisible not always fully updating the screen.
+* NewGRF:
+  * Allow rail type GRF to provide custom signal sprites for restricted signals and programmable pre-signals.
+  * Add bridge property to prevent towns or AI/GS building bridge type.
+  * Add road/tram type properties: not available to AI/GS, and may not be modified by towns.
+* Increase number of settings which can be changed in multiplayer.
+* Console:
+  * Add network server commands to get/set company password hashes.
+  * Allow sending an empty password to drop settings_access.
+* Make smallmap refresh period variable with map mode/zoom and pause state.
+* Various performance improvements for viewport map mode and some windows.
+* Improve scheduling of cargodist link graph updates.
+* Reduce screen-tearing on Linux/Unix (SDL2).
+* Fix build/compilation issue on MacOS.
+* Add Korean translations by TELK.
+* Bump trunk base from commit 53a3d940b15ca2e769b4db19079b3b6913c48647 to commit 313141d2f1218e487a546514831b91d794c20fde.
+
+### v0.37.0 (2020-09-22)
+* Fix crash when upgrading dual road/tram bridge, when the other road/tram type does not extend across the bridge, but is present on the upgrade tile.
+* Fix crashes or other erros which could occur after the NewGRF error window is shown after generating a new map.
+* Routing restrictions:
+  * Fix crash which could occur when using reverse behind signal.
+  * Allow referencing competitor infrastructure where allowed by sharing.
+  * Add train counters.
+* Programmable pre-signals:
+  * UI improvements.
+  * Add train slot and counter conditionals.
+* Template-based train replacement:
+  * Fix being able to open template replacement window more than once.
+  * Fix replacement flags being reset when editing template.
+  * Fix group add/remove/rename not updating template replacement GUI in multiplayer.
+  * Fix no error message when attaching new template vehicle fails.
+  * Do not keep remaining vehicles by default.
+* Fix bulk land purchasing removing structures and water.
+* Fix excessively long time periods between updates for small link graph networks.
+* Fix town label colour not being updated when switching companies.
+* Fix connecting link graph overlay links not being redrawn when when moving station sign.
+* Only show ship is lost messages if lost for a significant time.
+* Allow building objects by area (1x1 objects only).
+* Add rate limit for object construction.
+* Add setting for default road/tram types, to match default rail type setting.
+* Add conditional order which tests counter value.
+* AI/GS:
+  * Allow changing ops limit and memory limit settings in game.
+  * Allow AI/GS developers to change game script in-game.
+* Hotkeys:
+  * Allow using the hash (#) key as a hotkey on Linux/SDL.
+  * Add empty hotkeys for message history, template replacement window, slots window, counters window.
+* On load, use previous local company or the first usable company, instead of always using the first company slot.
+* NewGRF: Fix industry probability at map generation was scaled differently when set via property or callback.
+* MacOS: Fix font support (builds did not include Freetype).
+* Bump trunk base from commit 9340fe9c7ceca3349df171770480683097f0e436 to commit 53a3d940b15ca2e769b4db19079b3b6913c48647.
+
+### v0.36.0 (2020-08-30)
+* Fix incorrect infrastructure totals which could cause multiplayer desyncs when using the road convert tool on bay road stops.
+* Fix vehicle window mouse over colour when both stopped and waiting/stuck.
+* Fix order lookahead changing percent of times conditional order state.
+* Hide screenshot window when taking a normal screesnhot.
+* Use two columns in the cargo type orders window when there are more than 32 cargoes.
+* Improve performance of cargodist when using refit to any cargo orders.
+* Add leave early if any/all cargoes fully loaded timetable modes.
+* Template-based train replacement: Show empty and full template train weights, and weight ratios if enabled.
+* Routing restrictions: Add feature to control news reports about stuck trains.
+* Add news setting for trains waiting due to routing restrictions.
+* Add setting for alternative linkgraph overlay colour schemes.
+* Add basic tab-completion to the console window.
+* Scenario editor:
+  * Add setting to enable multiple churches/stadiums in scenario editor.
+  * Add settings to ignore date/zone/GRF when placing houses in scenario editor.
+* Build:
+  * Fix languages not always being recompiled when updated.
+  * Fix source being incorrectly detected as modified when not using git on some locales.
+* Add Korean translations by TELK.
+* Bump trunk base from commit 00eccbe298ad7f7d656e121ce58c2a6326dabe2f to commit 9340fe9c7ceca3349df171770480683097f0e436.
+
+### v0.35.1 (2020-07-20)
+* Fix crash which could occur when selling/replacing a vehicle which is currently displayed in a departure board window.
+* Fix colour of vehicle destination text when mousing over in vehicle window.
+* Fix missing window/taskbar icon when using SDL/SDL2.
+* Fix compilation on CMake versions prior to 3.12.
+* Add hotkey to show link graph legend window (defaults to: Y).
+* Unix: Add wrapper build scripts to invoke CMake/make.
+* Add Korean translations by TELK.
+* Add Czech translations by Lurker23.
+
+### v0.35.0 (2020-07-12)
+* Fix crash on maps larger than 64k in either axis.
+* Fix crash which could occur when displaying vehicles with no orders in the departure board window.
+* Fix crash when template replacing a train with a free wagon chain.
+* Fix incorrect calculation of town growth rate.
+* Fix incorrect scheduled dispatch timetable dates after using date change cheat.
+* Fix incorrect display date on load for savegame versions < 31.
+* Fix incorrect news window type and autoreplace behaviour for vehicle too heavy advice messages.
+* Fix general transparency hotkey not updating vehicles in tunnels.
+* Fix crash which could occur on WINE on systems with more than 8 network interfaces.
+* Fix overflowing the maximum possible amount of money being done incorrectly.
+* Fix performance issues which could occur when dragging windows.
+* Fix station catchment overlay not always being cleared when distant join window is closed.
+* Various improvements to timetable separation and automation.
+* Improve road vehicle pathfinding when multiple vehicles are simultaneously heading to a station with multiple bay/stop entrances.
+* Add setting to scale station cargo capacity and rating tolerance by size.
+* Add setting to disable vehicle expiry after a given year.
+* Add setting to control road vehicle re-routing on road layout changes.
+* Add a "none" option to the tree growth rate setting.
+* Time display settings are now stored in the savegame, with an option for client-local override.
+* Also show vehicle destination on mouseover when waiting for PBS or routing restriction.
+* Fix incorrect goal time left display when using BeeRewardGS and day length greater than 1.
+* Prevent Mop Generic NRT Vehicles GRF from causing multiplayer desyncs.
+* Bump trunk base from commit eeed3a7613d375f66781f53b42e03729a4ca1c33 to commit 00eccbe298ad7f7d656e121ce58c2a6326dabe2f.
+
+### v0.34.4 (2020-06-05)
+* Fix crash which could occur when pathfinding over railtypes which prohibit 90° turns.
+* Fix vehicle refit when used with per-cargo no-load orders.
+* Add support for fences and bare land to rail custom bridge heads.
+* Bump trunk base from commit 83cd040c61cf6ce966e78cc496c058d42977b387 to commit eeed3a7613d375f66781f53b42e03729a4ca1c33.
+
+### v0.34.3 (2020-05-14)
+* Fix crash which could occur when using the reverse behind signal feature.
+* Fix text entry using modifier keys when using Fcitx on Linux/SDL2.
+* Continue waiting at rail waypoint if the next order is a wait order for the same waypoint.
+* Conditional orders:
+  * Fix comparison operator not being reset when switching variable to load percentage or waiting cargo amount.
+  * Add mode to waiting cargo amount variable to check waiting station cargo via next node.
+  * Add slot acquire modes to train in slot conditional.
+  * Improve cargo dist link refresher handling of complex conditional orders.
+* Fix compilation on MSVC.
+* Various changes to improve thread safety/data races.
+* Bump trunk base from commit 1f1345de098294a4744981d0043512569a35102a to commit 83cd040c61cf6ce966e78cc496c058d42977b387.
+
+### v0.34.2 (2020-05-01)
+* Fix crash which could occur when scrolling the viewport.
+* Fix crash which could occur when using the reverse behind signal feature.
+* Fix a source of multiplayer desyncs caused by the build and refit vehicle feature.
+* Fix removing a track piece from a rail custom bridge head to create two parallel tracks assigning the wrong track type to the non-bridge track.
+* Fix cargo type load orders which contain both load if available and full load loading types.
+* Fix timetable handling of wait at depot or waypoint orders in the departures window.
+* Fix graphical rendering issues (clipping/flickering) in some circumstances.
+* Fix too short length limit of waiting cargo amount conditional order text input.
+* Fix `screenshot minimap <name>` console command ignoring the name parameter.
+* Fix GameScripts being able to consume all available CPU time by repeatedly attempting to found a town.
+* Cheats:
+  * Add support for server admin use of money, magic bulldozer, tunnels and jet crashes cheats in multiplayer.
+  * Add setting to allow non server admins to use the money cheat in multiplayer.
+  * Add cheats to set inflation income and cost factors.
+* Ctrl-click up/down in NewGRF window to move to top or bottom.
+* Minor performance improvements.
+* Add Korean translations by TELK.
+* Bump trunk base from commit 9339e4dcad8aa74ff1b2723ea63a2e31c23f5d44 to commit 1f1345de098294a4744981d0043512569a35102a.
+
+### v0.34.1 (2020-04-13)
+* Fix crash which could occur at startup for some combinations of resolution and zoom settings.
+* Fix crash which could occur on WINE on systems with more than two network interfaces.
+* Scheduled dispatch:
+  * Fix double dispatch request when timetable is not started.
+  * Fix lateness not being updated when timetabled waiting time at dispatch point changes.
+  * Fix dispatch order timetabled waiting time being taken as zero in some circumstances.
+* Various changes to improve thread safety/data races.
+* Bump trunk base from commit b50d77b831c60f9f162a6f1d2bc9ca19e702784e to commit 9339e4dcad8aa74ff1b2723ea63a2e31c23f5d44.
+
+### v0.34.0 (2020-04-07)
+* Fix crash when attempting to draw zero-size or invalid sprite.
+* Fix crash which could occur when scrolling the viewport on some platforms.
+* Fix crash which could occur when renaming a vehicle group or engine, when the list window is open and sorted by name, on some platforms.
+* Fix crash which could occur when changing company colours when invalid NewGRF objects are present.
+* Add support for allowing/disallowing supply to a station, per cargo, by ctrl-clicking the station cargo rating.
+* Open train vehicle details window on total cargo tab if shift pressed, instead of ctrl.
+* Increase margin between right-hand columns in depatures window.
+* Fix window/viewport rendering regressions from v0.34-rc1.
+* Bump trunk base from commit 71913607540088819b60f12b765504ab7dfe7a64 to commit b50d77b831c60f9f162a6f1d2bc9ca19e702784e.
+
+### v0.34-rc1 (2020-03-11)
+* Fix crash when using house pick/place tool with NewGRF houses.
+* Fix crash which could occur when using a high town cargo generation factor.
+* Fix crash which could occur when re-arranging a train displayed in a departure board window.
+* Fix text rendering issue with scheduled dispatch tag in timetable/order list.
+* Various viewport rendering performance improvements, especially at higher zoom levels.
+* Minor performance improvements to vehicle collision detection.
+* Bump trunk base from commit 75031c9693ee0525c75e8e02ead345b1f8264735 to commit 71913607540088819b60f12b765504ab7dfe7a64.
+
 ### v0.33.2 (2020-02-21)
 * Fix crash on 32-bit platforms.
 * Fix crash which could occur when moving new cargo to nearby stations.

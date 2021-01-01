@@ -41,6 +41,12 @@ enum RailTypeFlags {
 };
 DECLARE_ENUM_AS_BIT_SET(RailTypeFlags)
 
+/** Railtype control flags. */
+enum RailTypeCtrlFlags {
+	RTCF_PROGSIG           = 0,                          ///< Custom signal sprites enabled for programmable pre-signals.
+	RTCF_RESTRICTEDSIG     = 1,                          ///< Custom signal sprite flag enabled for restricted signals.
+};
+
 struct SpriteGroup;
 
 /** Sprite groups for a railtype. */
@@ -188,6 +194,9 @@ public:
 	/** bitmask to the OTHER railtypes on which an engine of THIS railtype can physically travel */
 	RailTypes compatible_railtypes;
 
+	/** bitmask of all directly or indirectly reachable railtypes in either direction via compatible_railtypes */
+	RailTypes all_compatible_railtypes;
+
 	/**
 	 * Bridge offset
 	 */
@@ -207,6 +216,11 @@ public:
 	 * Bit mask of rail type flags
 	 */
 	RailTypeFlags flags;
+
+	/**
+	 * Bit mask of rail type control flags
+	 */
+	byte ctrl_flags;
 
 	/**
 	 * Cost multiplier for building this rail type
@@ -455,6 +469,8 @@ static inline Money SignalMaintenanceCost(uint32 num)
 {
 	return (_price[PR_INFRASTRUCTURE_RAIL] * 15 * num * (1 + IntSqrt(num))) >> 8; // 1 bit fraction for the multiplier and 7 bits scaling.
 }
+
+void MarkSingleSignalDirty(TileIndex tile, Trackdir td);
 
 void DrawTrainDepotSprite(int x, int y, int image, RailType railtype);
 int TicksToLeaveDepot(const Train *v);

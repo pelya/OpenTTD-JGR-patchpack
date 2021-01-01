@@ -31,24 +31,29 @@ void Blitter_32bppBase::DrawLine(void *video, int x, int y, int x2, int y2, int 
 	});
 }
 
-void Blitter_32bppBase::SetLine(void *video, int x, int y, uint8 *colours, uint width)
+void Blitter_32bppBase::SetRect(void *video, int x, int y, const uint8 *colours, uint lines, uint width, uint pitch)
 {
 	Colour *dst = (Colour *)video + x + y * _screen.pitch;
 	do {
-		*dst = LookupColourInPalette(*colours);
-		dst++;
-		colours++;
-	} while (--width);
+		uint w = width;
+		do {
+			*dst = LookupColourInPalette(*colours);
+			dst++;
+			colours++;
+		} while (--w);
+		dst += _screen.pitch - width;
+		colours += pitch - width;
+	} while (--lines);
 }
 
-void Blitter_32bppBase::SetLine32(void *video, int x, int y, uint32 *colours, uint width)
+void Blitter_32bppBase::SetRect32(void *video, int x, int y, const uint32 *colours, uint lines, uint width, uint pitch)
 {
-	Colour *dst = (Colour *)video + x + y * _screen.pitch;
+	uint32 *dst = (uint32 *)video + x + y * _screen.pitch;
 	do {
-		*dst = *colours;
-		dst++;
-		colours++;
-	} while (--width);
+		memcpy(dst, colours, width * sizeof(uint32));
+		dst += _screen.pitch;
+		colours += pitch;
+	} while (--lines);
 }
 
 void Blitter_32bppBase::DrawRect(void *video, int width, int height, uint8 colour)
@@ -114,7 +119,7 @@ void Blitter_32bppBase::ScrollBuffer(void *video, int left, int top, int width, 
 		/* Decrease height and increase top */
 		top += scroll_y;
 		height -= scroll_y;
-		assert(height > 0);
+		assert_msg(height > 0, "%d, %d, %d, %d, %d, %d", left, top, width, height, scroll_x, scroll_y);
 
 		/* Adjust left & width */
 		if (scroll_x >= 0) {
@@ -138,7 +143,7 @@ void Blitter_32bppBase::ScrollBuffer(void *video, int left, int top, int width, 
 
 		/* Decrease height. (scroll_y is <=0). */
 		height += scroll_y;
-		assert(height > 0);
+		assert_msg(height > 0, "%d, %d, %d, %d, %d, %d", left, top, width, height, scroll_x, scroll_y);
 
 		/* Adjust left & width */
 		if (scroll_x >= 0) {

@@ -43,7 +43,9 @@
 #include "../string_func_extra.h"
 #include "../fios.h"
 #include "../error.h"
+#include "../scope.h"
 #include <atomic>
+#include <string>
 
 #include "../tbtr_template_vehicle.h"
 
@@ -152,7 +154,7 @@ void MemoryDumper::AllocateBuffer()
 		return;
 	}
 	this->FinaliseBlock();
-	this->buf = CallocT<byte>(MEMORY_CHUNK_SIZE);
+	this->buf = MallocT<byte>(MEMORY_CHUNK_SIZE);
 	this->blocks.emplace_back(this->buf);
 	this->bufe = this->buf + MEMORY_CHUNK_SIZE;
 }
@@ -225,6 +227,7 @@ struct SaveLoadParams {
 
 	byte ff_state;                       ///< The state of fast-forward when saving started.
 	bool saveinprogress;                 ///< Whether there is currently a save in progress.
+	bool networkserversave;              ///< Whether this save is being sent to a network client
 };
 
 static SaveLoadParams _sl; ///< Parameters used for/at saveload.
@@ -403,6 +406,10 @@ void NORETURN SlError(StringID string, const char *extra_msg, bool already_mallo
 	 * when we access them during cleaning the pool dereferences of
 	 * those indices will be made with segmentation faults as result. */
 	if (_sl.action == SLA_LOAD || _sl.action == SLA_PTRS) SlNullPointers();
+
+	/* Logging could be active. */
+	GamelogStopAnyAction();
+
 	throw std::exception();
 }
 
@@ -699,8 +706,9 @@ static inline uint SlCalcConvMemLen(VarType conv)
  */
 static inline byte SlCalcConvFileLen(VarType conv)
 {
-	static const byte conv_file_size[] = {1, 1, 2, 2, 4, 4, 8, 8, 2};
 	byte length = GB(conv, 0, 4);
+	if (length == SLE_FILE_VEHORDERID) return SlXvIsFeaturePresent(XSLFI_MORE_VEHICLE_ORDERS) ? 2 : 1;
+	static const byte conv_file_size[] = {1, 1, 2, 2, 4, 4, 8, 8, 2};
 	assert(length < lengthof(conv_file_size));
 	return conv_file_size[length];
 }
@@ -887,7 +895,8 @@ void WriteValue(void *ptr, VarType conv, int64 val)
 		case SLE_VAR_U32: *(uint32*)ptr = val; break;
 		case SLE_VAR_I64: *(int64 *)ptr = val; break;
 		case SLE_VAR_U64: *(uint64*)ptr = val; break;
-		case SLE_VAR_NAME: *(char**)ptr = CopyFromOldName(val); break;
+		case SLE_VAR_NAME: *reinterpret_cast<std::string *>(ptr) = CopyFromOldName(val); break;
+		case SLE_VAR_CNAME: *(TinyString*)ptr = CopyFromOldName(val); break;
 		case SLE_VAR_NULL: break;
 		default: NOT_REACHED();
 	}
@@ -914,6 +923,7 @@ static void SlSaveLoadConvGeneric(void *ptr, VarType conv)
 				case SLE_FILE_U8: assert(x >= 0 && x <= 255);        SlWriteByte(x);break;
 				case SLE_FILE_I16:assert(x >= -32768 && x <= 32767); SlWriteUint16(x);break;
 				case SLE_FILE_STRINGID:
+				case SLE_FILE_VEHORDERID:
 				case SLE_FILE_U16:assert(x >= 0 && x <= 65535);      SlWriteUint16(x);break;
 				case SLE_FILE_I32:
 				case SLE_FILE_U32:                                   SlWriteUint32((uint32)x);break;
@@ -937,6 +947,14 @@ static void SlSaveLoadConvGeneric(void *ptr, VarType conv)
 				case SLE_FILE_I64: x = (int64 )SlReadUint64(); break;
 				case SLE_FILE_U64: x = (uint64)SlReadUint64(); break;
 				case SLE_FILE_STRINGID: x = RemapOldStringID((uint16)SlReadUint16()); break;
+				case SLE_FILE_VEHORDERID:
+					if (SlXvIsFeaturePresent(XSLFI_MORE_VEHICLE_ORDERS)) {
+						x = (uint16)SlReadUint16();
+					} else {
+						VehicleOrderID id = (byte)SlReadByte();
+						x = (id == 0xFF) ? INVALID_VEH_ORDER_ID : id;
+					}
+					break;
 				default: NOT_REACHED();
 			}
 
@@ -1106,8 +1124,8 @@ static void SlString(void *ptr, size_t length, VarType conv)
 }
 
 /**
- * Save/Load a std::string.
- * @param ptr the std::string being manipulated
+ * Save/Load a \c std::string.
+ * @param ptr the string being manipulated
  * @param conv must be SLE_FILE_STRING
  */
 static void SlStdString(std::string &str, VarType conv)
@@ -1127,11 +1145,15 @@ static void SlStdString(std::string &str, VarType conv)
 			StringValidationSettings settings = SVS_REPLACE_WITH_QUESTION_MARK;
 			if ((conv & SLF_ALLOW_CONTROL) != 0) {
 				settings = settings | SVS_ALLOW_CONTROL_CODE;
+				if (IsSavegameVersionBefore(SLV_169)) {
+					char *buf = const_cast<char *>(str.c_str());
+					str.resize(str_fix_scc_encoded(buf, buf + str.size()) - buf);
+				}
 			}
 			if ((conv & SLF_ALLOW_NEWLINE) != 0) {
 				settings = settings | SVS_ALLOW_NEWLINE;
 			}
-			str_validate(str, settings);
+			str_validate_inplace(str, settings);
 			break;
 		}
 		case SLA_PTRS: break;
@@ -1688,6 +1710,8 @@ static bool IsVariableSizeRight(const SaveLoad *sld)
 				case SLE_VAR_I64:
 				case SLE_VAR_U64:
 					return sld->size == sizeof(int64);
+				case SLE_VAR_NAME:
+					return sld->size == sizeof(std::string);
 				default:
 					return sld->size == sizeof(void *);
 			}
@@ -1700,6 +1724,7 @@ static bool IsVariableSizeRight(const SaveLoad *sld)
 			return sld->size == sizeof(void *) || sld->size == sld->length;
 
 		case SL_STDSTR:
+			/* These should be all pointers to std::string. */
 			return sld->size == sizeof(std::string);
 
 		default:
@@ -1916,7 +1941,7 @@ void SlObject(void *object, const SaveLoad *sld)
 	}
 
 	for (; sld->cmd != SL_END; sld++) {
-		void *ptr = sld->global ? sld->address : GetVariableAddress(object, sld);
+		void *ptr = GetVariableAddress(object, sld);
 		SlObjectMember(ptr, sld);
 	}
 }
@@ -2011,6 +2036,8 @@ inline void SlRIFFSpringPPCheck(size_t len)
 			SlXvSpringPPSpecialSavegameVersions();
 		} else if (_sl_version > SAVEGAME_VERSION) {
 			SlError(STR_GAME_SAVELOAD_ERROR_TOO_NEW_SAVEGAME);
+		} else if (_sl_version >= SLV_START_PATCHPACKS && _sl_version <= SLV_END_PATCHPACKS) {
+			SlError(STR_GAME_SAVELOAD_ERROR_PATCHPACK);
 		}
 	}
 }
@@ -2873,8 +2900,9 @@ static inline void ClearSaveLoadState()
 	delete _sl.lf;
 	_sl.lf = nullptr;
 
-	extern void GamelogStopActionIfStarted();
-	GamelogStopActionIfStarted();
+	_sl.networkserversave = false;
+
+	GamelogStopAnyAction();
 }
 
 /**
@@ -3020,17 +3048,24 @@ static SaveOrLoadResult DoSave(SaveFilter *writer, bool threaded)
  * Save the game using a (writer) filter.
  * @param writer   The filter to write the savegame to.
  * @param threaded Whether to try to perform the saving asynchronously.
+ * @param networkserversave Whether this is a network server save.
  * @return Return the result of the action. #SL_OK or #SL_ERROR
  */
-SaveOrLoadResult SaveWithFilter(SaveFilter *writer, bool threaded)
+SaveOrLoadResult SaveWithFilter(SaveFilter *writer, bool threaded, bool networkserversave)
 {
 	try {
 		_sl.action = SLA_SAVE;
+		_sl.networkserversave = networkserversave;
 		return DoSave(writer, threaded);
 	} catch (...) {
 		ClearSaveLoadState();
 		return SL_ERROR;
 	}
+}
+
+bool IsNetworkServerSave()
+{
+	return _sl.networkserversave;
 }
 
 struct ThreadedLoadFilter : LoadFilter {
@@ -3157,6 +3192,10 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 	}
 
 	SlXvResetState();
+	SlResetVENC();
+	auto guard = scope_guard([&]() {
+		SlResetVENC();
+	});
 
 	uint32 hdr[2];
 	if (_sl.lf->Read((byte*)hdr, sizeof(hdr)) != sizeof(hdr)) SlError(STR_GAME_SAVELOAD_ERROR_FILE_NOT_READABLE);
@@ -3206,6 +3245,7 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 
 			/* Is the version higher than the current? */
 			if (_sl_version > SAVEGAME_VERSION && !special_version) SlError(STR_GAME_SAVELOAD_ERROR_TOO_NEW_SAVEGAME);
+			if (_sl_version >= SLV_START_PATCHPACKS && _sl_version <= SLV_END_PATCHPACKS && !special_version) SlError(STR_GAME_SAVELOAD_ERROR_PATCHPACK);
 			break;
 		}
 
@@ -3278,7 +3318,7 @@ static SaveOrLoadResult DoLoad(LoadFilter *reader, bool load_check)
 
 	if (load_check) {
 		/* The only part from AfterLoadGame() we need */
-		_load_check_data.grf_compatibility = IsGoodGRFConfigList(_load_check_data.grfconfig);
+		if (_load_check_data.want_grf_compatibility) _load_check_data.grf_compatibility = IsGoodGRFConfigList(_load_check_data.grfconfig);
 	} else {
 		GamelogStartAction(GLAT_LOAD);
 
@@ -3374,6 +3414,7 @@ SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, Detaile
 
 			default: NOT_REACHED();
 		}
+		_sl.networkserversave = false;
 
 		FILE *fh = (fop == SLO_SAVE) ? FioFOpenFile(filename, "wb", sb) : FioFOpenFile(filename, "rb", sb);
 

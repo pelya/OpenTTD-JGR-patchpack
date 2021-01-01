@@ -39,6 +39,7 @@
 #include "zoom_func.h"
 
 #include <vector>
+#include <functional>
 
 #include "safeguards.h"
 
@@ -154,7 +155,7 @@ struct BaseSetTextfileWindow : public TextfileWindow {
 	{
 		if (widget == WID_TF_CAPTION) {
 			SetDParam(0, content_type);
-			SetDParamStr(1, this->baseset->name);
+			SetDParamStr(1, this->baseset->name.c_str());
 		}
 	}
 };
@@ -338,10 +339,10 @@ struct GameOptionsWindow : Window {
 			case WID_GO_RESOLUTION_DROPDOWN: SetDParam(0, GetCurRes() == _resolutions.size() ? STR_GAME_OPTIONS_RESOLUTION_OTHER : SPECSTR_RESOLUTION_START + GetCurRes()); break;
 			case WID_GO_GUI_ZOOM_DROPDOWN:   SetDParam(0, _gui_zoom_dropdown[ZOOM_LVL_OUT_4X - _gui_zoom]); break;
 			case WID_GO_FONT_ZOOM_DROPDOWN:  SetDParam(0, _font_zoom_dropdown[ZOOM_LVL_OUT_4X - _font_zoom]); break;
-			case WID_GO_BASE_GRF_DROPDOWN:   SetDParamStr(0, BaseGraphics::GetUsedSet()->name); break;
+			case WID_GO_BASE_GRF_DROPDOWN:   SetDParamStr(0, BaseGraphics::GetUsedSet()->name.c_str()); break;
 			case WID_GO_BASE_GRF_STATUS:     SetDParam(0, BaseGraphics::GetUsedSet()->GetNumInvalid()); break;
-			case WID_GO_BASE_SFX_DROPDOWN:   SetDParamStr(0, BaseSounds::GetUsedSet()->name); break;
-			case WID_GO_BASE_MUSIC_DROPDOWN: SetDParamStr(0, BaseMusic::GetUsedSet()->name); break;
+			case WID_GO_BASE_SFX_DROPDOWN:   SetDParamStr(0, BaseSounds::GetUsedSet()->name.c_str()); break;
+			case WID_GO_BASE_MUSIC_DROPDOWN: SetDParamStr(0, BaseMusic::GetUsedSet()->name.c_str()); break;
 			case WID_GO_BASE_MUSIC_STATUS:   SetDParam(0, BaseMusic::GetUsedSet()->GetNumInvalid()); break;
 		}
 	}
@@ -484,10 +485,9 @@ struct GameOptionsWindow : Window {
 	void SetMediaSet(int index)
 	{
 		if (_game_mode == GM_MENU) {
-			const char *name = T::GetSet(index)->name;
+			auto name = T::GetSet(index)->name;
 
-			free(T::ini_set);
-			T::ini_set = stredup(name);
+			T::ini_set = name;
 
 			T::SetSet(name);
 			this->reload = true;
@@ -850,6 +850,7 @@ struct SettingsContainer {
 struct SettingsPage : BaseSettingEntry, SettingsContainer {
 	StringID title;     ///< Title of the sub-page
 	bool folded;        ///< Sub-page is folded (not visible except for its title)
+	std::function<bool()> hide_callback; ///< optional callback, returns true if this shouldbe hidden
 
 	SettingsPage(StringID title);
 
@@ -1457,6 +1458,7 @@ bool SettingsPage::UpdateFilterState(SettingFilter &filter, bool force_visible)
 	}
 
 	bool visible = SettingsContainer::UpdateFilterState(filter, force_visible);
+	if (this->hide_callback && this->hide_callback()) visible = false;
 	if (visible) {
 		CLRBITS(this->flags, SEF_FILTERED);
 	} else {
@@ -1579,11 +1581,13 @@ static SettingsContainer &GetSettingsTree()
 			graphics->Add(new SettingEntry("gui.zoom_min"));
 			graphics->Add(new SettingEntry("gui.zoom_max"));
 			graphics->Add(new SettingEntry("gui.smallmap_land_colour"));
+			graphics->Add(new SettingEntry("gui.linkgraph_colours"));
 			graphics->Add(new SettingEntry("gui.graph_line_thickness"));
 			graphics->Add(new SettingEntry("gui.show_vehicle_route_steps"));
 			graphics->Add(new SettingEntry("gui.show_vehicle_route"));
 			graphics->Add(new SettingEntry("gui.dash_level_of_route_lines"));
 			graphics->Add(new SettingEntry("gui.show_restricted_signal_default"));
+			graphics->Add(new SettingEntry("gui.disable_vehicle_image_update"));
 		}
 
 		SettingsPage *sound = main->Add(new SettingsPage(STR_CONFIG_SETTING_SOUND));
@@ -1647,11 +1651,11 @@ static SettingsContainer &GetSettingsTree()
 			SettingsPage *construction = interface->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_CONSTRUCTION));
 			{
 				construction->Add(new SettingEntry("gui.link_terraform_toolbar"));
-				construction->Add(new SettingEntry("construction.simulated_wormhole_signals"));
 				construction->Add(new SettingEntry("gui.enable_signal_gui"));
 				construction->Add(new SettingEntry("gui.persistent_buildingtools"));
 				construction->Add(new SettingEntry("gui.quick_goto"));
 				construction->Add(new SettingEntry("gui.default_rail_type"));
+				construction->Add(new SettingEntry("gui.default_road_type"));
 				construction->Add(new SettingEntry("gui.disable_unsuitable_building"));
 			}
 
@@ -1677,11 +1681,27 @@ static SettingsContainer &GetSettingsTree()
 
 			SettingsPage *wallclock = interface->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_WALLCLOCK));
 			{
-				wallclock->Add(new SettingEntry("gui.time_in_minutes"));
-				wallclock->Add(new SettingEntry("gui.timetable_start_text_entry"));
-				wallclock->Add(new SettingEntry("gui.ticks_per_minute"));
+				wallclock->Add(new SettingEntry("gui.override_time_settings"));
+				SettingsPage *game = wallclock->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_TIME_SAVEGAME));
+				{
+					game->hide_callback = []() -> bool {
+						return _game_mode == GM_MENU;
+					};
+					game->Add(new SettingEntry("game_time.time_in_minutes"));
+					game->Add(new SettingEntry("game_time.ticks_per_minute"));
+					game->Add(new SettingEntry("game_time.clock_offset"));
+				}
+				SettingsPage *client = wallclock->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_TIME_CLIENT));
+				{
+					client->hide_callback = []() -> bool {
+						return _game_mode != GM_MENU && !_settings_client.gui.override_time_settings;
+					};
+					client->Add(new SettingEntry("gui.time_in_minutes"));
+					client->Add(new SettingEntry("gui.ticks_per_minute"));
+					client->Add(new SettingEntry("gui.clock_offset"));
+				}
+
 				wallclock->Add(new SettingEntry("gui.date_with_time"));
-				wallclock->Add(new SettingEntry("gui.clock_offset"));
 			}
 
 			SettingsPage *timetable = interface->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_TIMETABLE));
@@ -1689,6 +1709,7 @@ static SettingsContainer &GetSettingsTree()
 				timetable->Add(new SettingEntry("gui.timetable_in_ticks"));
 				timetable->Add(new SettingEntry("gui.timetable_leftover_ticks"));
 				timetable->Add(new SettingEntry("gui.timetable_arrival_departure"));
+				timetable->Add(new SettingEntry("gui.timetable_start_text_entry"));
 			}
 
 			SettingsPage *advsig = interface->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_ADV_SIGNALS));
@@ -1733,6 +1754,7 @@ static SettingsContainer &GetSettingsTree()
 			advisors->Add(new SettingEntry("gui.no_depot_order_warn"));
 			advisors->Add(new SettingEntry("gui.vehicle_income_warn"));
 			advisors->Add(new SettingEntry("gui.lost_vehicle_warn"));
+			advisors->Add(new SettingEntry("gui.restriction_wait_vehicle_warn"));
 			advisors->Add(new SettingEntry("gui.show_finances"));
 			advisors->Add(new SettingEntry("news_display.economy"));
 			advisors->Add(new SettingEntry("news_display.subsidies"));
@@ -1770,6 +1792,8 @@ static SettingsContainer &GetSettingsTree()
 			company->Add(new SettingEntry("company.infra_others_buy_in_depot[2]"));
 			company->Add(new SettingEntry("company.infra_others_buy_in_depot[3]"));
 			company->Add(new SettingEntry("company.advance_order_on_clone"));
+			company->Add(new SettingEntry("company.copy_clone_add_to_group"));
+			company->Add(new SettingEntry("company.simulated_wormhole_signals"));
 		}
 
 		SettingsPage *accounting = main->Add(new SettingsPage(STR_CONFIG_SETTING_ACCOUNTING));
@@ -1809,6 +1833,8 @@ static SettingsContainer &GetSettingsTree()
 				routing->Add(new SettingEntry("pf.forbid_90_deg"));
 				routing->Add(new SettingEntry("pf.pathfinder_for_roadvehs"));
 				routing->Add(new SettingEntry("pf.pathfinder_for_ships"));
+				routing->Add(new SettingEntry("pf.reroute_rv_on_layout_change"));
+				routing->Add(new SettingEntry("vehicle.drive_through_train_depot"));
 			}
 
 			vehicles->Add(new SettingEntry("order.no_servicing_if_no_breakdowns"));
@@ -1831,6 +1857,7 @@ static SettingsContainer &GetSettingsTree()
 			limitations->Add(new SettingEntry("construction.chunnel"));
 			limitations->Add(new SettingEntry("station.never_expire_airports"));
 			limitations->Add(new SettingEntry("vehicle.never_expire_vehicles"));
+			limitations->Add(new SettingEntry("vehicle.no_expire_vehicles_after"));
 			limitations->Add(new SettingEntry("vehicle.max_trains"));
 			limitations->Add(new SettingEntry("vehicle.max_roadveh"));
 			limitations->Add(new SettingEntry("vehicle.max_aircraft"));
@@ -1851,6 +1878,7 @@ static SettingsContainer &GetSettingsTree()
 			limitations->Add(new SettingEntry("construction.allow_road_stops_under_bridges"));
 			limitations->Add(new SettingEntry("construction.allow_docks_under_bridges"));
 			limitations->Add(new SettingEntry("construction.purchase_land_permitted"));
+			limitations->Add(new SettingEntry("construction.build_object_area_permitted"));
 		}
 
 		SettingsPage *disasters = main->Add(new SettingsPage(STR_CONFIG_SETTING_ACCIDENTS));
@@ -1915,8 +1943,9 @@ static SettingsContainer &GetSettingsTree()
 				industries->Add(new SettingEntry("construction.industry_platform"));
 				industries->Add(new SettingEntry("economy.multiple_industry_per_town"));
 				industries->Add(new SettingEntry("game_creation.oil_refinery_limit"));
-				industries->Add(new SettingEntry("economy.smooth_economy"));
+				industries->Add(new SettingEntry("economy.type"));
 				industries->Add(new SettingEntry("station.serve_neutral_industries"));
+				industries->Add(new SettingEntry("economy.industry_cargo_scale_factor"));
 			}
 
 			SettingsPage *cdist = environment->Add(new SettingsPage(STR_CONFIG_SETTING_ENVIRONMENT_CARGODIST));
@@ -1952,6 +1981,7 @@ static SettingsContainer &GetSettingsTree()
 			environment->Add(new SettingEntry("station.modified_catchment"));
 			environment->Add(new SettingEntry("station.catchment_increase"));
 			environment->Add(new SettingEntry("station.cargo_class_rating_wait_time"));
+			environment->Add(new SettingEntry("station.station_size_rating_cargo_amount"));
 		}
 
 		SettingsPage *ai = main->Add(new SettingsPage(STR_CONFIG_SETTING_AI));
@@ -1985,6 +2015,18 @@ static SettingsContainer &GetSettingsTree()
 			ai->Add(new SettingEntry("economy.give_money"));
 			ai->Add(new SettingEntry("economy.allow_shares"));
 			ai->Add(new SettingEntry("economy.min_years_for_shares"));
+			ai->Add(new SettingEntry("difficulty.money_cheat_in_multiplayer"));
+		}
+
+		SettingsPage *scenario = main->Add(new SettingsPage(STR_CONFIG_SETTING_SCENARIO_EDITOR));
+		scenario->hide_callback = []() -> bool {
+			return _game_mode == GM_NORMAL;
+		};
+		{
+			scenario->Add(new SettingEntry("scenario.multiple_buildings"));
+			scenario->Add(new SettingEntry("scenario.house_ignore_dates"));
+			scenario->Add(new SettingEntry("scenario.house_ignore_zones"));
+			scenario->Add(new SettingEntry("scenario.house_ignore_grf"));
 		}
 
 		main->Init();
@@ -2416,16 +2458,18 @@ struct GameSettingsWindow : Window {
 		} else {
 			/* Only open editbox if clicked for the second time, and only for types where it is sensible for. */
 			if (this->last_clicked == pe && sd->desc.cmd != SDT_BOOLX && !(sd->desc.flags & (SGF_MULTISTRING | SGF_ENUM))) {
+				int64 value64 = value;
 				/* Show the correct currency-translated value */
-				if (sd->desc.flags & SGF_CURRENCY) value *= _currency->rate;
+				if (sd->desc.flags & SGF_CURRENCY) value64 *= _currency->rate;
 
 				this->valuewindow_entry = pe;
 				if (sd->desc.flags & SGF_DECIMAL1) {
-					SetDParam(0, value);
+					SetDParam(0, value64);
 					ShowQueryString(STR_JUST_DECIMAL1, STR_CONFIG_SETTING_QUERY_CAPTION, 10, this, CS_NUMERAL_DECIMAL, QSF_ENABLE_DEFAULT);
 				} else {
-					SetDParam(0, value);
-					ShowQueryString(STR_JUST_INT, STR_CONFIG_SETTING_QUERY_CAPTION, 10, this, CS_NUMERAL, QSF_ENABLE_DEFAULT);
+					SetDParam(0, value64);
+					/* Limit string length to 14 so that MAX_INT32 * max currency rate doesn't exceed MAX_INT64. */
+					ShowQueryString(STR_JUST_INT, STR_CONFIG_SETTING_QUERY_CAPTION, 15, this, CS_NUMERAL, QSF_ENABLE_DEFAULT);
 				}
 			}
 			this->SetDisplayedHelpText(pe);
@@ -2451,14 +2495,17 @@ struct GameSettingsWindow : Window {
 
 		int32 value;
 		if (!StrEmpty(str)) {
+			long long llvalue;
 			if (sd->desc.flags & SGF_DECIMAL1) {
-				value = atof(str) * 10;
+				llvalue = atof(str) * 10;
 			} else {
-				value = atoi(str);
+				llvalue = atoll(str);
 			}
 
 			/* Save the correct currency-translated value */
-			if (sd->desc.flags & SGF_CURRENCY) value /= _currency->rate;
+			if (sd->desc.flags & SGF_CURRENCY) llvalue /= _currency->rate;
+
+			value = (int32)ClampToI32(llvalue);
 		} else {
 			value = (int32)(size_t)sd->desc.def;
 		}

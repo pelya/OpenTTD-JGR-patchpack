@@ -155,7 +155,7 @@ static uint32 GetCountAndDistanceOfClosestInstance(byte param_setID, byte layout
 	return count << 16 | GB(closest_dist, 0, 16);
 }
 
-/* virtual */ uint32 IndustriesScopeResolver::GetVariable(byte variable, uint32 parameter, bool *available) const
+/* virtual */ uint32 IndustriesScopeResolver::GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const
 {
 	if (this->ro.callback == CBID_INDUSTRY_LOCATION) {
 		/* Variables available during construction check. */
@@ -201,7 +201,7 @@ static uint32 GetCountAndDistanceOfClosestInstance(byte param_setID, byte layout
 	if (this->industry == nullptr) {
 		DEBUG(grf, 1, "Unhandled variable 0x%X (no available industry) in callback 0x%x", variable, this->ro.callback);
 
-		*available = false;
+		extra->available = false;
 		return UINT_MAX;
 	}
 
@@ -247,6 +247,9 @@ static uint32 GetCountAndDistanceOfClosestInstance(byte param_setID, byte layout
 		}
 
 		case 0x46: return this->industry->construction_date; // Date when built - long format - (in days)
+
+		/* Override flags from GS */
+		case 0x47: return this->industry->ctlflags;
 
 		/* Get industry ID at offset param */
 		case 0x60: return GetIndustryIDAtOffset(GetNearbyTile(parameter, this->industry->location.tile, false), this->industry, this->ro.grffile->grfid);
@@ -401,7 +404,7 @@ static uint32 GetCountAndDistanceOfClosestInstance(byte param_setID, byte layout
 
 	DEBUG(grf, 1, "Unhandled industry variable 0x%X", variable);
 
-	*available = false;
+	extra->available = false;
 	return UINT_MAX;
 }
 

@@ -374,7 +374,7 @@ STR_FILE_MENU_EXIT                                              :خروج
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :خريطة العالم
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :شاشة عرض اضافية
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :شاشة عرض اضافية
 STR_MAP_MENU_SIGN_LIST                                          :قائمة العلامات
 
 ############ range for town menu starts
@@ -836,7 +836,7 @@ STR_NEWS_SERVICE_SUBSIDY_AWARDED_QUADRUPLE                      :{BIG_FONT}{BLAC
 STR_NEWS_ROAD_REBUILDING                                        :{BIG_FONT}{BLACK} فوضى طرق عارمة في مدينة {TOWN}!{}{}اعادة ترميم الطرق مولت من قبل شركة {STRING}{} تجلي ستة أشهر من الشقاء لعربات الطريق.
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}شاشة العرض {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}شاشة العرض {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}انسخ لشاشة العرض
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}انسخ موقع الشاشة الرئيسية لشاشة العرض هذه
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}لصق من شاشة العرض
@@ -1281,7 +1281,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :ممتلئ
 
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :الاخبار الملونة تظهر في: {STRING}
 STR_CONFIG_SETTING_STARTING_YEAR                                :سنة البدايه: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :السماح بأقتصاد ثابت )تغيرات صغيرة اكثر): {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :السماح بشراء حصص من الشركات الاخرى: {STRING}
 STR_CONFIG_SETTING_SEMAPHORE_BUILD_BEFORE_DATE                  :اتاحة استخدام الأشارات بالأعلام قبل :{STRING}
 STR_CONFIG_SETTING_ENABLE_SIGNAL_GUI                            :السماح باستخدام اشارات واجهة المستخدم الرسومية: {STRING}
@@ -1426,17 +1425,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}هذة �
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}انهاء
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}هل تود اغلاق النسخة المفتوحة و العودة لـ {STRING}?
 STR_QUIT_YES                                                    :{BLACK}نعم
 STR_QUIT_NO                                                     :{BLACK}لا
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :ويندوز
-STR_OSNAME_UNIX                                                 :يونكس
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :هايكو
-STR_OSNAME_OS2                                                  :او اس/2
-STR_OSNAME_SUNOS                                                :صن
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}إغلاق اللعبه
@@ -2304,7 +2294,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :ارض مملو
 STR_ABOUT_OPENTTD                                               :{WHITE}حول النسخة المفتوحة
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}الحقوق الاصلية {COPYRIGHT} كريس سوير 1995 , جميع الحقوق محفوظة
 STR_ABOUT_VERSION                                               :{BLACK}النسخة المفتوحة رقم {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}النسخة المفتوحة {COPYRIGHT}2002-2019 فريق النسخة المفتوحة
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}النسخة المفتوحة {COPYRIGHT}2002-{STRING} فريق النسخة المفتوحة
 
 # Framerate display window
 ############ Leave those lines in this order!!

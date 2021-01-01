@@ -24,6 +24,7 @@
 #include "window_func.h"
 #include "date_func.h"
 #include "vehicle_func.h"
+#include "vehicle_gui.h"
 #include "sound_func.h"
 #include "ai/ai.hpp"
 #include "game/game.hpp"
@@ -254,7 +255,7 @@ void Ship::OnNewDay()
 
 	SetWindowDirty(WC_VEHICLE_DETAILS, this->index);
 	/* we need this for the profit */
-	SetWindowClassesDirty(WC_SHIPS_LIST);
+	DirtyVehicleListWindowForVehicle(this);
 }
 
 Trackdir Ship::GetVehicleTrackdir() const
@@ -277,7 +278,7 @@ Trackdir Ship::GetVehicleTrackdir() const
 void Ship::MarkDirty()
 {
 	this->colourmap = PAL_NONE;
-	this->cur_image_valid_dir = INVALID_DIR;
+	this->InvalidateImageCache();
 	this->UpdateViewport(true, false);
 	this->UpdateCache();
 }
@@ -343,7 +344,7 @@ void Ship::UpdateDeltaXY()
  */
 static Vehicle *EnsureNoVisibleShipProc(Vehicle *v, void *data)
 {
-	return v->type == VEH_SHIP && (v->vehstatus & VS_HIDDEN) == 0 ? v : nullptr;
+	return (v->vehstatus & VS_HIDDEN) == 0 ? v : nullptr;
 }
 
 static bool CheckShipLeaveDepot(Ship *v)
@@ -369,7 +370,7 @@ static bool CheckShipLeaveDepot(Ship *v)
 
 	/* Don't leave depot if another vehicle is already entering/leaving */
 	/* This helps avoid CPU load if many ships are set to start at the same time */
-	if (HasVehicleOnPos(v->tile, nullptr, &EnsureNoVisibleShipProc)) return true;
+	if (HasVehicleOnPos(v->tile, VEH_SHIP, nullptr, &EnsureNoVisibleShipProc)) return true;
 
 	TileIndex tile = v->tile;
 	Axis axis = GetShipDepotAxis(tile);
@@ -414,7 +415,7 @@ static bool CheckShipLeaveDepot(Ship *v)
 	PlayShipSound(v);
 	VehicleServiceInDepot(v);
 	InvalidateWindowData(WC_VEHICLE_DEPOT, v->tile);
-	SetWindowClassesDirty(WC_SHIPS_LIST);
+	DirtyVehicleListWindowForVehicle(v);
 
 	return false;
 }
@@ -588,8 +589,6 @@ struct ShipCollideChecker {
 /** Helper function for collision avoidance. */
 static Vehicle *FindShipOnTile(Vehicle *v, void *data)
 {
-	if (v->type != VEH_SHIP) return nullptr;
-
 	ShipCollideChecker *scc = (ShipCollideChecker*)data;
 
 	/* Don't detect vehicles on different parallel tracks. */
@@ -624,8 +623,8 @@ static bool HandleSpeedOnAqueduct(Ship *v, TileIndex tile, TileIndex ramp)
 	if (scc.search_tile == INVALID_TILE) return false;
 
 	if (IsValidTile(scc.search_tile) &&
-			(HasVehicleOnPos(ramp, &scc, FindShipOnTile) ||
-			HasVehicleOnPos(GetOtherTunnelBridgeEnd(ramp), &scc, FindShipOnTile))) {
+			(HasVehicleOnPos(ramp, VEH_SHIP, &scc, FindShipOnTile) ||
+			HasVehicleOnPos(GetOtherTunnelBridgeEnd(ramp), VEH_SHIP, &scc, FindShipOnTile))) {
 		v->cur_speed /= 4;
 	}
 	return false;
@@ -664,7 +663,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 	scc.track_bits = track_bits;
 	scc.search_tile = tile;
 
-	bool found = HasVehicleOnPos(tile, &scc, FindShipOnTile);
+	bool found = HasVehicleOnPos(tile, VEH_SHIP, &scc, FindShipOnTile);
 
 	if (!found) {
 		/* Bridge entrance */
@@ -675,7 +674,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 		scc.search_tile = TileAddWrap(tile, ti.x, ti.y);
 		if (scc.search_tile == INVALID_TILE) return;
 
-		found = HasVehicleOnPos(scc.search_tile, &scc, FindShipOnTile);
+		found = HasVehicleOnPos(scc.search_tile, VEH_SHIP, &scc, FindShipOnTile);
 	}
 	if (!found) {
 		scc.track_bits = track_bits;
@@ -683,7 +682,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 		scc.search_tile = TileAddWrap(scc.search_tile, ti.x, ti.y);
 		if (scc.search_tile == INVALID_TILE) return;
 
-		found = HasVehicleOnPos(scc.search_tile, &scc, FindShipOnTile);
+		found = HasVehicleOnPos(scc.search_tile, VEH_SHIP, &scc, FindShipOnTile);
 	}
 	if (found) {
 
@@ -701,7 +700,7 @@ static void CheckDistanceBetweenShips(TileIndex tile, Ship *v, TrackBits tracks,
 			TileIndex tile_check = TileAddWrap(tile, ti.x, ti.y);
 			if (tile_check == INVALID_TILE) continue;
 
-			if (HasVehicleOnPos(tile_check, &scc, FindShipOnTile)) continue;
+			if (HasVehicleOnPos(tile_check, VEH_SHIP, &scc, FindShipOnTile)) continue;
 
 			TrackBits bits = GetTileShipTrackStatus(tile_check) & DiagdirReachesTracks(_ship_search_directions[track][diagdir]);
 			if (!IsDiagonalTrack(track)) bits &= TRACK_BIT_CROSS;  // No 90 degree turns.
@@ -782,6 +781,7 @@ bool IsShipDestinationTile(TileIndex tile, StationID station)
 			const Industry *i = Industry::GetByTile(t);
 			if (i->neutral_station != nullptr && i->neutral_station->index == station) return true;
 		}
+		if (IsTileType(t, MP_STATION) && IsOilRig(t) && GetStationIndex(t) == station) return true;
 	}
 	return false;
 }
@@ -972,7 +972,7 @@ reverse_direction:
 bool Ship::Tick()
 {
 	UpdateStateChecksum((((uint64) this->x_pos) << 32) | this->y_pos);
-	if (!(this->vehstatus & VS_STOPPED)) this->running_ticks++;
+	if (!((this->vehstatus & VS_STOPPED) || this->IsWaitingInDepot())) this->running_ticks++;
 
 	ShipController(this);
 

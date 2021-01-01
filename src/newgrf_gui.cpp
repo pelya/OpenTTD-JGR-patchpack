@@ -50,10 +50,10 @@ void ShowNewGRFError()
 		/* We only want to show fatal errors */
 		if (c->error == nullptr || c->error->severity != STR_NEWGRF_ERROR_MSG_FATAL) continue;
 
-		SetDParam   (0, c->error->custom_message == nullptr ? c->error->message : STR_JUST_RAW_STRING);
-		SetDParamStr(1, c->error->custom_message);
+		SetDParam   (0, c->error->message != STR_NULL ? c->error->message : STR_JUST_RAW_STRING);
+		SetDParamStr(1, c->error->custom_message.c_str());
 		SetDParamStr(2, c->filename);
-		SetDParamStr(3, c->error->data);
+		SetDParamStr(3, c->error->data.c_str());
 		for (uint i = 0; i < lengthof(c->error->param_value); i++) {
 			SetDParam(4 + i, c->error->param_value[i]);
 		}
@@ -66,13 +66,13 @@ static void ShowNewGRFInfo(const GRFConfig *c, uint x, uint y, uint right, uint 
 {
 	if (c->error != nullptr) {
 		char message[512];
-		SetDParamStr(0, c->error->custom_message); // is skipped by built-in messages
+		SetDParamStr(0, c->error->custom_message.c_str()); // is skipped by built-in messages
 		SetDParamStr(1, c->filename);
-		SetDParamStr(2, c->error->data);
+		SetDParamStr(2, c->error->data.c_str());
 		for (uint i = 0; i < lengthof(c->error->param_value); i++) {
 			SetDParam(3 + i, c->error->param_value[i]);
 		}
-		GetString(message, c->error->custom_message == nullptr ? c->error->message : STR_JUST_RAW_STRING, lastof(message));
+		GetString(message, c->error->message != STR_NULL ? c->error->message : STR_JUST_RAW_STRING, lastof(message));
 
 		SetDParamStr(0, message);
 		y = DrawStringMultiLine(x, right, y, bottom, c->error->severity);
@@ -927,7 +927,7 @@ struct NewGRFWindow : public Window, NewGRFScanCallback {
 				list.emplace_back(new DropDownListStringItem(STR_NONE, -1, false));
 
 				for (uint i = 0; i < this->grf_presets.size(); i++) {
-					list.emplace_back(new DropDownListCharStringItem(this->grf_presets[i].c_str(), i, false));
+					list.emplace_back(new DropDownListCharStringItem(this->grf_presets[i], i, false));
 				}
 
 				this->DeleteChildWindows(WC_QUERY_STRING); // Remove the parameter query window
@@ -965,8 +965,14 @@ struct NewGRFWindow : public Window, NewGRFScanCallback {
 					GRFConfig *c = *pc;
 					if (c->next == this->active_sel) {
 						c->next = this->active_sel->next;
-						this->active_sel->next = c;
-						*pc = this->active_sel;
+						if (_ctrl_pressed) {
+							this->active_sel->next = this->actives;
+							this->actives = this->active_sel;
+							pos = 0;
+						} else {
+							this->active_sel->next = c;
+							*pc = this->active_sel;
+						}
 						break;
 					}
 				}
@@ -986,7 +992,7 @@ struct NewGRFWindow : public Window, NewGRFScanCallback {
 						*pc = c->next;
 						c->next = c->next->next;
 						(*pc)->next = c;
-						break;
+						if (!_ctrl_pressed || c->next == nullptr) break;
 					}
 				}
 				this->vscroll->ScrollTowards(pos);
@@ -1780,6 +1786,17 @@ public:
 		if (this->editable) this->avs->Draw(w);
 		this->acs->Draw(w);
 		this->inf->Draw(w);
+	}
+
+	void FillDirtyWidgets(std::vector<NWidgetBase *> &dirty_widgets) override
+	{
+		if (this->base_flags & WBF_DIRTY) {
+			dirty_widgets.push_back(this);
+		} else {
+			if (this->editable) this->avs->FillDirtyWidgets(dirty_widgets);
+			this->acs->FillDirtyWidgets(dirty_widgets);
+			this->inf->FillDirtyWidgets(dirty_widgets);
+		}
 	}
 };
 

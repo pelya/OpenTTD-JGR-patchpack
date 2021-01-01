@@ -205,7 +205,7 @@ static uint _num_signals_evaluated; ///< Number of programmable pre-signals eval
 /** Check whether there is a train on rail, not in a depot */
 static Vehicle *TrainOnTileEnum(Vehicle *v, void *)
 {
-	if (v->type != VEH_TRAIN || Train::From(v)->track == TRACK_BIT_DEPOT) return nullptr;
+	if (Train::From(v)->track == TRACK_BIT_DEPOT) return nullptr;
 
 	return v;
 }
@@ -214,8 +214,8 @@ static Vehicle *TrainOnTileEnum(Vehicle *v, void *)
 static Vehicle *TrainInWormholeTileEnum(Vehicle *v, void *data)
 {
 	/* Only look for front engine or last wagon. */
-	if (v->type != VEH_TRAIN || (v->Previous() != nullptr && v->Next() != nullptr)) return nullptr;
-	TileIndex tile = *(TileIndex *)data;
+	if ((v->Previous() != nullptr && v->Next() != nullptr)) return nullptr;
+	TileIndex tile = (TileIndex) reinterpret_cast<uintptr_t>(data);
 	if (tile != TileVirtXY(v->x_pos, v->y_pos)) return nullptr;
 	if (!(Train::From(v)->track & TRACK_BIT_WORMHOLE) && !(Train::From(v)->track & GetAcrossTunnelBridgeTrackBits(tile))) return nullptr;
 	return v;
@@ -300,10 +300,10 @@ static SigInfo ExploreSegment(Owner owner)
 {
 	SigInfo info;
 
-	TileIndex tile;
-	DiagDirection enterdir;
+	TileIndex tile = INVALID_TILE; // Stop GCC from complaining about a possibly uninitialized variable (issue #8280).
+	DiagDirection enterdir = INVALID_DIAGDIR;
 
-	while (_tbdset.Get(&tile, &enterdir)) {
+	while (_tbdset.Get(&tile, &enterdir)) { // tile and enterdir are initialized here, unless I'm mistaken.
 		TileIndex oldtile = tile; // tile we are leaving
 		DiagDirection exitdir = enterdir == INVALID_DIAGDIR ? INVALID_DIAGDIR : ReverseDiagDir(enterdir); // expected new exit direction (for straight line)
 
@@ -313,13 +313,13 @@ static SigInfo ExploreSegment(Owner owner)
 
 				if (IsRailDepot(tile)) {
 					if (enterdir == INVALID_DIAGDIR) { // from 'inside' - train just entered or left the depot
-						if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
+						if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, VEH_TRAIN, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
 						exitdir = GetRailDepotDirection(tile);
 						tile += TileOffsByDiagDir(exitdir);
 						enterdir = ReverseDiagDir(exitdir);
 						break;
 					} else if (enterdir == GetRailDepotDirection(tile)) { // entered a depot
-						if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
+						if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, VEH_TRAIN, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
 						continue;
 					} else {
 						continue;
@@ -336,7 +336,7 @@ static SigInfo ExploreSegment(Owner owner)
 					if (!(info.flags & SF_TRAIN) && EnsureNoTrainOnTrackBits(tile, tracks).Failed()) info.flags |= SF_TRAIN;
 				} else {
 					if (tracks_masked == TRACK_BIT_NONE) continue; // no incidating track
-					if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
+					if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, VEH_TRAIN, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
 				}
 
 				if (HasSignals(tile)) { // there is exactly one track - not zero, because there is exit from this tile
@@ -390,7 +390,7 @@ static SigInfo ExploreSegment(Owner owner)
 				if (DiagDirToAxis(enterdir) != GetRailStationAxis(tile)) continue; // different axis
 				if (IsStationTileBlocked(tile)) continue; // 'eye-candy' station tile
 
-				if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
+				if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, VEH_TRAIN, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
 				tile += TileOffsByDiagDir(exitdir);
 				break;
 
@@ -399,7 +399,7 @@ static SigInfo ExploreSegment(Owner owner)
 				if (!IsOneSignalBlock(owner, GetTileOwner(tile))) continue;
 				if (DiagDirToAxis(enterdir) == GetCrossingRoadAxis(tile)) continue; // different axis
 
-				if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
+				if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, VEH_TRAIN, nullptr, &TrainOnTileEnum)) info.flags |= SF_TRAIN;
 				if (_settings_game.vehicle.safer_crossings) info.flags |= SF_PBS;
 				tile += TileOffsByDiagDir(exitdir);
 				break;
@@ -422,7 +422,7 @@ static SigInfo ExploreSegment(Owner owner)
 							return EnsureNoTrainOnTrackBits(tile, tracks & (~across_tracks)).Failed();
 						}
 					} else {
-						return HasVehicleOnPos(tile, nullptr, &TrainOnTileEnum);
+						return HasVehicleOnPos(tile, VEH_TRAIN, nullptr, &TrainOnTileEnum);
 					}
 				};
 
@@ -433,8 +433,8 @@ static SigInfo ExploreSegment(Owner owner)
 					if (enterdir == INVALID_DIAGDIR) {
 						// incoming from the wormhole, onto signal
 						if (!(info.flags & SF_TRAIN) && IsTunnelBridgeSignalSimulationExit(tile)) { // tunnel entrance is ignored
-							if (HasVehicleOnPos(GetOtherTunnelBridgeEnd(tile), &tile, &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
-							if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, &tile, &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
+							if (HasVehicleOnPos(GetOtherTunnelBridgeEnd(tile), VEH_TRAIN, reinterpret_cast<void *>(tile), &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
+							if (!(info.flags & SF_TRAIN) && HasVehicleOnPos(tile, VEH_TRAIN, reinterpret_cast<void *>(tile), &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
 						}
 						if (IsTunnelBridgeSignalSimulationExit(tile) && !_tbuset.Add(tile, INVALID_TRACKDIR)) {
 							info.flags |= SF_FULL;
@@ -456,9 +456,9 @@ static SigInfo ExploreSegment(Owner owner)
 							}
 						}
 						if (!(info.flags & SF_TRAIN)) {
-							if (HasVehicleOnPos(tile, &tile, &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
+							if (HasVehicleOnPos(tile, VEH_TRAIN, reinterpret_cast<void *>(tile), &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
 							if (!(info.flags & SF_TRAIN) && IsTunnelBridgeSignalSimulationExit(tile)) {
-								if (HasVehicleOnPos(GetOtherTunnelBridgeEnd(tile), &tile, &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
+								if (HasVehicleOnPos(GetOtherTunnelBridgeEnd(tile), VEH_TRAIN, reinterpret_cast<void *>(tile), &TrainInWormholeTileEnum)) info.flags |= SF_TRAIN;
 							}
 						}
 						continue;
@@ -511,9 +511,9 @@ static SigInfo ExploreSegment(Owner owner)
  */
 static void UpdateSignalsAroundSegment(SigInfo info)
 {
-	TileIndex tile;
-	Trackdir trackdir;
-	Track track;
+	TileIndex tile = INVALID_TILE; // Stop GCC from complaining about a possibly uninitialized variable (issue #8280).
+	Trackdir trackdir = INVALID_TRACKDIR;
+	Track track = INVALID_TRACK;
 
 	while (_tbuset.Get(&tile, &trackdir)) {
 		if (IsTileType(tile, MP_TUNNELBRIDGE) && IsTunnelBridgeSignalSimulationExit(tile)) {
@@ -522,7 +522,7 @@ static void UpdateSignalsAroundSegment(SigInfo info)
 			SignalState new_state = (info.flags & SF_TRAIN) ? SIGNAL_STATE_RED : SIGNAL_STATE_GREEN;
 			if (old_state != new_state) {
 				SetTunnelBridgeExitSignalState(tile, new_state);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 			}
 			continue;
 		}
@@ -583,7 +583,7 @@ static void UpdateSignalsAroundSegment(SigInfo info)
 				MarkDependencidesForUpdate(SignalReference(tile, track));
 			}
 			SetSignalStateByTrackdir(tile, trackdir, newstate);
-			MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+			MarkSingleSignalDirty(tile, trackdir);
 		}
 	}
 
@@ -614,8 +614,8 @@ static SigSegState UpdateSignalsInBuffer(Owner owner)
 	SigSegState state = SIGSEG_FREE; // value to return
 	_num_signals_evaluated = 0;
 
-	TileIndex tile;
-	DiagDirection dir;
+	TileIndex tile = INVALID_TILE; // Stop GCC from complaining about a possibly uninitialized variable (issue #8280).
+	DiagDirection dir = INVALID_DIAGDIR;
 
 	while (_globset.Get(&tile, &dir)) {
 		assert(_tbuset.IsEmpty());
@@ -633,8 +633,11 @@ static SigSegState UpdateSignalsInBuffer(Owner owner)
 				if (IsTunnel(tile)) assert(dir == INVALID_DIAGDIR || dir == ReverseDiagDir(GetTunnelBridgeDirection(tile)));
 				TrackBits across = GetAcrossTunnelBridgeTrackBits(tile);
 				if (dir == INVALID_DIAGDIR || _enterdir_to_trackbits[dir] & across) {
-					_tbdset.Add(tile, INVALID_DIAGDIR);  // we can safely start from wormhole centre
-					if (!IsTunnelBridgeWithSignalSimulation(tile)) {  // Don't worry with other side of tunnel.
+					if (IsTunnelBridgeWithSignalSimulation(tile)) {
+						/* Don't worry about other side of tunnel. */
+						_tbdset.Add(tile, dir);
+					} else {
+						_tbdset.Add(tile, INVALID_DIAGDIR);  // we can safely start from wormhole centre
 						_tbdset.Add(GetOtherTunnelBridgeEnd(tile), INVALID_DIAGDIR);
 					}
 					break;
@@ -845,18 +848,23 @@ void FreeSignalDependencies()
 	_signal_dependencies.clear();
 }
 
+void UpdateSignalDependency(SignalReference sr)
+{
+	Trackdir td = TrackToTrackdir(sr.track);
+	_globset.Add(sr.tile, TrackdirToExitdir(td));
+	_globset.Add(sr.tile, TrackdirToExitdir(ReverseTrackdir(td)));
+}
+
 static void MarkDependencidesForUpdate(SignalReference on)
 {
 	SignalDependencyMap::iterator f = _signal_dependencies.find(on);
 	if (f == _signal_dependencies.end()) return;
 
 	SignalDependencyList &dependencies = f->second;
-	for (const SignalReference &i : dependencies) {
-		assert(GetTileOwner(i.tile) == GetTileOwner(on.tile));
+	for (const SignalReference &sr : dependencies) {
+		assert(GetTileOwner(sr.tile) == GetTileOwner(on.tile));
 
-		Trackdir td = TrackToTrackdir(i.track);
-		_globset.Add(i.tile, TrackdirToExitdir(td));
-		_globset.Add(i.tile, TrackdirToExitdir(ReverseTrackdir(td)));
+		UpdateSignalDependency(sr);
 	}
 }
 

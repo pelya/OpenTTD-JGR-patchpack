@@ -395,7 +395,7 @@ STR_FILE_MENU_EXIT                                              :Gadael
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Map o'r Byd
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Ffenestr Olygfa Newydd
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Ffenestr Olygfa Newydd
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Allwedd Llif Cargo
 STR_MAP_MENU_SIGN_LIST                                          :Rhestr Arwyddion
 
@@ -870,7 +870,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Awdurdog lleol {TOWN} yn arwyddo cytundeb cyfyngol gyda {STRING} am flwyddyn o hawliau cludiant!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Ffenestr Olygfa{COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Ffenestr Olygfa{COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Copïo i Ffenestr Olygfa
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Copïo lleoliad y golwg byd-eang i'r ffenestr olygfa
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Gludo o'r Ffenestr Olygfa
@@ -1333,6 +1333,7 @@ STR_CONFIG_SETTING_SMALLMAP_LAND_COLOUR_HELPTEXT                :Lliw y tirwedd 
 STR_CONFIG_SETTING_SMALLMAP_LAND_COLOUR_GREEN                   :Gwyrdd
 STR_CONFIG_SETTING_SMALLMAP_LAND_COLOUR_DARK_GREEN              :Gwyrdd tywyll
 STR_CONFIG_SETTING_SMALLMAP_LAND_COLOUR_VIOLET                  :Fioled
+STR_CONFIG_SETTING_SCROLLMODE_HELPTEXT                          :Ymddygiad tra'n sgrolio'r map
 STR_CONFIG_SETTING_SMOOTH_SCROLLING                             :Sgrolio prif ffenestr llyfn: {STRING}
 STR_CONFIG_SETTING_SMOOTH_SCROLLING_HELPTEXT                    :Rheoli syt y mae'r prif olygfa'n sgrolio at leoliad penodol pan yn clicio ar y map bychan neu yn rhoi gorchymyn i sgrolio at wrthrych penodol
 STR_CONFIG_SETTING_MEASURE_TOOLTIP                              :Dangos cymorth mesur wrth ddefnyddio'r offer adeiladu amrywiol: {STRING}
@@ -1511,8 +1512,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Llawn
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Bydd newyddion lliw yn ymddangos yn: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Y blwyddyn y caiff cyhoeddiadau newyddion eu hargraffu mewn lliw. Cyn y dyddiad yma rhai du a gwyn fyddent
 STR_CONFIG_SETTING_STARTING_YEAR                                :Blwyddyn dechreuol: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Galluogi economi llyfn (mwy o newidiadau llai): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Pan fe wedi'i alluogi, mae gweithgynhyrchiant diwydiant yn newid yn fwy aml, ac mewn cammau llai. Ni fydd y gosodiad yma yn cael effaith os y defnyddir diwydiannau NewGRF, fel rheol
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Caniatáu prynu cyfranddaliadau mewn cwmnïau eraill: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Pan fo wedi'i alluogi, fe ganiateir prynnu a gwerthu cyfrandalaidau cwmni. Rhaid i gwmni gyrraedd oed penodol cyn y daw eu cyfrandaliadau ar gael
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :Canran elw y cymal i'w dalu mewn systemau trosglwyddo: {STRING}
@@ -1759,17 +1758,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Mae'r cy
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Gadael
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Ydych chi eisiau gadael y gêm a dychwelyd i {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Iawn
 STR_QUIT_NO                                                     :{BLACK}Na
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Rhoi'r gorau i Gêm
@@ -2675,17 +2665,20 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Tir cwmni
 STR_ABOUT_OPENTTD                                               :{WHITE}Gwybodaeth am OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Hawlfraint Wreiddiol {COPYRIGHT} 1995 Chris Sawyer, Holl cedwir pob hawl
 STR_ABOUT_VERSION                                               :{BLACK}fersiwn OpenTTD {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-2019 Y tîm OpenTTD
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-{STRING} Y tîm OpenTTD
 
 # Framerate display window
+STR_FRAMERATE_RATE_GAMELOOP_TOOLTIP                             :{BLACK}Nifer y ticiau gêm a efelychir bob eiliad.
 STR_FRAMERATE_RATE_BLITTER_TOOLTIP                              :{BLACK}Nifer o fframiau fideo a lunir bob eiliad.
 STR_FRAMERATE_SPEED_FACTOR_TOOLTIP                              :{BLACK}Pa mor gyflym mae'r gêm yn rhedeg, o gymharu a'r cyflymder i'w ddisgwyl ar gyfradd efelychu arferol.
+STR_FRAMERATE_AVERAGE                                           :{WHITE}Cymedr
 STR_FRAMERATE_FPS_GOOD                                          :{LTBLUE}{DECIMAL} frâm yr eiliad
 ############ Leave those lines in this order!!
 STR_FRAMERATE_GL_ECONOMY                                        :{BLACK}  Trin cargo:
 ############ End of leave-in-this-order
 ############ Leave those lines in this order!!
 STR_FRAMETIME_CAPTION_VIDEO                                     :Allbwn fideo
+STR_FRAMETIME_CAPTION_SOUND                                     :Cymysgu sain
 ############ End of leave-in-this-order
 
 

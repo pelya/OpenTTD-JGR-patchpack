@@ -374,7 +374,7 @@ STR_FILE_MENU_EXIT                                              :Gevst
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Heimskort
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Eyka synisgluggi
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Eyka synisgluggi
 STR_MAP_MENU_SIGN_LIST                                          :Listi yvur tekin
 
 ############ range for town menu starts
@@ -841,7 +841,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Mynduleikanir í {TOWN} skriva undir sáttmála við {STRING} fyri einkarrætt av flutningi í eitt ár!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Sýnisgluggi {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Sýnisgluggi {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Rita til sýnisglugga
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Avrita staðið í høvuðsglugganum inn hendan sýnisgluggan
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Set inn frá sýnisglugga
@@ -1441,8 +1441,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Fult
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Litaði tíðindir koma frám í: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Ári har tíðindabløð verða prentaði í litum. Áðrenn hetta ári eru tíðindabløð svørt/hvít
 STR_CONFIG_SETTING_STARTING_YEAR                                :Byrjunar ár: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Gilda mjúkan búskap (fleiri, smærri broytingar): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Um gilda, ídnaðar framleiðsla broytist títtari og í smærri stigum. Henda ásetanin hevur vanliga onga ávirkan um ídnaðinir koma frá einum NewGRF
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Loyv keypi av partabrøvum frá øðrum fyritøkum: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Um gilda, er loyvt at keypa og selja fyritøku partabrøv. Partabrøv verða einans tøk hjá fyritøkum ið hava rokki ein ávísan aldur
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :Prosentpartur av deilvinningi at gjalda í veitingar kervum: {STRING}
@@ -1577,17 +1575,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Hesi ums
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Gevst
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Er tú vís/vísur í at tú vil gevast at spæla OpenTTD og fara aftur til {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Ja
 STR_QUIT_NO                                                     :{BLACK}Nei
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Far frá spæli
@@ -2410,7 +2399,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Ogn hjá fyrit�
 STR_ABOUT_OPENTTD                                               :{WHITE}Um OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Upprunalig upphavsrættindi {COPYRIGHT} 1995 Chris Sawyer, Øll rættindi umbiðin
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD útgáva {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 OpenTTD toymi
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} OpenTTD toymi
 
 # Framerate display window
 ############ Leave those lines in this order!!

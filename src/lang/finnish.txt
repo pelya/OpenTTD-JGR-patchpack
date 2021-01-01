@@ -194,6 +194,7 @@ STR_COLOUR_DEFAULT                                              :Oletus
 STR_UNITS_VELOCITY_IMPERIAL                                     :{COMMA}{NBSP}mph
 STR_UNITS_VELOCITY_METRIC                                       :{COMMA}{NBSP}km/h
 STR_UNITS_VELOCITY_SI                                           :{COMMA}{NBSP}m/s
+STR_UNITS_VELOCITY_GAMEUNITS                                    :{DECIMAL}{NBSP}ruutua/vrk
 
 STR_UNITS_POWER_IMPERIAL                                        :{COMMA}{NBSP}hv
 STR_UNITS_POWER_METRIC                                          :{COMMA}{NBSP}hv
@@ -402,7 +403,7 @@ STR_FILE_MENU_EXIT                                              :Sulje
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Maailmankartta
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Lisänäkymä
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Lisänäkymä
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Rahtivirran selitys
 STR_MAP_MENU_SIGN_LIST                                          :Kylttilista
 
@@ -884,7 +885,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}{TOWN} ja {STRING} allekirjoittavat sopimuksen vuoden pituisesta kuljetusyksinoikeudesta!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Näkymä {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Näkymä {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Päänäkymästä tähän
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Kopioi päänäkymän sijainti tähän näkymään
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Vaihda päänäkymää
@@ -935,6 +936,7 @@ STR_GAME_OPTIONS_CURRENCY_MXN                                   :Meksikon peso (
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :Uusi Taiwanin dollari (TWD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Kiinan renminbi (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Hongkongin dollari (HKD)
+STR_GAME_OPTIONS_CURRENCY_INR                                   :Intian rupia (INR)
 ############ end of currency region
 
 STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Kulkuneuvot
@@ -1552,8 +1554,11 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :Pistelaskun pä
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :Pelin päättymisvuosi pisteiden laskemista varten. Tämän vuoden lopussa talletetaan yhtiön pistemäärä ja näytetään ennätysluettelo; pelaajat voivat jatkaa pelaamista tämän jälkeenkin.{}Jos päättymisvuosi on ennen alkamisvuotta, ennätyksiä ei näytetä koskaan.
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :Ei koskaan
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Tasainen talous (enemmän pieniä muutoksia): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Mikäli käytössä, teollisuuden tuotanto muuttuu useammin ja vähemmän kerrallaan. Tällä asetuksella ei ole yleensä vaikutusta mikäli teollisuustyypit ovat NewGRF:n tarjoamia
+STR_CONFIG_SETTING_ECONOMY_TYPE                                 :Talouden laji: {STRING}
+STR_CONFIG_SETTING_ECONOMY_TYPE_HELPTEXT                        :Tasaisessa taloudessa tuotanto muuttuu useammin, ja pienemmissä askeleissa, kuin alkuperäisessä. Jäädytetty talous estää tuotantomuutokset ja laitosten sulkeutumiset. Tämä asetus ei välttämättä vaikuta, jos teollisuustyypit tulevat NewGRF:stä.
+STR_CONFIG_SETTING_ECONOMY_TYPE_ORIGINAL                        :Alkuperäinen
+STR_CONFIG_SETTING_ECONOMY_TYPE_SMOOTH                          :Tasainen
+STR_CONFIG_SETTING_ECONOMY_TYPE_FROZEN                          :Jäädytetty
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Salli toisten yhtiöiden osakkeiden ostaminen: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Mikäli käytössä, toisten yhtiöiden osakkeiden ostaminen ja myyminen on mahdollista. Osakkeet ovat saatavilla vain yhtiöille, jotka ovat saavuttaneet tietyn iän
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Yhtiön vähimmäisikä osakekaupoille: {STRING}
@@ -1674,6 +1679,7 @@ STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_HELPTEXT         :Kun käyttölii
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_IMPERIAL         :Brittiläinen (mph)
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_METRIC           :Metrinen (km/h)
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_SI               :SI (m/s)
+STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_GAMEUNITS        :Pelin yksiköt (ruutuja vuorokaudessa)
 
 STR_CONFIG_SETTING_LOCALISATION_UNITS_POWER                     :Kulkuneuvon tehon yksikkö: {STRING}
 STR_CONFIG_SETTING_LOCALISATION_UNITS_POWER_HELPTEXT            :Kun käyttöliittymässä näytetään kulkuneuvon teho, näytä se valittua yksikköä käyttäen
@@ -1806,17 +1812,9 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Tästä 
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Sulje
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Suljetaanko peli ja palataan {STRING}-järjestelmään?
+STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Haluatko varmasti poistua OpenTTD:stä?
 STR_QUIT_YES                                                    :{BLACK}Kyllä
 STR_QUIT_NO                                                     :{BLACK}Ei
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Pelin lopetus
@@ -2165,6 +2163,7 @@ STR_NETWORK_ERROR_WRONG_PASSWORD                                :{WHITE}Väärä
 STR_NETWORK_ERROR_SERVER_FULL                                   :{WHITE}Palvelin on täynnä
 STR_NETWORK_ERROR_SERVER_BANNED                                 :{WHITE}Sinut on kielletty palvelimelta
 STR_NETWORK_ERROR_KICKED                                        :{WHITE}Sinut potkittiin pihalle palvelimelta
+STR_NETWORK_ERROR_KICK_MESSAGE                                  :{WHITE}Syy: {STRING}
 STR_NETWORK_ERROR_CHEATER                                       :{WHITE}Huijaaminen ei ole sallittua tällä palvelimella
 STR_NETWORK_ERROR_TOO_MANY_COMMANDS                             :{WHITE}Lähetit liian monta komentoa palvelimelle
 STR_NETWORK_ERROR_TIMEOUT_PASSWORD                              :{WHITE}Käytit liian paljon aikaa salasanan syöttämiseen
@@ -2224,6 +2223,7 @@ STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} an
 STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Annoit yhtiölle {1:STRING} {2:CURRENCY_LONG}
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}Palvelin sulki istunnon
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}Palvelin käynnistyy uudelleen...{}Odota, ole hyvä...
+STR_NETWORK_MESSAGE_KICKED                                      :{STRING} potkaistiin ulos. Syy: ({STRING})
 
 # Content downloading window
 STR_CONTENT_TITLE                                               :{WHITE}Sisällön lataus
@@ -2731,7 +2731,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Yhtiön omistam
 STR_ABOUT_OPENTTD                                               :{WHITE}Tietoja OpenTTD:stä
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Alkuperäiset oikeudet {COPYRIGHT} 1995 Chris Sawyer, kaikki oikeudet pidätetään
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD-versio {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 The OpenTTD team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} The OpenTTD team
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Kuvataajuus
@@ -3667,10 +3667,10 @@ STR_DEPOT_SELL_CONFIRMATION_TEXT                                :{YELLOW}Olet my
 STR_ENGINE_PREVIEW_CAPTION                                      :{WHITE}Viesti kulkuneuvovalmistajalta
 STR_ENGINE_PREVIEW_MESSAGE                                      :{GOLD}Olemme juuri suunnitelleet uuden {STRING} – oletteko kiinnostunut vuoden yksinoikeutetusta kokeilusta, jotta näemme miten tuote suoriutuu ennen kuin julkistamme sen yleiseen käyttöön?
 
-STR_ENGINE_PREVIEW_RAILROAD_LOCOMOTIVE                          :veturin
+STR_ENGINE_PREVIEW_RAILROAD_LOCOMOTIVE                          :veturi
 STR_ENGINE_PREVIEW_ELRAIL_LOCOMOTIVE                            :sähköradan veturi
-STR_ENGINE_PREVIEW_MONORAIL_LOCOMOTIVE                          :yksiraiteisen veturin
-STR_ENGINE_PREVIEW_MAGLEV_LOCOMOTIVE                            :maglev-veturin
+STR_ENGINE_PREVIEW_MONORAIL_LOCOMOTIVE                          :yksiraiteisen veturi
+STR_ENGINE_PREVIEW_MAGLEV_LOCOMOTIVE                            :Maglev-veturi
 
 STR_ENGINE_PREVIEW_ROAD_VEHICLE                                 :ajoneuvon
 STR_ENGINE_PREVIEW_TRAM_VEHICLE                                 :raitiovaunun
@@ -3806,7 +3806,7 @@ STR_VEHICLE_DETAILS_ROAD_VEHICLE_RENAME                         :{BLACK}Nimeä a
 STR_VEHICLE_DETAILS_SHIP_RENAME                                 :{BLACK}Nimeä laiva
 STR_VEHICLE_DETAILS_AIRCRAFT_RENAME                             :{BLACK}Nimeä ilma-alus
 
-STR_VEHICLE_INFO_AGE_RUNNING_COST_YR                            :{BLACK}Ikä: {LTBLUE}{STRING}{BLACK}   Käyttökustannukset: {LTBLUE}{CURRENCY_LONG}/yr
+STR_VEHICLE_INFO_AGE_RUNNING_COST_YR                            :{BLACK}Ikä: {LTBLUE}{STRING}{BLACK} Käyttökustannukset: {LTBLUE}{CURRENCY_LONG}/v
 # The next two need to stay in this order
 STR_VEHICLE_INFO_AGE                                            :{COMMA} vuo{P si tta} ({COMMA})
 STR_VEHICLE_INFO_AGE_RED                                        :{RED}{COMMA} vuo{P si tta} ({COMMA})
@@ -4482,7 +4482,6 @@ STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}Tien tyy
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}Raitiotien tyyppiä ei voi muuntaa tässä...
 STR_ERROR_NO_SUITABLE_ROAD                                      :{WHITE}Ei sopivaa tietä
 STR_ERROR_NO_SUITABLE_TRAMWAY                                   :{WHITE}Ei sopivaa raitiotietä
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... yhteensopimaton tie
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :{WHITE}... yhteensopimaton raitiotie
 
 # Waterway construction errors

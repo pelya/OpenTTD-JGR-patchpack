@@ -22,6 +22,7 @@
 #include "window_func.h"
 #include "date_func.h"
 #include "vehicle_func.h"
+#include "vehicle_gui.h"
 #include "sound_func.h"
 #include "cheat_type.h"
 #include "company_base.h"
@@ -309,7 +310,7 @@ CommandCost CmdBuildAircraft(TileIndex tile, DoCommandFlag flags, const Engine *
 		v->cargo_type = e->GetDefaultCargoType();
 		u->cargo_type = CT_MAIL;
 
-		v->name = nullptr;
+		v->name.clear();
 		v->last_station_visited = INVALID_STATION;
 		v->last_loading_station = INVALID_STATION;
 
@@ -471,7 +472,7 @@ void Aircraft::OnNewDay()
 	SubtractMoneyFromCompanyFract(this->owner, cost);
 
 	SetWindowDirty(WC_VEHICLE_DETAILS, this->index);
-	SetWindowClassesDirty(WC_AIRCRAFT_LIST);
+	DirtyVehicleListWindowForVehicle(this);
 }
 
 static void HelicopterTickHandler(Aircraft *v)
@@ -921,7 +922,11 @@ static bool AircraftController(Aircraft *v)
 			v->cur_speed = 0;
 			if (--u->cur_speed == 32) {
 				if (!PlayVehicleSound(v, VSE_START)) {
-					SndPlayVehicleFx(SND_18_HELICOPTER, v);
+					SoundID sfx = AircraftVehInfo(v->engine_type)->sfx;
+					/* For compatibility with old NewGRF we ignore the sfx property, unless a NewGRF-defined sound is used.
+					 * The baseset has only one helicopter sound, so this only limits using plane or cow sounds. */
+					if (sfx < ORIGINAL_SAMPLE_COUNT) sfx = SND_18_HELICOPTER;
+					SndPlayVehicleFx(sfx, v);
 				}
 			}
 		} else {
@@ -956,6 +961,12 @@ static bool AircraftController(Aircraft *v)
 			UpdateAircraftCache(v);
 			AircraftNextAirportPos_and_Order(v);
 			return false;
+		}
+
+		if (st->airport.type != AT_OILRIG) {
+			x = v->x_pos;
+			y = v->y_pos;
+			tile = TileVirtXY(x, y);
 		}
 
 		/* Vehicle is now at the airport. */
@@ -1104,6 +1115,15 @@ static bool AircraftController(Aircraft *v)
 			z = GetAircraftFlightLevel(v);
 		}
 
+		/* Some airports (like a rotated intercontinental) are non-rectangular and their primary (north-most) tile might not be at the same height as the runway.
+		 * Therefore, as the hangar must be on flat ground (and we must have a hangar, as we're landing/braking and so not a helicopter), use that as the z position instead. */
+		int airport_z = v->z_pos;
+		if ((amd.flag & (AMED_LAND | AMED_BRAKE)) && st != nullptr) {
+			assert(st->airport.HasHangar());
+			TileIndex hangar_tile = st->airport.GetHangarTile(0);
+			airport_z = TilePixelHeight(hangar_tile) + 1; // To avoid clashing with the shadow
+		}
+
 		if (amd.flag & AMED_LAND) {
 			if (st->airport.tile == INVALID_TILE) {
 				/* Airport has been removed, abort the landing procedure */
@@ -1115,27 +1135,24 @@ static bool AircraftController(Aircraft *v)
 				continue;
 			}
 
-			int curz = GetSlopePixelZ(x + amd.x, y + amd.y) + 1;
-
 			/* We're not flying below our destination, right? */
-			assert(curz <= z);
+			assert(airport_z <= z);
 			int t = max(1U, dist - 4);
-			int delta = z - curz;
+			int delta = z - airport_z;
 
 			/* Only start lowering when we're sufficiently close for a 1:1 glide */
 			if (delta >= t) {
-				z -= CeilDiv(z - curz, t);
+				z -= CeilDiv(z - airport_z, t);
 			}
-			if (z < curz) z = curz;
+			if (z < airport_z) z = airport_z;
 		}
 
 		/* We've landed. Decrease speed when we're reaching end of runway. */
 		if (amd.flag & AMED_BRAKE) {
-			int curz = GetSlopePixelZ(x, y) + 1;
 
-			if (z > curz) {
+			if (z > airport_z) {
 				z--;
-			} else if (z < curz) {
+			} else if (z < airport_z) {
 				z++;
 			}
 
@@ -1276,6 +1293,7 @@ static void HandleAircraftSmoke(Aircraft *v, bool mode)
 	if (v->state != FLYING && v->state != LANDING && v->breakdown_type == BREAKDOWN_AIRCRAFT_SPEED) {
 		v->vehstatus &= ~VS_AIRCRAFT_BROKEN;
 		v->breakdown_ctr = 0;
+		v->InvalidateImageCacheOfChain();
 		return;
 	}
 
@@ -1334,7 +1352,7 @@ TileIndex Aircraft::GetOrderStationLocation(StationID station)
 void Aircraft::MarkDirty()
 {
 	this->colourmap = PAL_NONE;
-	this->cur_image_valid_dir = INVALID_DIR;
+	this->InvalidateImageCache();
 	this->UpdateViewport(true, false);
 	if (this->subtype == AIR_HELICOPTER) {
 		Aircraft *rotor = this->Next()->Next();
@@ -1513,7 +1531,7 @@ void AircraftLeaveHangar(Aircraft *v, Direction exit_dir)
 	VehicleServiceInDepot(v);
 	SetAircraftPosition(v, v->x_pos, v->y_pos, v->z_pos);
 	InvalidateWindowData(WC_VEHICLE_DEPOT, v->tile);
-	SetWindowClassesDirty(WC_AIRCRAFT_LIST);
+	DirtyVehicleListWindowForVehicle(v);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2150,7 +2168,7 @@ bool Aircraft::Tick()
 
 	this->tick_counter++;
 
-	if (!(this->vehstatus & VS_STOPPED)) this->running_ticks++;
+	if (!((this->vehstatus & VS_STOPPED) || this->IsWaitingInDepot())) this->running_ticks++;
 
 	if (this->subtype == AIR_HELICOPTER) HelicopterTickHandler(this);
 
@@ -2159,6 +2177,15 @@ bool Aircraft::Tick()
 	for (uint i = 0; i != 2; i++) {
 		/* stop if the aircraft was deleted */
 		if (!AircraftEventHandler(this, i)) return false;
+	}
+
+	if (HasBit(this->vcache.cached_veh_flags, VCF_REDRAW_ON_SPEED_CHANGE)) {
+		extern byte MapAircraftMovementState(const Aircraft *v);
+		byte state = MapAircraftMovementState(this);
+		if (state != this->acache.image_movement_state) {
+			this->InvalidateImageCacheOfChain();
+			this->acache.image_movement_state = state;
+		}
 	}
 
 	return true;

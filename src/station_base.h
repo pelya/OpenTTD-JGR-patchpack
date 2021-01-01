@@ -75,7 +75,7 @@ public:
 	/**
 	 * Invalid constructor. This can't be called as a FlowStat must not be
 	 * empty. However, the constructor must be defined and reachable for
-	 * FlwoStat to be used in a std::map.
+	 * FlowStat to be used in a std::map.
 	 */
 	inline FlowStat() {NOT_REACHED();}
 
@@ -524,6 +524,11 @@ struct GoodsEntry {
 		 * This flag is reset every STATION_ACCEPTANCE_TICKS ticks.
 		 */
 		GES_ACCEPTED_BIGTICK,
+
+		/**
+		 * Set when cargo is not permitted to be supplied by nearby industries/houses.
+		 */
+		GES_NO_CARGO_SUPPLY = 7,
 	};
 
 	GoodsEntry() :
@@ -576,6 +581,11 @@ struct GoodsEntry {
 	NodeID node;            ///< ID of node in link graph referring to this goods entry.
 	FlowStatMap flows;      ///< Planned flows through this station.
 	uint max_waiting_cargo; ///< Max cargo from this station waiting at any station.
+
+	bool IsSupplyAllowed() const
+	{
+		return !HasBit(this->status, GES_NO_CARGO_SUPPLY);
+	}
 
 	/**
 	 * Reports whether a vehicle has ever tried to load the cargo at this station.
@@ -787,6 +797,7 @@ public:
 	IndustryType indtype;   ///< Industry type to get the name from
 
 	BitmapTileArea catchment_tiles; ///< NOSAVE: Set of individual tiles covered by catchment area
+	uint station_tiles;             ///< NOSAVE: Count of station tiles owned by this station
 
 	StationHadVehicleOfType had_vehicle_of_type;
 
@@ -826,6 +837,7 @@ public:
 	}
 
 	bool CatchmentCoversTown(TownID t) const;
+	void AddIndustryToDeliver(Industry *ind);
 	void RemoveFromAllNearbyLists();
 
 	inline bool TileIsInCatchment(TileIndex tile) const
@@ -881,5 +893,43 @@ public:
 };
 
 void RebuildStationKdtree();
+
+/**
+ * Call a function on all stations that have any part of the requested area within their catchment.
+ * @tparam Func The type of funcion to call
+ * @param area The TileArea to check
+ * @param func The function to call, must take two parameters: Station* and TileIndex and return true
+ *             if coverage of that tile is acceptable for a given station or false if search should continue
+ */
+template<typename Func>
+void ForAllStationsAroundTiles(const TileArea &ta, Func func)
+{
+	/* Not using, or don't have a nearby stations list, so we need to scan. */
+	btree::btree_set<StationID> seen_stations;
+
+	/* Scan an area around the building covering the maximum possible station
+	 * to find the possible nearby stations. */
+	uint max_c = _settings_game.station.modified_catchment ? MAX_CATCHMENT : CA_UNMODIFIED;
+	max_c += _settings_game.station.catchment_increase;
+	TileArea ta_ext = TileArea(ta).Expand(max_c);
+	TILE_AREA_LOOP(tile, ta_ext) {
+		if (IsTileType(tile, MP_STATION)) seen_stations.insert(GetStationIndex(tile));
+	}
+
+	for (StationID stationid : seen_stations) {
+		Station *st = Station::GetIfValid(stationid);
+		if (st == nullptr) continue; /* Waypoint */
+
+		/* Check if station is attached to an industry */
+		if (!_settings_game.station.serve_neutral_industries && st->industry != nullptr) continue;
+
+		/* Test if the tile is within the station's catchment */
+		TILE_AREA_LOOP(tile, ta) {
+			if (st->TileIsInCatchment(tile)) {
+				if (func(st, tile)) break;
+			}
+		}
+	}
+}
 
 #endif /* STATION_BASE_H */

@@ -402,7 +402,7 @@ STR_FILE_MENU_EXIT                                              :Afsluiten
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Wereldkaart
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Extra kijkvenster
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Extra kijkvenster
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Vrachtstroomlegende
 STR_MAP_MENU_SIGN_LIST                                          :Bordjeslijst
 
@@ -884,7 +884,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Gemeentebestuur van {TOWN} tekent contract met {STRING} voor een jaar exclusieve transportrechten!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Kijkvenster {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Kijkvenster {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Verander kijkvenster
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Kopieer de locatie van het algemene scherm naar dit kijkvenster
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Verander algemeen scherm
@@ -935,6 +935,7 @@ STR_GAME_OPTIONS_CURRENCY_MXN                                   :Mexicaanse peso
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :Nieuwe Taiwanse dollar (NTD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Chinese Renminbi (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Hong Kong Dollar (HKD)
+STR_GAME_OPTIONS_CURRENCY_INR                                   :Indiase rupee (INR)
 ############ end of currency region
 
 STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Wegvoertuigen
@@ -1303,7 +1304,7 @@ STR_CONFIG_SETTING_ERRMSG_DURATION_HELPTEXT                     :Duur voor het w
 STR_CONFIG_SETTING_ERRMSG_DURATION_VALUE                        :{COMMA} seconde{P 0 "" n}
 STR_CONFIG_SETTING_HOVER_DELAY                                  :Knopinfo weergeven: {STRING}
 STR_CONFIG_SETTING_HOVER_DELAY_HELPTEXT                         :Vertraging voordat knopinfo worden weergegeven wanneer je de muis boven een besturingselement houdt. Wanneer de waarde 0 is, wordt knopinfo aan de rechtermuisknop gebonden.
-STR_CONFIG_SETTING_HOVER_DELAY_VALUE                            :Muis stilhouden gedurende {COMMA} seconde{P 0 "" n}
+STR_CONFIG_SETTING_HOVER_DELAY_VALUE                            :Muis stilhouden gedurende {COMMA} milliseconde{P 0 "" n}
 STR_CONFIG_SETTING_HOVER_DELAY_DISABLED                         :Rechtsklik
 STR_CONFIG_SETTING_POPULATION_IN_LABEL                          :Inwoneraantal bij stad weergeven: {STRING}
 STR_CONFIG_SETTING_POPULATION_IN_LABEL_HELPTEXT                 :Aantal inwoners van een stad weergeven bij naam op de kaart
@@ -1552,8 +1553,6 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :Eindjaar voor s
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :Jaar dat het spel eindigt ten behoeve van de score. Aan het einde van dit jaar wordt de score van het bedrijf vastgelegd en verschijnt het venster met topscores. De spelers kunnen echter doorgaan met spelen.{}Als dit voor het startjaar ligt, verschijnt het venster met topscores niet.
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :Nooit
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Vloeiende economie inschakelen (meer, kleinere veranderingen): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Wanneer dit is ingeschakeld, verandert de productie van industrieën vaker en in kleinere stappen. Deze instelling heeft meestal geen effect als de industriesoorten worden geleverd door een NewGRF.
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Kopen van aandelen in andere bedrijven toestaan: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Wanneer ingeschakeld is het toegestaan om bedrijfsaandelen te kopen en te verkopen. Aandelen zullen alleen beschikbaar zijn voor bedrijven die een bepaalde leeftijd hebben bereikt
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Minimale leeftijd van bedrijf om aandelen te kunnen verhandelen: {STRING}
@@ -1806,17 +1805,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Deze ver
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Afsluiten
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Weet je zeker dat je OpenTTD wilt verlaten en terug wilt keren naar {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Ja
 STR_QUIT_NO                                                     :{BLACK}Nee
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Spel sluiten
@@ -2733,7 +2723,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Terrein in bedr
 STR_ABOUT_OPENTTD                                               :{WHITE}Over OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Originele auteursrecht {COPYRIGHT} 1995 Chris Sawyer, alle rechten voorbehouden
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD-versie {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 Het OpenTTD-team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} Het OpenTTD-team
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Framesnelheid
@@ -4484,7 +4474,6 @@ STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}Kan wegt
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}Kan tramtype hier niet converteren...
 STR_ERROR_NO_SUITABLE_ROAD                                      :{WHITE}Geen geschikte weg
 STR_ERROR_NO_SUITABLE_TRAMWAY                                   :{WHITE}Geen geschikt tramspoor
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... weg niet geschikt
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :{WHITE}... treinspoor niet geschikt
 
 # Waterway construction errors

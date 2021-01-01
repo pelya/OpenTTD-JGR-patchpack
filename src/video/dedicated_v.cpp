@@ -133,7 +133,7 @@ extern bool SafeLoad(const char *filename, SaveLoadOperation fop, DetailedFileTy
 static FVideoDriver_Dedicated iFVideoDriver_Dedicated;
 
 
-const char *VideoDriver_Dedicated::Start(const char * const *parm)
+const char *VideoDriver_Dedicated::Start(const StringList &parm)
 {
 	int bpp = BlitterFactory::GetCurrentBlitter()->GetScreenDepth();
 	_dedicated_video_mem = (bpp == 0) ? nullptr : MallocT<byte>(_cur_resolution.width * _cur_resolution.height * (bpp / 8));
@@ -299,6 +299,7 @@ void VideoDriver_Dedicated::MainLoop()
 			next_tick = cur_ticks + MILLISECONDS_PER_TICK;
 
 			GameLoop();
+			GameLoopPaletteAnimations();
 			UpdateWindows();
 		}
 

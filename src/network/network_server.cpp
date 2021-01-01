@@ -60,9 +60,9 @@ template SocketList TCPListenHandler<ServerNetworkGameSocketHandler, PACKET_SERV
 /** Writing a savegame directly to a number of packets. */
 struct PacketWriter : SaveFilter {
 	ServerNetworkGameSocketHandler *cs; ///< Socket we are associated with.
-	Packet *current;                    ///< The packet we're currently writing to.
+	std::unique_ptr<Packet> current;    ///< The packet we're currently writing to.
 	size_t total_size;                  ///< Total size of the compressed savegame.
-	Packet *packets;                    ///< Packet queue of the savegame; send these "slowly" to the client.
+	std::deque<std::unique_ptr<Packet>> packets; ///< Packet queue of the savegame; send these "slowly" to the client.
 	std::mutex mutex;                   ///< Mutex for making threaded saving safe.
 	std::condition_variable exit_sig;   ///< Signal for threaded destruction of this packet writer.
 
@@ -70,7 +70,7 @@ struct PacketWriter : SaveFilter {
 	 * Create the packet writer.
 	 * @param cs The socket handler we're making the packets for.
 	 */
-	PacketWriter(ServerNetworkGameSocketHandler *cs) : SaveFilter(nullptr), cs(cs), current(nullptr), total_size(0), packets(nullptr)
+	PacketWriter(ServerNetworkGameSocketHandler *cs) : SaveFilter(nullptr), cs(cs), total_size(0)
 	{
 	}
 
@@ -83,13 +83,8 @@ struct PacketWriter : SaveFilter {
 
 		/* This must all wait until the Destroy function is called. */
 
-		while (this->packets != nullptr) {
-			Packet *p = this->packets->next;
-			delete this->packets;
-			this->packets = p;
-		}
-
-		delete this->current;
+		this->packets.clear();
+		this->current.reset();
 	}
 
 	/**
@@ -127,20 +122,21 @@ struct PacketWriter : SaveFilter {
 	 */
 	bool HasPackets()
 	{
-		return this->packets != nullptr;
+		std::lock_guard<std::mutex> lock(this->mutex);
+
+		return !this->packets.empty();
 	}
 
 	/**
 	 * Pop a single created packet from the queue with packets.
 	 */
-	Packet *PopPacket()
+	std::unique_ptr<Packet> PopPacket()
 	{
 		std::lock_guard<std::mutex> lock(this->mutex);
 
-		Packet *p = this->packets;
-		this->packets = p->next;
-		p->next = nullptr;
-
+		if (this->packets.empty()) return nullptr;
+		std::unique_ptr<Packet> p = std::move(this->packets.front());
+		this->packets.pop_front();
 		return p;
 	}
 
@@ -149,13 +145,15 @@ struct PacketWriter : SaveFilter {
 	{
 		if (this->current == nullptr) return;
 
-		Packet **p = &this->packets;
-		while (*p != nullptr) {
-			p = &(*p)->next;
-		}
-		*p = this->current;
+		this->packets.push_back(std::move(this->current));
+	}
 
-		this->current = nullptr;
+	/** Prepend the current packet to the queue. */
+	void PrependQueue()
+	{
+		if (this->current == nullptr) return;
+
+		this->packets.push_front(std::move(this->current));
 	}
 
 	void Write(byte *buf, size_t size) override
@@ -163,7 +161,7 @@ struct PacketWriter : SaveFilter {
 		/* We want to abort the saving when the socket is closed. */
 		if (this->cs == nullptr) SlError(STR_NETWORK_ERROR_LOSTCONNECTION);
 
-		if (this->current == nullptr) this->current = new Packet(PACKET_SERVER_MAP_DATA);
+		if (this->current == nullptr) this->current.reset(new Packet(PACKET_SERVER_MAP_DATA));
 
 		std::lock_guard<std::mutex> lock(this->mutex);
 
@@ -176,7 +174,7 @@ struct PacketWriter : SaveFilter {
 
 			if (this->current->size == SHRT_MAX) {
 				this->AppendQueue();
-				if (buf != bufe) this->current = new Packet(PACKET_SERVER_MAP_DATA);
+				if (buf != bufe) this->current.reset(new Packet(PACKET_SERVER_MAP_DATA));
 			}
 		}
 
@@ -194,13 +192,13 @@ struct PacketWriter : SaveFilter {
 		this->AppendQueue();
 
 		/* Add a packet stating that this is the end to the queue. */
-		this->current = new Packet(PACKET_SERVER_MAP_DONE);
+		this->current.reset(new Packet(PACKET_SERVER_MAP_DONE));
 		this->AppendQueue();
 
 		/* Fast-track the size to the client. */
-		Packet *p = new Packet(PACKET_SERVER_MAP_SIZE);
-		p->Send_uint32((uint32)this->total_size);
-		this->cs->NetworkTCPSocketHandler::SendPacket(p);
+		this->current.reset(new Packet(PACKET_SERVER_MAP_SIZE));
+		this->current->Send_uint32((uint32)this->total_size);
+		this->PrependQueue();
 	}
 };
 
@@ -232,13 +230,16 @@ ServerNetworkGameSocketHandler::~ServerNetworkGameSocketHandler()
 	if (_redirect_console_to_client == this->client_id) _redirect_console_to_client = INVALID_CLIENT_ID;
 	OrderBackup::ResetUser(this->client_id);
 
+	extern void RemoveVirtualTrainsOfUser(uint32 user);
+	RemoveVirtualTrainsOfUser(this->client_id);
+
 	if (this->savegame != nullptr) {
 		this->savegame->Destroy();
 		this->savegame = nullptr;
 	}
 }
 
-Packet *ServerNetworkGameSocketHandler::ReceivePacket()
+std::unique_ptr<Packet> ServerNetworkGameSocketHandler::ReceivePacket()
 {
 	/* Only allow receiving when we have some buffer free; this value
 	 * can go negative, but eventually it will become positive again. */
@@ -246,7 +247,7 @@ Packet *ServerNetworkGameSocketHandler::ReceivePacket()
 
 	/* We can receive a packet, so try that and if needed account for
 	 * the amount of received data. */
-	Packet *p = this->NetworkTCPSocketHandler::ReceivePacket();
+	std::unique_ptr<Packet> p = this->NetworkTCPSocketHandler::ReceivePacket();
 	if (p != nullptr) this->receive_limit -= p->size;
 	return p;
 }
@@ -616,18 +617,22 @@ NetworkRecvStatus ServerNetworkGameSocketHandler::SendMap()
 		sent_packets = 4; // We start with trying 4 packets
 
 		/* Make a dump of the current game */
-		if (SaveWithFilter(this->savegame, true) != SL_OK) usererror("network savedump failed");
+		if (SaveWithFilter(this->savegame, true, true) != SL_OK) usererror("network savedump failed");
 	}
 
 	if (this->status == STATUS_MAP) {
 		bool last_packet = false;
-		bool has_packets = false;
+		bool has_packets = true;
 
-		for (uint i = 0; (has_packets = this->savegame->HasPackets()) && i < sent_packets; i++) {
-			Packet *p = this->savegame->PopPacket();
+		for (uint i = 0; i < sent_packets; i++) {
+			std::unique_ptr<Packet> p = this->savegame->PopPacket();
+			if (p == nullptr) {
+				has_packets = false;
+				break;
+			}
 			last_packet = p->buffer[2] == PACKET_SERVER_MAP_DONE;
 
-			this->SendPacket(p);
+			this->SendPacket(std::move(p));
 
 			if (last_packet) {
 				/* There is no more data, so break the for */
@@ -1053,7 +1058,10 @@ NetworkRecvStatus ServerNetworkGameSocketHandler::Receive_CLIENT_SETTINGS_PASSWO
 	p->Recv_string(password, sizeof(password));
 
 	/* Check settings password. Deny if no password is set */
-	if (StrEmpty(_settings_client.network.settings_password) ||
+	if (StrEmpty(password)) {
+		if (this->settings_authed) DEBUG(net, 0, "[settings-ctrl] client-id %d deauthed", this->client_id);
+		this->settings_authed = false;
+	} else if (StrEmpty(_settings_client.network.settings_password) ||
 			strcmp(password, GenerateCompanyPasswordHash(_settings_client.network.settings_password, _settings_client.network.network_id, _settings_game.game_creation.generation_seed ^ this->settings_hash_bits)) != 0) {
 		DEBUG(net, 0, "[settings-ctrl] wrong password from client-id %d", this->client_id);
 		this->settings_authed = false;
@@ -1157,7 +1165,7 @@ NetworkRecvStatus ServerNetworkGameSocketHandler::Receive_CLIENT_COMMAND(Packet 
 	}
 
 
-	if ((GetCommandFlags(cp.cmd) & CMD_SERVER) && ci->client_id != CLIENT_ID_SERVER && !this->settings_authed) {
+	if ((GetCommandFlags(cp.cmd) & (CMD_SERVER | CMD_SERVER_NS)) && ci->client_id != CLIENT_ID_SERVER && !this->settings_authed) {
 		IConsolePrintF(CC_ERROR, "WARNING: server only command from: client %d (IP: %s), kicking...", ci->client_id, this->GetClientIP());
 		return this->SendError(NETWORK_ERROR_KICKED);
 	}
@@ -1173,7 +1181,7 @@ NetworkRecvStatus ServerNetworkGameSocketHandler::Receive_CLIENT_COMMAND(Packet 
 	 * something pretty naughty (or a bug), and will be kicked
 	 */
 	if (!(cp.cmd == CMD_COMPANY_CTRL && cp.p1 == 0 && ci->client_playas == COMPANY_NEW_COMPANY) && ci->client_playas != cp.company &&
-			!((GetCommandFlags(cp.cmd) & CMD_SERVER) && this->settings_authed)) {
+			!((GetCommandFlags(cp.cmd) & (CMD_SERVER | CMD_SERVER_NS)) && this->settings_authed)) {
 		IConsolePrintF(CC_ERROR, "WARNING: client %d (IP: %s) tried to execute a command as company %d, kicking...",
 		               ci->client_playas + 1, this->GetClientIP(), cp.company + 1);
 		return this->SendError(NETWORK_ERROR_COMPANY_MISMATCH);
@@ -1236,7 +1244,7 @@ NetworkRecvStatus ServerNetworkGameSocketHandler::Receive_CLIENT_ERROR(Packet *p
 		_settings_client.network.sync_freq = min<uint16>(_settings_client.network.sync_freq, 16);
 
 		// have the server and all clients run some sanity checks
-		NetworkSendCommand(0, 0, 0, CMD_DESYNC_CHECK, nullptr, nullptr, _local_company, 0);
+		NetworkSendCommand(0, 0, 0, 0, CMD_DESYNC_CHECK, nullptr, nullptr, _local_company, 0);
 
 		SendPacketsState send_state = this->SendPackets(true);
 		if (send_state != SPS_CLOSED) {
@@ -2017,7 +2025,7 @@ void NetworkServerMonthlyLoop()
 {
 	NetworkAutoCleanCompanies();
 	NetworkAdminUpdate(ADMIN_FREQUENCY_MONTHLY);
-	if ((_cur_month % 3) == 0) NetworkAdminUpdate(ADMIN_FREQUENCY_QUARTERLY);
+	if ((_cur_date_ymd.month % 3) == 0) NetworkAdminUpdate(ADMIN_FREQUENCY_QUARTERLY);
 }
 
 /** Daily "callback". Called whenever the date changes. */
@@ -2273,7 +2281,7 @@ void NetworkServerNewCompany(const Company *c, NetworkClientInfo *ci)
 		/* ci is nullptr when replaying, or for AIs. In neither case there is a client. */
 		ci->client_playas = c->index;
 		NetworkUpdateClientInfo(ci->client_id);
-		NetworkSendCommand(0, 0, 0, CMD_RENAME_PRESIDENT, nullptr, ci->client_name, c->index, 0);
+		NetworkSendCommand(0, 0, 0, 0, CMD_RENAME_PRESIDENT, nullptr, ci->client_name, c->index, 0);
 	}
 
 	/* Announce new company on network. */

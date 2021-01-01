@@ -63,7 +63,7 @@
 
 /* static */ bool ScriptRoad::IsRoadTypeAvailable(RoadType road_type)
 {
-	return (::RoadType)road_type < ROADTYPE_END && ::HasRoadTypeAvail(ScriptObject::GetCompany(), (::RoadType)road_type);
+	return (::RoadType)road_type < ROADTYPE_END && ::HasRoadTypeAvail(ScriptObject::GetCompany(), (::RoadType)road_type) && !HasBit(GetRoadTypeInfo((::RoadType)road_type)->extra_flags, RXTF_NOT_AVAILABLE_AI_GS);
 }
 
 /* static */ ScriptRoad::RoadType ScriptRoad::GetCurrentRoadType()
@@ -115,6 +115,7 @@
 	uint dir_2 = 2 ^ dir_1;
 
 	DisallowedRoadDirections drd2 = IsNormalRoadTile(t2) ? GetDisallowedRoadDirections(t2) : DRD_NONE;
+	if (IsDriveThroughStopTile(t2)) drd2 = GetDriveThroughStopDisallowedRoadDirections(t2);
 
 	return HasBit(r1, dir_1) && HasBit(r2, dir_2) && drd2 != DRD_BOTH && drd2 != (dir_1 > dir_2 ? DRD_SOUTHBOUND : DRD_NORTHBOUND);
 }
@@ -401,7 +402,7 @@ static bool NormaliseTileOffset(int32 *tile)
 	if (::DistanceManhattan(tile, start) != 1 || ::DistanceManhattan(tile, end) != 1) return -1;
 
 	/*                                           ROAD_NW              ROAD_SW             ROAD_SE             ROAD_NE */
-	static const TileIndexDiff neighbours[] = {::TileDiffXY(0, -1), ::TileDiffXY(1, 0), ::TileDiffXY(0, 1), ::TileDiffXY(-1, 0)};
+	const TileIndexDiff neighbours[] = {::TileDiffXY(0, -1), ::TileDiffXY(1, 0), ::TileDiffXY(0, 1), ::TileDiffXY(-1, 0)};
 	Array *existing = (Array*)alloca(sizeof(Array) + lengthof(neighbours) * sizeof(int32));
 	existing->size = 0;
 

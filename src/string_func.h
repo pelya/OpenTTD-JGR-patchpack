@@ -25,6 +25,7 @@
 #define STRING_FUNC_H
 
 #include <stdarg.h>
+#include <iosfwd>
 
 #include "core/bitmath_func.hpp"
 #include "string_type.h"
@@ -34,31 +35,20 @@ char *strecpy(char *dst, const char *src, const char *last, bool quiet_mode = fa
 char *stredup(const char *src, const char *last = nullptr);
 
 int CDECL seprintf(char *str, const char *last, const char *format, ...) WARN_FORMAT(3, 4);
-int CDECL vseprintf(char *str, const char *last, const char *format, va_list ap);
+int CDECL vseprintf(char *str, const char *last, const char *format, va_list ap) WARN_FORMAT(3, 0);
 
 char *CDECL str_fmt(const char *str, ...) WARN_FORMAT(1, 2);
 char *str_vfmt(const char *str, va_list ap);
 std::string CDECL stdstr_fmt(const char *str, ...) WARN_FORMAT(1, 2);
 std::string stdstr_vfmt(const char *str, va_list va);
 
-char *str_validate_intl(char *str, const char *last, StringValidationSettings settings);
-
-/**
- * Scans the string for valid characters and if it finds invalid ones,
- * replaces them with a question mark '?' (if not ignored)
- * @param str the string to validate
- * @param last the last valid character of str
- * @param settings the settings for the string validation.
- */
-static inline void str_validate(char *str, const char *last, StringValidationSettings settings = SVS_REPLACE_WITH_QUESTION_MARK)
-{
-	*str_validate_intl(str, last, settings) = '\0';
-}
-
+char *str_validate(char *str, const char *last, StringValidationSettings settings = SVS_REPLACE_WITH_QUESTION_MARK);
+std::string str_validate(const std::string &str, StringValidationSettings settings = SVS_REPLACE_WITH_QUESTION_MARK);
 void ValidateString(const char *str);
 
-void str_fix_scc_encoded(char *str, const char *last);
+const char *str_fix_scc_encoded(char *str, const char *last);
 void str_strip_colours(char *str);
+std::string str_strip_all_scc(const char *str);
 char *str_replace_wchar(char *str, const char *last, WChar find, WChar replace);
 bool strtolower(char *str);
 
@@ -96,6 +86,7 @@ bool IsValidChar(WChar key, CharSetFilter afilter);
 
 size_t Utf8Decode(WChar *c, const char *s);
 size_t Utf8Encode(char *buf, WChar c);
+size_t Utf8Encode(std::ostreambuf_iterator<char> &buf, WChar c);
 size_t Utf8TrimString(char *s, size_t maxlen);
 
 
@@ -103,6 +94,14 @@ static inline WChar Utf8Consume(const char **s)
 {
 	WChar c;
 	*s += Utf8Decode(&c, *s);
+	return c;
+}
+
+template <class Titr>
+static inline WChar Utf8Consume(Titr &s)
+{
+	WChar c;
+	s += Utf8Decode(&c, &*s);
 	return c;
 }
 

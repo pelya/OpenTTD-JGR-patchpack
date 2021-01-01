@@ -403,7 +403,7 @@ STR_FILE_MENU_EXIT                                              :Afslut
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Kort over verden
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Nyt lokalitetsvindue
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Nyt lokalitetsvindue
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Laststrømforklaring
 STR_MAP_MENU_SIGN_LIST                                          :Liste over skilte
 
@@ -885,7 +885,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Myndighederne i {TOWN} skriver kontrakt med {STRING} på et års eksklusive transportrettigheder!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Lokalitetsvindue {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Lokalitetsvindue {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Hent hovedvisning
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Bevæg denne visning til samme sted som hovedvisningen
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Flyt hovedvisning
@@ -936,6 +936,7 @@ STR_GAME_OPTIONS_CURRENCY_MXN                                   :Meksikansk Peso
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :Ny Taiwan dollar (NTD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Kinesisk Renminbi (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Hong Kong Dollar (HKD)
+STR_GAME_OPTIONS_CURRENCY_INR                                   :Indisk rupi (INR)
 ############ end of currency region
 
 STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Vejkøretøjer
@@ -1553,8 +1554,6 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :Slutår for poi
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :Årstal hvor spillet slutter pointoptælling. Ved slutningen af dette år bliver selskabets point optaget, og topresultater-skærmen bliver vist. Spillerne kan fortsætte med at spille efter dette.{}Hvis dette er før spillets start år, bliver topresultater-skærmen aldrig vist.
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :Aldrig
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Aktiver rolig økonomi (flere små ændringer): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Når slået til, ændre industriproduktion oftere, og i små trin. Denne indstilling har normalt ingen effekt, hvis industrityper er fastsat af NewGRF
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Tillad at købe aktier i andre selskaber: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Hvis aktiveret, tillades køb og salg af selskabsaktier. Aktier vil kun være tilgængelige for selskaber der er nået en hvis alder
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Mindste selskabsalder for aktiehandel: {STRING}
@@ -1807,17 +1806,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Denne ov
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Afslut
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Er du sikker på, at du vil forlade dette spil og returnere til {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Ja
 STR_QUIT_NO                                                     :{BLACK}Nej
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Forlad spillet
@@ -2166,6 +2156,7 @@ STR_NETWORK_ERROR_WRONG_PASSWORD                                :{WHITE}Forkert 
 STR_NETWORK_ERROR_SERVER_FULL                                   :{WHITE}Serveren er fuld
 STR_NETWORK_ERROR_SERVER_BANNED                                 :{WHITE}Du er bandlyst fra denne server
 STR_NETWORK_ERROR_KICKED                                        :{WHITE}Du blev smidt ud af spillet
+STR_NETWORK_ERROR_KICK_MESSAGE                                  :{WHITE}Grund: {STRING}
 STR_NETWORK_ERROR_CHEATER                                       :{WHITE}Snyderi er ikke tilladt på denne server
 STR_NETWORK_ERROR_TOO_MANY_COMMANDS                             :{WHITE}Du sendte for mange kommandoer til serveren
 STR_NETWORK_ERROR_TIMEOUT_PASSWORD                              :{WHITE}Du tog for lang tid om at indtaste adgangskoden
@@ -2225,6 +2216,7 @@ STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} ga
 STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Du gav {1:STRING} {2:CURRENCY_LONG}
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}Serveren har lukket ned for dette spil
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}Serveren genstarter...{}Vent venligst...
+STR_NETWORK_MESSAGE_KICKED                                      :*** {STRING} blev sparket ud. Grund: ({STRING})
 
 # Content downloading window
 STR_CONTENT_TITLE                                               :{WHITE}Download af indhold
@@ -2732,7 +2724,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Land ejet af se
 STR_ABOUT_OPENTTD                                               :{WHITE}Om OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Original copyright {COPYRIGHT} 1995 Chris Sawyer, Alle rettigheder reserveret
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD version {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 OpenTTD teamet
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} OpenTTD teamet
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Spilhastighed
@@ -3821,7 +3813,7 @@ STR_VEHICLE_INFO_WEIGHT_POWER_MAX_SPEED_MAX_TE                  :{BLACK}Vægt: {
 STR_VEHICLE_INFO_PROFIT_THIS_YEAR_LAST_YEAR                     :{BLACK}Overskud i år: {LTBLUE}{CURRENCY_LONG} (sidste år: {CURRENCY_LONG})
 STR_VEHICLE_INFO_RELIABILITY_BREAKDOWNS                         :{BLACK}Pålidelighed: {LTBLUE}{COMMA}%  {BLACK}Nedbrud siden sidste service: {LTBLUE}{COMMA}
 
-STR_VEHICLE_INFO_BUILT_VALUE                                    :{LTBLUE}{ENGINE} {BLACK}Built: {LTBLUE}{NUM}{BLACK} Value: {LTBLUE}{CURRENCY_LONG}
+STR_VEHICLE_INFO_BUILT_VALUE                                    :{LTBLUE}{ENGINE} {BLACK}Bygget: {LTBLUE}{NUM}{BLACK} Værdi: {LTBLUE}{CURRENCY_LONG}
 STR_VEHICLE_INFO_NO_CAPACITY                                    :{BLACK}Kapacitet: {LTBLUE}Ingen{STRING}
 STR_VEHICLE_INFO_CAPACITY                                       :{BLACK}Kapacitet: {LTBLUE}{CARGO_LONG}{3:STRING}
 STR_VEHICLE_INFO_CAPACITY_MULT                                  :{BLACK}Kapacitet: {LTBLUE}{CARGO_LONG}{3:STRING} (x{4:NUM})
@@ -4483,7 +4475,6 @@ STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}Kan ikke
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}Kan ikke konvertere sporvejstype her...
 STR_ERROR_NO_SUITABLE_ROAD                                      :{WHITE}Ingen passende vej
 STR_ERROR_NO_SUITABLE_TRAMWAY                                   :{WHITE}Ingen egnet sporvej
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... inkompatibel vej
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :{WHITE}... inkompatibel sporvej
 
 # Waterway construction errors

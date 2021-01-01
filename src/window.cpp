@@ -607,7 +607,7 @@ void Window::RaiseButtons(bool autoraise)
  * Invalidate a widget, i.e. mark it as being changed and in need of redraw.
  * @param widget_index the widget to redraw.
  */
-void Window::SetWidgetDirty(byte widget_index) const
+void Window::SetWidgetDirty(byte widget_index)
 {
 	/* Sometimes this function is called before the window is even fully initialized */
 	if (this->nested_array == nullptr) return;
@@ -668,7 +668,7 @@ static void DispatchLeftClickEvent(Window *w, int x, int y, int click_count)
 	WidgetType widget_type = (nw != nullptr) ? nw->type : WWT_EMPTY;
 
 	bool focused_widget_changed = false;
-	/* If clicked on a window that previously did dot have focus */
+	/* If clicked on a window that previously did not have focus */
 	if (_focused_window != w &&                 // We already have focus, right?
 			(w->window_desc->flags & WDF_NO_FOCUS) == 0 &&  // Don't lose focus to toolbars
 			widget_type != WWT_CLOSEBOX) {          // Don't change focused window if 'X' (close button) was clicked
@@ -877,27 +877,6 @@ static void DispatchMouseWheelEvent(Window *w, NWidgetCore *nwid, int wheel)
 }
 
 /**
- * Returns whether a window may be shown or not.
- * @param w The window to consider.
- * @return True iff it may be shown, otherwise false.
- */
-static bool MayBeShown(const Window *w)
-{
-	/* If we're not modal, everything is okay. */
-	if (!HasModalProgress()) return true;
-
-	switch (w->window_class) {
-		case WC_MAIN_WINDOW:    ///< The background, i.e. the game.
-		case WC_MODAL_PROGRESS: ///< The actual progress window.
-		case WC_CONFIRM_POPUP_QUERY: ///< The abort window.
-			return true;
-
-		default:
-			return false;
-	}
-}
-
-/**
  * Generate repaint events for the visible part of window w within the rectangle.
  *
  * The function goes recursively upwards in the window stack, and splits the rectangle
@@ -908,8 +887,9 @@ static bool MayBeShown(const Window *w)
  * @param top Top edge of the rectangle that should be repainted
  * @param right Right edge of the rectangle that should be repainted
  * @param bottom Bottom edge of the rectangle that should be repainted
+ * @param flags Whether to mark gfx dirty, etc.
  */
-static void DrawOverlappedWindow(Window *w, int left, int top, int right, int bottom)
+void DrawOverlappedWindow(Window *w, int left, int top, int right, int bottom, DrawOverlappedWindowFlags flags)
 {
 	const Window *v;
 	FOR_ALL_WINDOWS_FROM_BACK_FROM(v, w->z_front) {
@@ -922,26 +902,26 @@ static void DrawOverlappedWindow(Window *w, int left, int top, int right, int bo
 			int x;
 
 			if (left < (x = v->left)) {
-				DrawOverlappedWindow(w, left, top, x, bottom);
-				DrawOverlappedWindow(w, x, top, right, bottom);
+				DrawOverlappedWindow(w, left, top, x, bottom, flags);
+				DrawOverlappedWindow(w, x, top, right, bottom, flags);
 				return;
 			}
 
 			if (right > (x = v->left + v->width)) {
-				DrawOverlappedWindow(w, left, top, x, bottom);
-				DrawOverlappedWindow(w, x, top, right, bottom);
+				DrawOverlappedWindow(w, left, top, x, bottom, flags);
+				DrawOverlappedWindow(w, x, top, right, bottom, flags);
 				return;
 			}
 
 			if (top < (x = v->top)) {
-				DrawOverlappedWindow(w, left, top, right, x);
-				DrawOverlappedWindow(w, left, x, right, bottom);
+				DrawOverlappedWindow(w, left, top, right, x, flags);
+				DrawOverlappedWindow(w, left, x, right, bottom, flags);
 				return;
 			}
 
 			if (bottom > (x = v->top + v->height)) {
-				DrawOverlappedWindow(w, left, top, right, x);
-				DrawOverlappedWindow(w, left, x, right, bottom);
+				DrawOverlappedWindow(w, left, top, right, x, flags);
+				DrawOverlappedWindow(w, left, x, right, bottom, flags);
 				return;
 			}
 
@@ -959,6 +939,14 @@ static void DrawOverlappedWindow(Window *w, int left, int top, int right, int bo
 	dp->dst_ptr = BlitterFactory::GetCurrentBlitter()->MoveTo(_screen.dst_ptr, left, top);
 	dp->zoom = ZOOM_LVL_NORMAL;
 	w->OnPaint();
+	if (unlikely(flags & DOWF_SHOW_DEBUG)) {
+		extern void ViewportDrawDirtyBlocks();
+		ViewportDrawDirtyBlocks();
+	}
+	if (flags & DOWF_MARK_DIRTY) {
+		VideoDriver::GetInstance()->MakeDirty(left, top, right - left, bottom - top);
+		UnsetDirtyBlocks(left, top, right, bottom);
+	}
 }
 
 /**
@@ -984,19 +972,38 @@ void DrawOverlappedWindowForAll(int left, int top, int right, int bottom)
 				left < w->left + w->width &&
 				top < w->top + w->height) {
 			/* Window w intersects with the rectangle => needs repaint */
-			DrawOverlappedWindow(w, max(left, w->left), max(top, w->top), min(right, w->left + w->width), min(bottom, w->top + w->height));
+			DrawOverlappedWindow(w, max(left, w->left), max(top, w->top), min(right, w->left + w->width), min(bottom, w->top + w->height), DOWF_NONE);
 		}
 	}
 	_cur_dpi = old_dpi;
+}
+
+static void SetWindowDirtyPending(Window *w)
+{
+	SetPendingDirtyBlocks(w->left, w->top, w->left + w->width, w->top + w->height);
 }
 
 /**
  * Mark entire window as dirty (in need of re-paint)
  * @ingroup dirty
  */
-void Window::SetDirty() const
+void Window::SetDirty()
 {
-	SetDirtyBlocks(this->left, this->top, this->left + this->width, this->top + this->height);
+	this->flags |= WF_DIRTY;
+}
+
+/**
+ * Mark entire window as dirty (in need of re-paint)
+ * @ingroup dirty
+ */
+void Window::SetDirtyAsBlocks()
+{
+	extern bool _gfx_draw_active;
+	if (_gfx_draw_active) {
+		SetWindowDirtyPending(this);
+	} else {
+		SetDirtyBlocks(this->left, this->top, this->left + this->width, this->top + this->height);
+	}
 }
 
 /**
@@ -1007,7 +1014,7 @@ void Window::SetDirty() const
  */
 void Window::ReInit(int rx, int ry)
 {
-	this->SetDirty(); // Mark whole current window as dirty.
+	this->SetDirtyAsBlocks(); // Mark whole current window as dirty.
 
 	/* Save current size. */
 	int window_width  = this->width;
@@ -1120,7 +1127,7 @@ Window::~Window()
 
 	if (this->viewport != nullptr) DeleteWindowViewport(this);
 
-	this->SetDirty();
+	this->SetDirtyAsBlocks();
 
 	free(this->nested_array); // Contents is released through deletion of #nested_root.
 	delete this->nested_root;
@@ -1400,6 +1407,7 @@ static void AddWindowToZOrdering(Window *w)
 		/* Search down the z-ordering for its location. */
 		WindowBase *v = _z_front_window;
 		uint last_z_priority = UINT_MAX;
+		(void)last_z_priority; // Unused without asserts
 		while (v != nullptr && (v->window_class == WC_INVALID || GetWindowZPriority(v->window_class) > GetWindowZPriority(w->window_class))) {
 			if (v->window_class != WC_INVALID) {
 				/* Sanity check z-ordering, while we're at it. */
@@ -2171,7 +2179,7 @@ void ResizeWindow(Window *w, int delta_x, int delta_y, bool clamp_to_screen)
 			if (new_bottom >= (int)_cur_resolution.height) delta_y -= Ceil(new_bottom - _cur_resolution.height, max(1U, w->nested_root->resize_y));
 		}
 
-		w->SetDirty();
+		w->SetDirtyAsBlocks();
 
 		uint new_xinc = max(0, (w->nested_root->resize_x == 0) ? 0 : (int)(w->nested_root->current_x - w->nested_root->smallest_x) + delta_x);
 		uint new_yinc = max(0, (w->nested_root->resize_y == 0) ? 0 : (int)(w->nested_root->current_y - w->nested_root->smallest_y) + delta_y);
@@ -2187,7 +2195,12 @@ void ResizeWindow(Window *w, int delta_x, int delta_y, bool clamp_to_screen)
 
 	/* Always call OnResize to make sure everything is initialised correctly if it needs to be. */
 	w->OnResize();
-	w->SetDirty();
+	extern bool _gfx_draw_active;
+	if (_gfx_draw_active) {
+		SetWindowDirtyPending(w);
+	} else {
+		w->SetDirty();
+	}
 }
 
 /**
@@ -2236,7 +2249,10 @@ static EventState HandleWindowDragging()
 				break;
 			}
 
-			w->SetDirty();
+			if (!(w->flags & WF_DRAG_DIRTIED)) {
+				w->flags |= WF_DRAG_DIRTIED;
+				w->SetDirtyAsBlocks();
+			}
 
 			int x = _cursor.pos.x + _drag_delta.x;
 			int y = _cursor.pos.y + _drag_delta.y;
@@ -2371,7 +2387,7 @@ static EventState HandleWindowDragging()
 			_drag_delta.y += y;
 			if ((w->flags & WF_SIZING_LEFT) && x != 0) {
 				_drag_delta.x -= x; // x > 0 -> window gets longer -> left-edge moves to left -> subtract x to get new position.
-				w->SetDirty();
+				w->SetDirtyAsBlocks();
 				w->left -= x;  // If dragging left edge, move left window edge in opposite direction by the same amount.
 				/* ResizeWindow() below ensures marking new position as dirty. */
 			} else {
@@ -2706,8 +2722,6 @@ bool FocusWindowById(WindowClass cls, WindowNumber number)
  */
 void HandleKeypress(uint keycode, WChar key)
 {
-	if (InEventLoopPostCrash()) return;
-
 	/* World generation is multithreaded and messes with companies.
 	 * But there is no company related window open anyway, so _current_company is not used. */
 	assert(HasModalProgress() || IsLocalCompany());
@@ -2840,7 +2854,7 @@ static void HandleAutoscroll()
 	if (w == nullptr || w->flags & WF_DISABLE_VP_SCROLL) return;
 	if (_settings_client.gui.auto_scrolling != VA_EVERY_VIEWPORT && w->window_class != WC_MAIN_WINDOW) return;
 
-	ViewPort *vp = IsPtInWindowViewport(w, x, y);
+	Viewport *vp = IsPtInWindowViewport(w, x, y);
 	if (vp == nullptr) return;
 
 	x -= vp->left;
@@ -2926,8 +2940,6 @@ static void HandleKeyScrolling()
 
 static void MouseLoop(MouseClick click, int mousewheel)
 {
-	if (InEventLoopPostCrash()) return;
-
 	/* World generation is multithreaded and messes with companies.
 	 * But there is no company related window open anyway, so _current_company is not used. */
 	assert(HasModalProgress() || IsLocalCompany());
@@ -2952,7 +2964,7 @@ static void MouseLoop(MouseClick click, int mousewheel)
 	if (w == nullptr) return;
 
 	if (click != MC_HOVER && !MaybeBringWindowToFront(w)) return;
-	ViewPort *vp = IsPtInWindowViewport(w, x, y);
+	Viewport *vp = IsPtInWindowViewport(w, x, y);
 
 	/* Don't allow any action in a viewport if either in menu or when having a modal progress window */
 	if (vp != nullptr && (_game_mode == GM_MENU || _game_mode == GM_BOOTSTRAP || HasModalProgress())) return;
@@ -3034,8 +3046,6 @@ static void MouseLoop(MouseClick click, int mousewheel)
  */
 void HandleMouseEvents()
 {
-	if (InEventLoopPostCrash()) return;
-
 	/* World generation is multithreaded and messes with companies.
 	 * But there is no company related window open anyway, so _current_company is not used. */
 	assert(HasModalProgress() || IsLocalCompany());
@@ -3145,8 +3155,6 @@ static void CheckSoftLimit()
  */
 void InputLoop()
 {
-	if (InEventLoopPostCrash()) return;
-
 	/* World generation is multithreaded and messes with companies.
 	 * But there is no company related window open anyway, so _current_company is not used. */
 	assert(HasModalProgress() || IsLocalCompany());
@@ -3282,7 +3290,7 @@ void UpdateWindows()
  */
 void SetWindowDirty(WindowClass cls, WindowNumber number)
 {
-	const Window *w;
+	Window *w;
 	FOR_ALL_WINDOWS_FROM_BACK(w) {
 		if (w->window_class == cls && w->window_number == number) w->SetDirty();
 	}
@@ -3296,7 +3304,7 @@ void SetWindowDirty(WindowClass cls, WindowNumber number)
  */
 void SetWindowWidgetDirty(WindowClass cls, WindowNumber number, byte widget_index)
 {
-	const Window *w;
+	Window *w;
 	FOR_ALL_WINDOWS_FROM_BACK(w) {
 		if (w->window_class == cls && w->window_number == number) {
 			w->SetWidgetDirty(widget_index);
@@ -3504,8 +3512,6 @@ restart_search:
 			goto restart_search;
 		}
 	}
-
-	FOR_ALL_WINDOWS_FROM_BACK(w) w->SetDirty();
 }
 
 /** Delete all always on-top windows to get an empty screen */
@@ -3704,4 +3710,26 @@ PickerWindowBase::~PickerWindowBase()
 {
 	this->window_class = WC_INVALID; // stop the ancestor from freeing the already (to be) child
 	ResetObjectToPlace();
+}
+
+char *DumpWindowInfo(char *b, const char *last, const Window *w)
+{
+	if (w == nullptr) {
+		b += seprintf(b, last, "window: nullptr");
+		return b;
+	}
+	b += seprintf(b, last, "window: class: %u, num: %u, flags: 0x%X, l: %d, t: %d, w: %d, h: %d, owner: %d",
+			w->window_class, w->window_number, w->flags, w->left, w->top, w->width, w->height, w->owner);
+	if (w->viewport != nullptr) {
+		const ViewportData *vd = w->viewport;
+		b += seprintf(b, last, ", viewport: (veh: 0x%X, x: (%d, %d), y: (%d, %d), z: %u, l: %d, t: %d, w: %d, h: %d, vl: %d, vt: %d, vw: %d, vh: %d, dbc: %u, dbr: %u, dblm: %u, db: %u)",
+				vd->follow_vehicle, vd->scrollpos_x, vd->dest_scrollpos_x, vd->scrollpos_y, vd->dest_scrollpos_y, vd->zoom, vd->left, vd->top, vd->width, vd->height,
+				vd->virtual_left, vd->virtual_top, vd->virtual_width, vd->virtual_height, vd->dirty_blocks_per_column, vd->dirty_blocks_per_row, vd->dirty_block_left_margin,
+				(uint) vd->dirty_blocks.size());
+	}
+	if (w->parent != nullptr) {
+		b += seprintf(b, last, ", parent ");
+		b = DumpWindowInfo(b, last, w->parent);
+	}
+	return b;
 }

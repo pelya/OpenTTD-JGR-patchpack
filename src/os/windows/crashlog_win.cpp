@@ -19,7 +19,6 @@
 #include "../../gamelog.h"
 #include "../../saveload/saveload.h"
 #include "../../video/video_driver.hpp"
-#include "../../openttd.h"
 #include "../../screenshot.h"
 #include "../../debug.h"
 #include "../../settings_type.h"
@@ -82,6 +81,7 @@ public:
 		this->crashlog_filename[0] = '\0';
 		this->crashdump_filename[0] = '\0';
 		this->screenshot_filename[0] = '\0';
+		this->name_buffer[0] = '\0';
 	}
 
 	/**
@@ -617,7 +617,8 @@ void *_safe_esp = nullptr;
 
 static LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS *ep)
 {
-	_in_event_loop_post_crash = true;
+	/* Disable our event loop. */
+	SetWindowLongPtr(GetActiveWindow(), GWLP_WNDPROC, (LONG_PTR)&DefWindowProc);
 
 	if (CrashLogWindows::current != nullptr) {
 		CrashLog::AfterCrashLogCleanup();
@@ -636,11 +637,14 @@ static LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS *ep)
 	CrashLogWindows *log = new CrashLogWindows(ep);
 	CrashLogWindows::current = log;
 	char *buf = log->FillCrashLog(log->crashlog, lastof(log->crashlog));
+	char *name_buffer_date = log->name_buffer + seprintf(log->name_buffer, lastof(log->name_buffer), "crash-");
+	time_t cur_time = time(nullptr);
+	strftime(name_buffer_date, lastof(log->name_buffer) - name_buffer_date, "%Y%m%dT%H%M%SZ", gmtime(&cur_time));
 	log->WriteCrashDump(log->crashdump_filename, lastof(log->crashdump_filename));
 	log->AppendDecodedStacktrace(buf, lastof(log->crashlog));
-	log->WriteCrashLog(log->crashlog, log->crashlog_filename, lastof(log->crashlog_filename));
+	log->WriteCrashLog(log->crashlog, log->crashlog_filename, lastof(log->crashlog_filename), log->name_buffer);
 	SetScreenshotAuxiliaryText("Crash Log", log->crashlog);
-	log->WriteScreenshot(log->screenshot_filename, lastof(log->screenshot_filename));
+	log->WriteScreenshot(log->screenshot_filename, lastof(log->screenshot_filename), log->name_buffer);
 
 	/* Close any possible log files */
 	CloseConsoleLogIfActive();
@@ -829,8 +833,9 @@ static INT_PTR CALLBACK CrashDialogFunc(HWND wnd, UINT msg, WPARAM wParam, LPARA
 					ExitProcess(2);
 				case 13: // Emergency save
 					_savegame_DBGL_data = CrashLogWindows::current->crashlog;
+					_save_DBGC_data = true;
 					char filename[MAX_PATH];
-					if (CrashLogWindows::current->WriteSavegame(filename, lastof(filename))) {
+					if (CrashLogWindows::current->WriteSavegame(filename, lastof(filename), CrashLogWindows::current->name_buffer)) {
 						size_t len = _tcslen(_save_succeeded) + _tcslen(OTTD2FS(filename)) + 1;
 						TCHAR *text = AllocaM(TCHAR, len);
 						_sntprintf(text, len, _save_succeeded, OTTD2FS(filename));
@@ -839,6 +844,7 @@ static INT_PTR CALLBACK CrashDialogFunc(HWND wnd, UINT msg, WPARAM wParam, LPARA
 						MessageBox(wnd, _T("Save failed"), _T("Save failed"), MB_ICONINFORMATION);
 					}
 					_savegame_DBGL_data = nullptr;
+					_save_DBGC_data = false;
 					break;
 				case 15: // Expand window to show crash-message
 					_expanded ^= 1;

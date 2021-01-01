@@ -86,10 +86,8 @@ CommandCost CmdRenameSign(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 		if (Utf8StringLength(text) >= MAX_LENGTH_SIGN_NAME_CHARS) return CMD_ERROR;
 
 		if (flags & DC_EXEC) {
-			/* Delete the old name */
-			free(si->name);
 			/* Assign the new one */
-			si->name = stredup(text);
+			si->name = text;
 			if (_game_mode != GM_EDITOR) si->owner = _current_company;
 
 			si->UpdateVirtCoord();
@@ -118,7 +116,7 @@ CommandCost CmdRenameSign(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
  * @param p2 unused
  * @param cmd unused
  */
-void CcPlaceSign(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
+void CcPlaceSign(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
 {
 	if (result.Failed()) return;
 

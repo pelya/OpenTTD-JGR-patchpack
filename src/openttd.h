@@ -23,17 +23,18 @@ enum GameMode {
 /** Mode which defines what mode we're switching to. */
 enum SwitchMode {
 	SM_NONE,
-	SM_NEWGAME,         ///< New Game --> 'Random game'.
-	SM_RESTARTGAME,     ///< Restart --> 'Random game' with current settings.
-	SM_EDITOR,          ///< Switch to scenario editor.
-	SM_LOAD_GAME,       ///< Load game, Play Scenario.
-	SM_MENU,            ///< Switch to game intro menu.
-	SM_SAVE_GAME,       ///< Save game.
-	SM_SAVE_HEIGHTMAP,  ///< Save heightmap.
-	SM_GENRANDLAND,     ///< Generate random land within scenario editor.
-	SM_LOAD_SCENARIO,   ///< Load scenario from scenario editor.
-	SM_START_HEIGHTMAP, ///< Load a heightmap and start a new game from it.
-	SM_LOAD_HEIGHTMAP,  ///< Load heightmap from scenario editor.
+	SM_NEWGAME,           ///< New Game --> 'Random game'.
+	SM_RESTARTGAME,       ///< Restart --> 'Random game' with current settings.
+	SM_EDITOR,            ///< Switch to scenario editor.
+	SM_LOAD_GAME,         ///< Load game, Play Scenario.
+	SM_MENU,              ///< Switch to game intro menu.
+	SM_SAVE_GAME,         ///< Save game.
+	SM_SAVE_HEIGHTMAP,    ///< Save heightmap.
+	SM_GENRANDLAND,       ///< Generate random land within scenario editor.
+	SM_LOAD_SCENARIO,     ///< Load scenario from scenario editor.
+	SM_START_HEIGHTMAP,   ///< Load a heightmap and start a new game from it.
+	SM_LOAD_HEIGHTMAP,    ///< Load heightmap from scenario editor.
+	SM_RESTART_HEIGHTMAP, ///< Load a heightmap and start a new game from it with current settings.
 };
 
 /** Display Options */
@@ -47,23 +48,16 @@ enum DisplayOptions {
 	DO_SHOW_COMPETITOR_SIGNS = 7, ///< Display signs, station names and waypoint names of opponent companies. Buoys and oilrig-stations are always shown, even if this option is turned off.
 };
 
+/** Extra Display Options */
+enum ExtraDisplayOptions {
+	XDO_SHOW_MONEY_TEXT_EFFECTS = 0, ///< Display money text effects.
+};
+
 extern GameMode _game_mode;
 extern SwitchMode _switch_mode;
+extern bool _check_special_modes;
 extern bool _exit_game;
-
-#if defined(WIN32)
-extern bool _in_event_loop_post_crash;
-
-inline bool InEventLoopPostCrash()
-{
-	return _in_event_loop_post_crash;
-}
-#else
-inline bool InEventLoopPostCrash()
-{
-	return false;
-}
-#endif
+extern bool _save_config;
 
 /** Modes of pausing we've got */
 enum PauseMode : byte {

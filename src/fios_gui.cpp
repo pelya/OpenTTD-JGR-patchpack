@@ -67,6 +67,7 @@ void LoadCheckData::Clear()
 	ClearGRFConfigList(&this->grfconfig);
 
 	this->debug_log_data.clear();
+	this->debug_config_data.clear();
 }
 
 /** Load game/scenario with optional content download */
@@ -548,9 +549,9 @@ public:
 						for (auto &pair : _load_check_data.companies) {
 							SetDParam(0, pair.first + 1);
 							const CompanyProperties &c = *pair.second;
-							if (c.name != nullptr) {
+							if (!c.name.empty()) {
 								SetDParam(1, STR_JUST_RAW_STRING);
-								SetDParamStr(2, c.name);
+								SetDParamStr(2, c.name.c_str());
 							} else {
 								SetDParam(1, c.name_1);
 								SetDParam(2, c.name_2);
@@ -947,8 +948,6 @@ void ShowSaveLoadDialog(AbstractFileType abstract_filetype, SaveLoadOperation fo
 		/* Dialogue for loading a file. */
 		sld = (abstract_filetype == FT_HEIGHTMAP) ? &_load_heightmap_dialog_desc : &_load_dialog_desc;
 	}
-
-	_file_to_saveload.abstract_ftype = abstract_filetype;
 
 	new SaveLoadWindow(sld, abstract_filetype, fop);
 }

@@ -392,7 +392,7 @@ STR_FILE_MENU_EXIT                                              :Irten
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Munduko mapa
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :lehio extra
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :lehio extra
 STR_MAP_MENU_SIGN_LIST                                          :Seinale zerrenda
 
 ############ range for town menu starts
@@ -861,7 +861,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}{TOWN}ko udaletxeak {STRING}rekin urte beterako erabateko garraio-eskubideen kontratua sinatu du!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Leihoa {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Leihoa {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Leihora kopiatu
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK} Leiho nagusian ikusten dena leiho honetara kopiatu
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Aldatu ikuspen nagusia
@@ -1452,8 +1452,6 @@ STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Kolorezko albis
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Egunkarien mezuak kolorean imprimatuko diren urtea. Urte hau baino lehenago txuri/beltz monokromoa erabiliko da
 STR_CONFIG_SETTING_STARTING_YEAR                                :Hasierako urtea: {STRING}
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Gaitu ekonomia leuna (aldaketa gehiago baina txikiagoak): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Gaitua dagoenean, industrien ekoizpena gehiagotan aldatuko da baina urrats txikiagotan. Aukera honek gehienetan ez du eraginik izango industriak NewGRF batek ezartzen baditu
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Beste konpainien akzioak erostea baimendu: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Gaitua dagoenean, konpainiaren akzioak erostea eta saltzea baimendu. Konpainiak akzioak izateko gutxiengo adin batera iritsi beharko dira
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :Elikadura sistemetan ordaindu beharreko irabazien ehunekoa: {STRING}
@@ -1674,17 +1672,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Itzultze
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Irten
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Zihur zaude OpenTTD-tik irten nahi duzula eta {STRING}-ra itzuli?
 STR_QUIT_YES                                                    :{BLACK}Bai
 STR_QUIT_NO                                                     :{BLACK}Ez
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Jokoa Utzi
@@ -2580,7 +2569,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Konpainia jabe 
 STR_ABOUT_OPENTTD                                               :{WHITE}OpenTTD-ri buruz
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Original copyright {COPYRIGHT} 1995 Chris Sawyer, All rights reserved
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD bertsioa {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 The OpenTTD team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} The OpenTTD team
 
 # Framerate display window
 STR_FRAMERATE_FPS_BAD                                           :{RED}{DECIMAL} koadroak/s
@@ -4173,7 +4162,6 @@ STR_ERROR_CAN_T_REMOVE_ROAD_FROM                                :{WHITE}Ezin da 
 STR_ERROR_CAN_T_REMOVE_TRAMWAY_FROM                             :{WHITE}Ezin da hemen tranbiarik ezabatu...
 STR_ERROR_THERE_IS_NO_ROAD                                      :{WHITE}... ez dago biderik
 STR_ERROR_THERE_IS_NO_TRAMWAY                                   :{WHITE}... ez dago tranbia biderik
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... errepidea ez da bateragarria
 
 # Waterway construction errors
 STR_ERROR_CAN_T_BUILD_CANALS                                    :{WHITE}Ezin dira hemen urbideak eraiki...

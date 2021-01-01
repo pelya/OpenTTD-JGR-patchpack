@@ -15,6 +15,15 @@
 
 typedef OverflowSafeInt64 Money;
 
+/** Type of the game economy. */
+enum EconomyType : uint8 {
+	ET_BEGIN = 0,
+	ET_ORIGINAL = 0,
+	ET_SMOOTH = 1,
+	ET_FROZEN = 2,
+	ET_END = 3,
+};
+
 /** Data of the economy. */
 struct Economy {
 	Money max_loan;                       ///< NOSAVE: Maximum possible loan
@@ -189,6 +198,8 @@ struct PriceBaseSpec {
 
 /** The "steps" in loan size, in British Pounds! */
 static const int LOAN_INTERVAL = 10000;
+/** The size of loan for a new company, in British Pounds! */
+static const int64 INITIAL_LOAN = 100000;
 
 /**
  * Maximum inflation (including fractional part) without causing overflows in int64 price computations.

@@ -409,7 +409,7 @@ STR_FILE_MENU_EXIT                                              :יציאה
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :מפת העולם
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :השקפה נוספת
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :השקפה נוספת
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :מקרא זרימת מטענים
 STR_MAP_MENU_SIGN_LIST                                          :רשימת שלטים
 
@@ -887,7 +887,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}הרשות המקומית של {TOWN} חותמת חוזה עם {STRING} המעניק זכויות תעבורה בלעדיות למשך שנה!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}השקפה {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}השקפה {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}העתק להשקפה
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}העתק את מיקום חלון התצוגה הראשי לחלון תצוגה זה
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}עבור למיקום שנמצא בחלון התצוגה
@@ -1531,8 +1531,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :מלא
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :{STRING} :הצג חדשות צבעוניות החל משנת
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :השנה בה הודעות העיתונות מודפסות בצבע. לפני שנה זו הן מודפסות בשחור-לבן.
 STR_CONFIG_SETTING_STARTING_YEAR                                :{STRING} :שנת התחלה
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :אפשר כלכלה עדינה (יותר, שינויים קטנים יותר): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :כאשר מאופשר, הייצור של תעשיה משתנה לעיתים קרובות יותר, ובצעדים קטנים יותר. להגדרה זו בדרך כלל אין שום השפעה אם סוגי תעשיות מסופקים ע"י NewGRF
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :אפשר קניית מניות מחברות אחרות: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :כאשר מאופשר, מתיר קנייה ומכירה של מניות של חברות. מניות יהיו זמינות רק עבור חברות המגיעות לגיל מסוים
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :אחוז הרווח מקטע נסיעה לתשלום במערכות הזנה: {STRING}
@@ -1779,17 +1777,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}בתרג
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}צא
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}אתה בטוח שברצונך לצאת ולחזור ל{STRING}?
 STR_QUIT_YES                                                    :{BLACK}כן
 STR_QUIT_NO                                                     :{BLACK}לא
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :חלונות
-STR_OSNAME_UNIX                                                 :יוניקס
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :הייקו
-STR_OSNAME_OS2                                                  :מערכת הפעלה או.אס שתיים
-STR_OSNAME_SUNOS                                                :סולריס
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}עזיבת משחק
@@ -2694,7 +2683,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :שטח בבעל
 STR_ABOUT_OPENTTD                                               :{WHITE}OpenTTD אודות
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}כל הזכויות שמורות , {COPYRIGHT}1995 כריס סויר - זכויות יוצרים מקוריות
 STR_ABOUT_VERSION                                               :{BLACK}{REV} גירסה , OpenTTD
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-2019 The OpenTTD team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-{STRING} The OpenTTD team
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}קצב ריענון

@@ -384,7 +384,7 @@ STR_FILE_MENU_EXIT                                              :خروج
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :نقشه ی دنیا
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :نمای اضافه
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :نمای اضافه
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :میزان حمل بار
 STR_MAP_MENU_SIGN_LIST                                          :لیست نشانه
 
@@ -858,7 +858,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}مقامات محلی {TOWN} قرارداد حمل و نقل انحصاری را با {STRING} به مدت یکسال امضاء کردند!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}نمای اضافه {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}نمای اضافه {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK} به نمای اضافه منتقل کن
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}موقعیت نمای اصلی را به این نمای اضافه منتقل کن
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}موقعیت نمای اضافه را به نمای اصلی منتقل کن
@@ -1311,7 +1311,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :کامل
 
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :نمایش خبرهای رنگی در سال: {STRING}
 STR_CONFIG_SETTING_STARTING_YEAR                                :سال شروع: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :فعال بودن اقتصاد ملایم (بیشتر،تغییرات کوچک انجام می‌شود): {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :قابلیت خرید سهام بقیه شرکت‌ها: {STRING}
 STR_CONFIG_SETTING_SEMAPHORE_BUILD_BEFORE_DATE                  :نصب علمک مکانیکی به جای چراغ راهنمایی قبل از سال: {STRING}
 STR_CONFIG_SETTING_ENABLE_SIGNAL_GUI                            :فعال کردن صفحه واسط کاربری برای نشانگر: {STRING}
@@ -1470,17 +1469,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}این �
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}خروج
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}آیا می‌خواهید از بازی خارج شوید و برگردید به{STRING}?
 STR_QUIT_YES                                                    :{BLACK}بله
 STR_QUIT_NO                                                     :{BLACK}خیر
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :هایکو
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}رها کردن بازی
@@ -2371,7 +2361,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :زمین خری
 STR_ABOUT_OPENTTD                                               :{WHITE}OpenTTD در باره ی
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Original copyright {COPYRIGHT} 1995 Chris Sawyer, All rights reserved
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD ویرایش {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-2019 The OpenTTD team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-{STRING} The OpenTTD team
 
 # Framerate display window
 ############ Leave those lines in this order!!

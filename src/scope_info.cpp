@@ -16,6 +16,8 @@
 #include "station_base.h"
 #include "waypoint_base.h"
 #include "map_func.h"
+#include "window_func.h"
+#include "window_gui.h"
 #include "table/strings.h"
 
 #include "safeguards.h"
@@ -58,7 +60,7 @@ const char *scope_dumper::VehicleInfo(const Vehicle *v)
 	char *b = this->buffer;
 	const char *last = lastof(this->buffer);
 	auto dump_flags = [&](const Vehicle *u) {
-		b = u->DumpVehicleFlags(b, last);
+		b = u->DumpVehicleFlags(b, last, true);
 	};
 	if (v) {
 		b += seprintf(b, last, "veh: %u: (", v->index);
@@ -131,5 +133,11 @@ const char *scope_dumper::StationInfo(const BaseStation *st)
 const char *scope_dumper::TileInfo(TileIndex tile)
 {
 	DumpTileInfo(this->buffer, lastof(this->buffer), tile);
+	return this->buffer;
+}
+
+const char *scope_dumper::WindowInfo(const Window *w)
+{
+	DumpWindowInfo(this->buffer, lastof(this->buffer), w);
 	return this->buffer;
 }

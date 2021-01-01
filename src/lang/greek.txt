@@ -458,7 +458,7 @@ STR_FILE_MENU_EXIT                                              :Έξοδος
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Χάρτης του κόσμου
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Πρόσθετη εμφάνιση
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Πρόσθετη εμφάνιση
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Υπόμνημα Ροής Φορτίου
 STR_MAP_MENU_SIGN_LIST                                          :Λίστα πινακίδων
 
@@ -985,7 +985,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Οι τοπικές αρχές της πόλης {TOWN} υπογράφουν συμβόλαιο με την εταιρεία {STRING} για αποκλειστικά δικαιώματα μεταφορών ενός έτους!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Εμφάνιση {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Εμφάνιση {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Αντιγραφή στο παράθυρο εμφάνισης
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Αντιγραφή της τοποθεσίας της κύριας προβολής σε αυτό το παράθυρο εμφάνισης
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Επικόλληση από παράθυρο εμφάνισης
@@ -1641,8 +1641,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Ολόκληρ�
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Τα έγχρωμα νέα εμφανίζονται από το: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Το έτος κατά το οποίο οι ανακοινώσεις στην εφημερίδα εκτυπώνονται έγχρωμες. Πριν από αυτό το έτος, εκτυπώνονται μονόχρωμες και ασπρόμαυρες
 STR_CONFIG_SETTING_STARTING_YEAR                                :Έτος εκκίνησης: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Ενεργοποίηση ομαλής οικονομίας (περισσότερες, μικρότερες αλλαγές): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Όταν είναι ενεργοποιημένη, η παραγωγή των βιομηχανιών αλλάζει συχνότερα και σε μικρότερα βήματα. Αυτή η ρύθμιση συνήθως δεν έχει καμία επίδραση όταν οι τύποι των βιομηχανιών παρέχονται από NewGRF
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Ενεργοποίηση της δυνατότητας αγοράς μετοχών από άλλες εταιρίες: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Όταν είναι ενεργοποιημένη, επιτρέπεται η αγοραπωλησία εταιρικών μετοχών. Οι μετοχές θα είναι διαθέσιμες μόνο όταν οι εταιρείες φτάνουν μια ορισμένη ηλικία
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :Το ποσοστό κέρδους από το σκέλος μεταφοράς στα συστήματα τροφοδότησης: {STRING}
@@ -1893,17 +1891,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Λείπ
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Έξοδος
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Είστε σίγουροι ότι θέλετε να εγκαταλείψετε το OpenTTD και να επιστρέψετε στο λειτουργικό {STRING};
 STR_QUIT_YES                                                    :{BLACK}Ναι
 STR_QUIT_NO                                                     :{BLACK}Όχι
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Εγκατάλειψη Παιχνιδιού
@@ -2811,7 +2800,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Ιδιοκτη�
 STR_ABOUT_OPENTTD                                               :{WHITE}Σχετικά με το OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Αρχικά Πνευματικά Δικαιώματα {COPYRIGHT} 1995 Chris Sawyer, Όλα τα δικαιώματα διατηρούνται
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD έκδοση {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 Η ομάδα του OpenTTD
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} Η ομάδα του OpenTTD
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Ρυθμός καρέ γραφικών

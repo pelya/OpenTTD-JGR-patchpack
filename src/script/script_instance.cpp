@@ -58,7 +58,9 @@ ScriptInstance::ScriptInstance(const char *APIName) :
 	is_save_data_on_stack(false),
 	suspend(0),
 	is_paused(false),
-	callback(nullptr)
+	in_shutdown(false),
+	callback(nullptr),
+	APIName(APIName)
 {
 	this->storage = new ScriptStorage();
 	this->engine  = new Squirrel(APIName);
@@ -84,6 +86,12 @@ void ScriptInstance::Initialize(const char *main_script, const char *instance_na
 			if (this->engine->IsSuspended()) ScriptLog::Error("This script took too long to load script. AI is not started.");
 			this->Died();
 			return;
+		}
+
+		if (strcmp(this->APIName, "GS") == 0) {
+			if (strcmp(instance_name, "BeeRewardClass") == 0) {
+				this->LoadCompatibilityScripts("brgs", GAME_DIR);
+			}
 		}
 
 		/* Create the main-class */
@@ -129,13 +137,31 @@ bool ScriptInstance::LoadCompatibilityScripts(const char *api_version, Subdirect
 		return false;
 	}
 
-	ScriptLog::Warning("API compatibility script not found");
+	const char *message_suffix;
+	switch (dir) {
+		case AI_DIR:
+			message_suffix = ", please check that the 'ai/' directory is properly installed";
+			break;
+
+		case GAME_DIR:
+			message_suffix = ", please check that the 'game/' directory is properly installed";
+			break;
+
+		default:
+			message_suffix = "";
+			break;
+	}
+
+	char not_found_msg[128];
+	seprintf(not_found_msg, lastof(not_found_msg), "API compatibility script not found: %s%s", script_name, message_suffix);
+	ScriptLog::Warning(not_found_msg);
 	return true;
 }
 
 ScriptInstance::~ScriptInstance()
 {
 	ScriptObject::ActiveInstance active(this);
+	this->in_shutdown = true;
 
 	if (instance != nullptr) this->engine->ReleaseObject(this->instance);
 	if (engine != nullptr) delete this->engine;
@@ -154,6 +180,7 @@ void ScriptInstance::Died()
 {
 	DEBUG(script, 0, "The script died unexpectedly.");
 	this->is_dead = true;
+	this->in_shutdown = true;
 
 	this->last_allocated_memory = this->GetAllocatedMemory(); // Update cache
 
@@ -683,11 +710,21 @@ SQInteger ScriptInstance::GetOpsTillSuspend()
 	return this->engine->GetOpsTillSuspend();
 }
 
-bool ScriptInstance::DoCommandCallback(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
+void ScriptInstance::LimitOpsTillSuspend(SQInteger suspend)
+{
+	SQInteger current = this->GetOpsTillSuspend();
+	if (suspend < current) {
+		/* Reduce script ops. */
+		HSQUIRRELVM vm = this->engine->GetVM();
+		Squirrel::DecreaseOps(vm, current - suspend);
+	}
+}
+
+bool ScriptInstance::DoCommandCallback(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
 {
 	ScriptObject::ActiveInstance active(this);
 
-	if (!ScriptObject::CheckLastCommand(tile, p1, p2, cmd)) {
+	if (!ScriptObject::CheckLastCommand(tile, p1, p2, p3, cmd)) {
 		DEBUG(script, 1, "DoCommandCallback terminating a script, last command does not match expected command");
 		return false;
 	}
@@ -701,7 +738,7 @@ bool ScriptInstance::DoCommandCallback(const CommandCost &result, TileIndex tile
 		ScriptObject::SetLastCost(result.GetCost());
 	}
 
-	ScriptObject::SetLastCommand(INVALID_TILE, 0, 0, CMD_END);
+	ScriptObject::SetLastCommand(INVALID_TILE, 0, 0, 0, CMD_END);
 
 	return true;
 }
@@ -717,4 +754,14 @@ size_t ScriptInstance::GetAllocatedMemory() const
 {
 	if (this->engine == nullptr) return this->last_allocated_memory;
 	return this->engine->GetAllocatedMemory();
+}
+
+void ScriptInstance::SetMemoryAllocationLimit(size_t limit) const
+{
+	if (this->engine != nullptr) this->engine->SetMemoryAllocationLimit(limit);
+}
+
+void ScriptInstance::ReleaseSQObject(HSQOBJECT *obj)
+{
+	if (!this->in_shutdown) this->engine->ReleaseObject(obj);
 }

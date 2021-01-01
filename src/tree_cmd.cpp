@@ -446,7 +446,7 @@ CommandCost CmdPlantTree(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 
 				if (flags & DC_EXEC) {
 					AddTreeCount(tile, 1);
-					MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+					MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 					if (c != nullptr) c->tree_limit -= 1 << 16;
 				}
 				/* 2x as expensive to add more trees to an existing tile */
@@ -523,7 +523,7 @@ CommandCost CmdPlantTree(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 
 					/* Plant full grown trees in scenario editor */
 					PlantTreesOnTile(tile, treetype, 0, _game_mode == GM_EDITOR ? 3 : 0);
-					MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+					MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 					if (c != nullptr) c->tree_limit -= 1 << 16;
 
 					/* When planting rainforest-trees, set tropiczone to rainforest in editor. */
@@ -555,13 +555,15 @@ struct TreeListEnt : PalSpriteID {
 	byte x, y;
 };
 
-static void DrawTile_Trees(TileInfo *ti)
+static void DrawTile_Trees(TileInfo *ti, DrawTileProcParams params)
 {
-	switch (GetTreeGround(ti->tile)) {
-		case TREE_GROUND_SHORE: DrawShoreTile(ti->tileh); break;
-		case TREE_GROUND_GRASS: DrawClearLandTile(ti, GetTreeDensity(ti->tile)); break;
-		case TREE_GROUND_ROUGH: DrawHillyLandTile(ti); break;
-		default: DrawGroundSprite(_clear_land_sprites_snow_desert[GetTreeDensity(ti->tile)] + SlopeToSpriteOffset(ti->tileh), PAL_NONE); break;
+	if (!params.no_ground_tiles) {
+		switch (GetTreeGround(ti->tile)) {
+			case TREE_GROUND_SHORE: DrawShoreTile(ti->tileh); break;
+			case TREE_GROUND_GRASS: DrawClearLandTile(ti, GetTreeDensity(ti->tile)); break;
+			case TREE_GROUND_ROUGH: DrawHillyLandTile(ti); break;
+			default: DrawGroundSprite(_clear_land_sprites_snow_desert[GetTreeDensity(ti->tile)] + SlopeToSpriteOffset(ti->tileh), PAL_NONE); break;
+		}
 	}
 
 	/* Do not draw trees when the invisible trees setting is set */
@@ -675,7 +677,7 @@ static void TileLoopTreesDesert(TileIndex tile)
 		case TROPICZONE_DESERT:
 			if (GetTreeGround(tile) != TREE_GROUND_SNOW_DESERT) {
 				SetTreeGroundDensity(tile, TREE_GROUND_SNOW_DESERT, 3);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 			}
 			break;
 
@@ -724,7 +726,14 @@ static void TileLoopTreesAlps(TileIndex tile)
 			return;
 		}
 	}
-	MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+	MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
+}
+
+static bool CanPlantExtraTrees(TileIndex tile)
+{
+	return ((_settings_game.game_creation.landscape == LT_TROPIC && GetTropicZone(tile) == TROPICZONE_RAINFOREST) ?
+		_settings_game.construction.extra_tree_placement != ETP_NONE :
+		_settings_game.construction.extra_tree_placement == ETP_ALL);
 }
 
 static void TileLoop_Trees(TileIndex tile)
@@ -747,13 +756,13 @@ static void TileLoop_Trees(TileIndex tile)
 		uint density = GetTreeDensity(tile);
 		if (density < 3) {
 			SetTreeGroundDensity(tile, TREE_GROUND_GRASS, density + 1);
-			MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+			MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 		}
 	}
 	if (GetTreeCounter(tile) < 15) {
 		if (_settings_game.construction.tree_growth_rate > 0) {
 			/* slow, very slow, extremely slow */
-			uint16 grow_slowing_values[3] = { 0x10000 / 5, 0x10000 / 20, 0x10000 / 120 };
+			uint16 grow_slowing_values[4] = { 0x10000 / 5, 0x10000 / 20, 0x10000 / 120, 0 };
 
 			if (GB(Random(), 0, 16) < grow_slowing_values[_settings_game.construction.tree_growth_rate - 1]) {
 				AddTreeCounter(tile, 1);
@@ -786,12 +795,7 @@ static void TileLoop_Trees(TileIndex tile)
 						FALLTHROUGH;
 
 					case 2: { // add a neighbouring tree
-						/* Don't plant extra trees if that's not allowed. */
-						if ((_settings_game.game_creation.landscape == LT_TROPIC && GetTropicZone(tile) == TROPICZONE_RAINFOREST) ?
-								_settings_game.construction.extra_tree_placement == ETP_NONE :
-								_settings_game.construction.extra_tree_placement != ETP_ALL) {
-							break;
-						}
+						if (!CanPlantExtraTrees(tile)) break;
 
 						TreeType treetype = GetTreeType(tile);
 
@@ -819,6 +823,9 @@ static void TileLoop_Trees(TileIndex tile)
 				/* more than one tree, delete it */
 				AddTreeCount(tile, -1);
 				SetTreeGrowth(tile, 3);
+			} else if (!CanPlantExtraTrees(tile)) {
+				/* if trees can't spread just plant a new one to prevent deforestation */
+				SetTreeGrowth(tile, 0);
 			} else {
 				/* just one tree, change type into MP_CLEAR */
 				switch (GetTreeGround(tile)) {
@@ -849,7 +856,7 @@ static void TileLoop_Trees(TileIndex tile)
 			break;
 	}
 
-	MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+	MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 }
 
 void OnTick_Trees()

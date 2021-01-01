@@ -1,4 +1,4 @@
-## JGR's Patchpack version 0.33.2
+## JGR's Patchpack version 0.39.2
 
 This is a collection of patches applied to [OpenTTD](http://www.openttd.org/)
 
@@ -19,6 +19,8 @@ See [below](#openttd) for the original OpenTTD readme.
 The thread for this patchpack can be found [here](http://www.tt-forums.net/viewtopic.php?f=33&t=73469).
 
 See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
+
+See the [wiki](https://github.com/JGRennison/OpenTTD-patches/wiki) for guides on how to use some of the included features.
 
 
 #### This patchpack contains the following
@@ -49,6 +51,8 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
 * Town cargo generation factor: [imported](http://www.tt-forums.net/viewtopic.php?t=46399)  
   * Allow factor to be more finely adjusted in 0.1 increments. (added in v0.16.0)
 
+* Industry cargo generation factor (added in v0.39.2)  
+
 * Vehicles visible in tunnels (transparency setting): [imported](http://dev.openttdcoop.org/projects/clientpatches/repository/changes/VehicelsInTunnels.diff)
 
 * Signals in tunnels and on bridges: [imported](http://www.tt-forums.net/viewtopic.php?f=33&t=41260)  
@@ -71,9 +75,9 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
   This is modified to use an extra button in the smallmap window, instead of a console command, and use the current zoom level and display mode of the smallmap window.
 
 * Automated timetables and separation: [imported](http://www.tt-forums.net/viewtopic.php?f=33&t=46391)  
-  * Auto timetabling: Bias timetable adjustment to favour negative adjustments; this is to avoid positive feedback between congestion delays and increased timetable length. Reduce jam detection threshold.  
-  * Auto separation: Fix handling of non-station orders (e.g. waypoints and depots). Change to a per-vehicle setting. Add a company setting to scale vehicle lateness adjustments. No longer set vehicle lateness to 0 if separation fails, instead leave it as it was.  
-  * Timetable GUI: Allow clearing of timetable time fields which are at 0. Allow explicitly setting timetable time fields to 0 without clearing them.
+  * Auto timetabling: Bias timetable adjustment to favour negative adjustments; this is to avoid positive feedback between congestion delays and increased timetable length. Change jam detection threshold.  
+  * Auto separation: A large number of improvements have been made to the separation algorithm.  
+  * Timetable GUI: Allow clearing of timetable time fields which are at 0. Allow explicitly setting timetable time fields to 0 without clearing them.  
   * Add company settings to enable automatic timetabling or separation for new vehicles.  
   * Allow changing/clearing the timetabled waiting time and max speed of all of a vehicle's orders at once.  
   * Add client setting to show the remainder ticks in timetable, after dividing to days or minutes.  
@@ -202,6 +206,21 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
 
 * Multiple rail types per tile (added in v0.29.0)
 
+* More cheats and cheats in multiplayer (added in v0.34.2)  
+  * Add support for server admin use of money, magic bulldozer, tunnels and jet crashes cheats in multiplayer.  
+  * Add setting to allow non server admins to use the money cheat in multiplayer.  
+  * Add cheats to set inflation income and cost factors.
+  
+* Drive-through train depot emulation (added in v0.38.0)
+
+* One-way road and road vehicle overtaking enhancements (added in v0.39.0)  
+  * Road between one-way road tiles is also one-way.  
+  * One way roads may have T-junctions on the drive side.  
+  * Drive-through road stops may be made one way.  
+  * Road vehicles have fewer constraints on overtaking on one-way road, and may be remain in the overtaking lane indefinitely.  
+  * Road vehicles may now start and finish overtaking on bridges and in tunnels.  
+  See the [wiki](https://github.com/JGRennison/OpenTTD-patches/wiki/One-way-roads) for full details.
+
 * Save/load and savegame format changes  
   * Various changes to improve handling of savegames which use features not in trunk.  
   * Savegames from this patchpack are not loadable in trunk.  
@@ -229,7 +248,7 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
   * Go to depot and sell vehicle orders. (added in v0.26.0).  
   * Order mode to lock timetable wait and travel times against autofill/automate changes. (added in v0.26.0 and v0.27.0 respectively).  
   * Settings to allow placing stations and all NewGRF objects under bridges. (added in v0.26.0).  
-  * Leave early order timetable flag. (added in v0.27.0).  
+  * Leave early and leave early if any/all cargoes fully loaded order timetable flags. (added in v0.27.0 and v0.36.0 respectively).  
   * Timetabled wait times at waypoints. (added in v0.27.0).  
   * Add setting to enable flipping direction of all train types in depot. (added in v0.27.1).  
   * Allow purchasing a region of tiles at once, by dragging, and add a company rate limit for land purchasing (added in v0.29.0).  
@@ -249,8 +268,27 @@ See [jgrpp-changelog.md](jgrpp-changelog.md) for changelog.
   * Change network protocol to send server/join and rcon passwords in hashed form instead of in clear text. (added in v0.31.4).  
   * Add modifier key window for toggling shift/ctrl key states using mouse. (added in v0.32-rc4).  
   * Add IME support on Linux/SDL2 (SDL2-supported IMEs and Fcitx). (added in v0.32.0).  
+  * Add support for allowing/disallowing supply to a station, per cargo, by ctrl-clicking the station cargo rating. (added in v0.34.0).  
+  * Open train vehicle details window on total cargo tab if shift pressed. (added in v0.34.0).  
+  * Ctrl-click up/down in NewGRF window to move to top or bottom. (added in v0.34.2).  
+  * Additional conditional order types/modes. (added in v0.24.0, v0.33.1, v0.34.3, v0.37.0).  
+  * Improve road vehicle pathfinding when multiple vehicles are simultaneously heading to a station with multiple bay/stop entrances. (added in v0.35.0).  
+  * Add setting to scale station cargo capacity and rating tolerance by size. (added in v0.35.0).  
+  * Add setting to disable vehicle expiry after a given year. (added in v0.35.0).  
+  * Add setting to control road vehicle re-routing on road layout changes. (added in v0.35.0).  
+  * Add news setting for trains waiting due to routing restrictions. (added in v0.36.0).  
+  * Add setting for alternative linkgraph overlay colour schemes. (added in v0.36.0).  
+  * Add basic tab-completion to the console window. (added in v0.36.0).  
+  * Add settings to enable multiple churches/stadiums and to ignore date/zone/GRF when placing houses in the scenario editor. (added in v0.36.0).  
+  * Add setting for default road/tram types. (added in v0.37.0).  
+  * Allow building objects by area (1x1 objects only). (added in v0.37.0).  
+  * Increase per-vehicle order limit from 254 to 64k. (added in v0.38.0).  
+  * Add features to reverse the order of an order list, and to append the reverse of an order list. (added in v0.39.0).  
+  * Add console commands for conditional execution from game date. (added in v0.39.2).  
   * Various minor fixes, see changelog.  
   * [NewGRF specification additions](docs/newgrf-additions.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/newgrf-additions.html)).
+  * [NML specification additions](docs/newgrf-additions-nml.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/newgrf-additions-nml.html)).
+  * [AI/GS script additions](docs/script-additions.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/script-additions.html)).
   * [Low-level code/performance changes](docs/jgrpp-low-level-changes.md).
 
 * Translations  
@@ -377,13 +415,13 @@ Please report a bug if you find a save that doesn't load.
 
 ## 1.4) Installing and running OpenTTD
 
-OpenTTD is usually straightforward to install, but for more help the wiki [includes an installation guide](https://wiki.openttd.org/Installation).
+OpenTTD is usually straightforward to install, but for more help the wiki [includes an installation guide](https://wiki.openttd.org/en/Manual/Installation).
 
 OpenTTD needs some additional graphics and sound files to run.
 
 For some platforms these will be downloaded during the installation process if required.
 
-For some platforms, you will need to refer to [the installation guide](https://wiki.openttd.org/Installation).
+For some platforms, you will need to refer to [the installation guide](https://wiki.openttd.org/en/Manual/Installation).
 
 
 ### 1.4.1) Free graphics and sound files
@@ -428,7 +466,7 @@ OpenTTD features multiple types of add-on content, which modify gameplay in diff
 
 Most types of add-on content can be downloaded within OpenTTD via the 'Check Online Content' button in the main menu.
 
-Add-on content can also be installed manually, but that's more complicated; the [OpenTTD wiki](https://wiki.openttd.org/OpenTTD) may offer help with that, or the [OpenTTD directory structure guide](./docs/directory_structure.md).
+Add-on content can also be installed manually, but that's more complicated; the [OpenTTD wiki](https://wiki.openttd.org/) may offer help with that, or the [OpenTTD directory structure guide](./docs/directory_structure.md).
 
 ### 1.5.1) AI opponents
 
@@ -450,7 +488,7 @@ A wide range of add-content is available as NewGRFs, including vehicles, industr
 
 NewGRFs can be added via the 'Check Online Content' button in the main menu.
 
-See also the wiki [guide to NewGRFs](https://wiki.openttd.org/NewGRF) and [the forum graphics development section](https://www.tt-forums.net/viewforum.php?f=66).
+See also the wiki [guide to NewGRFs](https://wiki.openttd.org/en/Manual/NewGRF) and [the forum graphics development section](https://www.tt-forums.net/viewforum.php?f=66).
 
 ### 1.5.4) Game scripts
 
@@ -458,7 +496,7 @@ Game scripts can provide additional challenges or changes to the standard OpenTT
 
 Game scripts can be added via the 'Check Online Content' button in the main menu.
 
-See also the wiki [guide to game scripts](https://wiki.openttd.org/Game_script) and [the forum graphics game script section](https://www.tt-forums.net/viewforum.php?f=65).
+See also the wiki [guide to game scripts](https://wiki.openttd.org/en/Manual/Game%20script) and [the forum graphics game script section](https://www.tt-forums.net/viewforum.php?f=65).
 
 ### 1.6) OpenTTD directories
 
@@ -476,14 +514,14 @@ If you want to compile OpenTTD from source, instructions can be found in [COMPIL
 'Official' channels
 
 - [OpenTTD website](https://www.openttd.org)
-- IRC chat using #openttd on irc.oftc.net [more info about our irc channel](https://wiki.openttd.org/Irc)
+- IRC chat using #openttd on irc.oftc.net [more info about our irc channel](https://wiki.openttd.org/en/Development/IRC%20channel)
 - [OpenTTD on Github](https://github.com/openTTD/) for code repositories and for reporting issues
 - [forum.openttd.org](https://forum.openttd.org/) - the primary community forum site for discussing OpenTTD and related games
 - [OpenTTD wiki](https://wiki.openttd.org/) community-maintained wiki, including topics like gameplay guide, detailed explanation of some game mechanics, how to use add-on content (mods) and much more
 
 'Unofficial' channels
 
-- the OpenTTD wiki has a [page listing OpenTTD communities](https://wiki.openttd.org/Community) including some in languages other than English
+- the OpenTTD wiki has a [page listing OpenTTD communities](https://wiki.openttd.org/en/Community/Community) including some in languages other than English
 
 
 ### 2.1) Contributing to OpenTTD
@@ -518,6 +556,9 @@ See the comments in the source files in `src/3rdparty/md5` for the complete lice
 
 The implementations of Posix `getaddrinfo` and `getnameinfo` for OS/2 in `src/3rdparty/os2` are distributed partly under the GNU Lesser General Public License 2.1, and partly under the (3-clause) BSD license.
 The exact licensing terms can be found in `src/3rdparty/os2/getaddrinfo.c` resp. `src/3rdparty/os2/getnameinfo.c`.
+
+The implementation of C++17 `std::optional` in `src/3rdparty/optional` is licensed under the Boost Software License - Version 1.0.
+See `src/3rdparty/optional/LICENSE_1_0.txt` for the complete license text.
 
 
 ## 4.0 Credits

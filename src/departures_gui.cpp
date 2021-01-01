@@ -90,6 +90,8 @@ protected:
 	StationID station;         ///< The station whose departures we're showing.
 	DepartureList *departures; ///< The current list of departures from this station.
 	DepartureList *arrivals;   ///< The current list of arrivals from this station.
+	bool departures_invalid;   ///< The departures and arrivals list are currently invalid.
+	bool vehicles_invalid;     ///< The vehicles list is currently invalid.
 	uint entry_height;         ///< The height of an entry in the departures list.
 	uint tick_count;           ///< The number of ticks that have elapsed since the window was created. Used for scrolling text.
 	int calc_tick_countdown;   ///< The number of ticks to wait until recomputing the departure list. Signed in case it goes below zero.
@@ -153,7 +155,7 @@ protected:
 							&& order->GetDestination() == this->station) {
 						this->vehicles.push_back(v);
 
-						if (v->name == nullptr) {
+						if (v->name.empty()) {
 							if (v->unitnumber > unitnumber_max[v->type]) unitnumber_max[v->type] = v->unitnumber;
 						} else {
 							SetDParam(0, (uint64)(v->index));
@@ -183,23 +185,25 @@ protected:
 					unitnumber_digits = 3;
 				}
 				SetDParamMaxDigits(0, unitnumber_digits);
-				int width = (GetStringBoundingBox(STR_SV_TRAIN_NAME + i)).width;
+				int width = (GetStringBoundingBox(STR_SV_TRAIN_NAME + i)).width + 4;
 				if (width > this->veh_width) this->veh_width = width;
 			}
 		}
 
 		for (GroupID gid : groups) {
 			SetDParam(0, (uint64)gid);
-			int width = (GetStringBoundingBox(STR_DEPARTURES_GROUP)).width;
+			int width = (GetStringBoundingBox(STR_DEPARTURES_GROUP)).width + 4;
 			if (width > this->group_width) this->group_width = width;
 		}
 
 		uint owner;
 		FOR_EACH_SET_BIT(owner, companies) {
 			SetDParam(0, owner);
-			int width = (GetStringBoundingBox(STR_DEPARTURES_TOC)).width;
+			int width = (GetStringBoundingBox(STR_DEPARTURES_TOC)).width + 4;
 			if (width > this->toc_width) this->toc_width = width;
 		}
+
+		this->vehicles_invalid = false;
 	}
 
 	void RefreshVehicleList() {
@@ -213,6 +217,8 @@ public:
 		station(window_number),
 		departures(new DepartureList()),
 		arrivals(new DepartureList()),
+		departures_invalid(true),
+		vehicles_invalid(true),
 		entry_height(1 + FONT_HEIGHT_NORMAL + 1 + (_settings_client.gui.departure_larger_font ? FONT_HEIGHT_NORMAL : FONT_HEIGHT_SMALL) + 1 + 1),
 		tick_count(0),
 		calc_tick_countdown(0),
@@ -356,6 +362,8 @@ public:
 				break;
 
 			case WID_DB_LIST: {  // Matrix to show departures
+				if (this->departures_invalid) return;
+
 				/* We need to find the departure corresponding to where the user clicked. */
 				uint32 id_v = (pt.y - this->GetWidget<NWidgetBase>(WID_DB_LIST)->pos_y) / this->entry_height;
 
@@ -418,7 +426,7 @@ public:
 
 		/* Recompute the minimum date display width if the cached one is no longer valid. */
 		if (cached_date_width == 0 ||
-				_settings_client.gui.time_in_minutes != cached_date_display_method ||
+				_settings_time.time_in_minutes != cached_date_display_method ||
 				_settings_client.gui.departure_show_both != cached_arr_dep_display_method) {
 			this->RecomputeDateWidth();
 		}
@@ -433,6 +441,10 @@ public:
 		/* We need to redraw the scrolling text in its new position. */
 		this->SetWidgetDirty(WID_DB_LIST);
 
+		if (this->vehicles_invalid) {
+			this->RefreshVehicleList();
+		}
+
 		/* Recompute the list of departures if we're due to. */
 		if (this->calc_tick_countdown <= 0) {
 			this->calc_tick_countdown = _settings_client.gui.departure_calc_frequency;
@@ -442,6 +454,7 @@ public:
 			bool show_freight = _settings_client.gui.departure_only_passengers ? false : this->show_freight;
 			this->departures = (this->departure_types[0] ? MakeDepartureList(this->station, this->vehicles, D_DEPARTURE, Twaypoint || this->departure_types[2], show_pax, show_freight) : new DepartureList());
 			this->arrivals   = (this->departure_types[1] && !_settings_client.gui.departure_show_both ? MakeDepartureList(this->station, this->vehicles, D_ARRIVAL, false, show_pax, show_freight) : new DepartureList());
+			this->departures_invalid = false;
 			this->SetWidgetDirty(WID_DB_LIST);
 		}
 
@@ -460,6 +473,13 @@ public:
 			this->entry_height = new_height;
 			this->SetWidgetDirty(WID_DB_LIST);
 			this->ReInit();
+		}
+	}
+
+	virtual void OnRealtimeTick(uint delta_ms) override
+	{
+		if (_pause_mode != PM_UNPAUSED && this->calc_tick_countdown <= 0) {
+			this->OnGameTick();
 		}
 	}
 
@@ -499,7 +519,8 @@ public:
 	 */
 	void OnInvalidateData(int data = 0, bool gui_scope = true) override
 	{
-		this->RefreshVehicleList();
+		this->vehicles_invalid = true;
+		this->departures_invalid = true;
 	}
 };
 
@@ -526,14 +547,14 @@ void DeparturesWindow<Twaypoint>::RecomputeDateWidth()
 {
 	cached_date_width = 0;
 	cached_status_width = 0;
-	cached_date_display_method = _settings_client.gui.time_in_minutes;
+	cached_date_display_method = _settings_time.time_in_minutes;
 	cached_arr_dep_display_method = _settings_client.gui.departure_show_both;
 
 	cached_status_width = max((GetStringBoundingBox(STR_DEPARTURES_ON_TIME)).width, cached_status_width);
 	cached_status_width = max((GetStringBoundingBox(STR_DEPARTURES_DELAYED)).width, cached_status_width);
 	cached_status_width = max((GetStringBoundingBox(STR_DEPARTURES_CANCELLED)).width, cached_status_width);
 
-	uint interval = cached_date_display_method ? _settings_client.gui.ticks_per_minute : DAY_TICKS;
+	uint interval = cached_date_display_method ? _settings_time.ticks_per_minute : DAY_TICKS;
 	uint count = cached_date_display_method ? 24*60 : 365;
 
 	for (uint i = 0; i < count; ++i) {

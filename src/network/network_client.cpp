@@ -459,7 +459,11 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::SendCompanyPassword(const char
 NetworkRecvStatus ClientNetworkGameSocketHandler::SendSettingsPassword(const char *password)
 {
 	Packet *p = new Packet(PACKET_CLIENT_SETTINGS_PASSWORD);
-	p->Send_string(GenerateCompanyPasswordHash(password, _password_server_id, _settings_password_game_seed));
+	if (StrEmpty(password)) {
+		p->Send_string("");
+	} else {
+		p->Send_string(GenerateCompanyPasswordHash(password, _password_server_id, _settings_password_game_seed));
+	}
 	my_client->SendPacket(p);
 	return NETWORK_RECV_STATUS_OKAY;
 }
@@ -989,7 +993,7 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::Receive_SERVER_MAP_DONE(Packet
 			 * the server will give us a client-id and let us in */
 			_network_join_status = NETWORK_JOIN_STATUS_REGISTERING;
 			ShowJoinStatusWindow();
-			NetworkSendCommand(0, CCA_NEW, 0, CMD_COMPANY_CTRL, nullptr, nullptr, _local_company, 0);
+			NetworkSendCommand(0, CCA_NEW, 0, 0, CMD_COMPANY_CTRL, nullptr, nullptr, _local_company, 0);
 		}
 	} else {
 		/* take control over an existing company */
@@ -1286,6 +1290,7 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::Receive_SERVER_SETTINGS_ACCESS
 
 	_network_settings_access = p->Recv_bool();
 
+	DeleteWindowById(WC_CHEATS, 0);
 	ReInitAllWindows();
 
 	return NETWORK_RECV_STATUS_OKAY;

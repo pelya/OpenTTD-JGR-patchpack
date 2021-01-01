@@ -77,6 +77,7 @@
 #include "industry.h"
 #include "cargopacket.h"
 #include "core/checksum_func.hpp"
+#include "tbtr_template_vehicle_func.h"
 
 #include "linkgraph/linkgraphschedule.h"
 #include "tracerestrict.h"
@@ -89,15 +90,15 @@
 
 void CallLandscapeTick();
 void IncreaseDate();
-void DoPaletteAnimations();
 void MusicLoop();
 void ResetMusic();
 void CallWindowGameTickEvent();
 bool HandleBootstrap();
 
-extern Company *DoStartupNewCompany(bool is_ai, CompanyID company = INVALID_COMPANY);
 extern void ShowOSErrorBox(const char *buf, bool system);
 extern char *_config_file;
+
+bool _save_config = false;
 
 GameEventFlags _game_events_since_load;
 GameEventFlags _game_events_overall;
@@ -228,7 +229,7 @@ static void ShowHelp()
 		"  -S sounds_set       = Force the sounds set (see below)\n"
 		"  -M music_set        = Force the music set (see below)\n"
 		"  -c config_file      = Use 'config_file' instead of 'openttd.cfg'\n"
-		"  -x                  = Do not automatically save to config file on exit\n"
+		"  -x                  = Never save configuration changes to disk\n"
 		"  -q savegame         = Write some information about the savegame and exit\n"
 		"  -Z                  = Write detailed version information and exit\n"
 		"\n",
@@ -337,14 +338,24 @@ static void WriteSavegameDebugData(const char *name)
 	};
 	p += seprintf(p, buflast, "Name:         %s\n", name);
 	if (_load_check_data.debug_log_data.size()) {
-		p += seprintf(p, buflast, "%u bytes of debug data in savegame\n", (uint) _load_check_data.debug_log_data.size());
+		p += seprintf(p, buflast, "%u bytes of debug log data in savegame\n", (uint) _load_check_data.debug_log_data.size());
 		std::string buffer = _load_check_data.debug_log_data;
 		ProcessLineByLine(const_cast<char *>(buffer.data()), [&](const char *line) {
 			if (buflast - p <= 1024) bump_size();
 			p += seprintf(p, buflast, "> %s\n", line);
 		});
 	} else {
-		p += seprintf(p, buflast, "No debug data in savegame\n");
+		p += seprintf(p, buflast, "No debug log data in savegame\n");
+	}
+	if (_load_check_data.debug_config_data.size()) {
+		p += seprintf(p, buflast, "%u bytes of debug config data in savegame\n", (uint) _load_check_data.debug_config_data.size());
+		std::string buffer = _load_check_data.debug_config_data;
+		ProcessLineByLine(const_cast<char *>(buffer.data()), [&](const char *line) {
+			if (buflast - p <= 1024) bump_size();
+			p += seprintf(p, buflast, "> %s\n", line);
+		});
+	} else {
+		p += seprintf(p, buflast, "No debug config data in savegame\n");
 	}
 
 	/* ShowInfo put output to stderr, but version information should go
@@ -423,9 +434,11 @@ static void ShutdownGame()
 	ViewportMapClearTunnelCache();
 	InvalidateVehicleTickCaches();
 	ClearVehicleTickCaches();
+	InvalidateTemplateReplacementImages();
 	ClearCommandLog();
 	ClearDesyncMsgLog();
 
+	_loaded_local_company = COMPANY_SPECTATOR;
 	_game_events_since_load = (GameEventFlags) 0;
 	_game_events_overall = (GameEventFlags) 0;
 	_game_load_cur_date_ymd = { 0, 0, 0 };
@@ -433,6 +446,7 @@ static void ShutdownGame()
 	_game_load_tick_skip_counter = 0;
 	_game_load_time = 0;
 	_loadgame_DBGL_data.clear();
+	_loadgame_DBGC_data.clear();
 }
 
 /**
@@ -485,6 +499,7 @@ void MakeNewgameSettingsLive()
 	/* Copy newgame settings to active settings.
 	 * Also initialise old settings needed for savegame conversion. */
 	_settings_game = _settings_newgame;
+	_settings_time = _settings_game.game_time = _settings_client.gui;
 	_old_vds = _settings_client.company.vehicle;
 
 	for (CompanyID c = COMPANY_FIRST; c < MAX_COMPANIES; c++) {
@@ -520,19 +535,16 @@ struct AfterNewGRFScan : NewGRFScanCallback {
 	char *network_conn;                ///< Information about the server to connect to, or nullptr.
 	const char *join_server_password;  ///< The password to join the server with.
 	const char *join_company_password; ///< The password to join the company with.
-	bool *save_config_ptr;             ///< The pointer to the save config setting.
 	bool save_config;                  ///< The save config setting.
 
 	/**
 	 * Create a new callback.
-	 * @param save_config_ptr Pointer to the save_config local variable which
-	 *                        decides whether to save of exit or not.
 	 */
-	AfterNewGRFScan(bool *save_config_ptr) :
+	AfterNewGRFScan() :
 			startyear(INVALID_YEAR), generation_seed(GENERATE_NEW_SEED),
 			dedicated_host(nullptr), dedicated_port(0), network_conn(nullptr),
 			join_server_password(nullptr), join_company_password(nullptr),
-			save_config_ptr(save_config_ptr), save_config(true)
+			save_config(true)
 	{
 		/* Visual C++ 2015 fails compiling this line (AfterNewGRFScan::generation_seed undefined symbol)
 		 * if it's placed outside a member function, directly in the struct body. */
@@ -563,7 +575,7 @@ struct AfterNewGRFScan : NewGRFScanCallback {
 		WindowDesc::LoadFromConfig();
 
 		/* We have loaded the config, so we may possibly save it. */
-		*save_config_ptr = save_config;
+		_save_config = save_config;
 
 		/* restore saved music volume */
 		MusicDriver::GetInstance()->SetVolume(_settings_client.music.music_vol);
@@ -662,17 +674,15 @@ static const OptionData _options[] = {
 int openttd_main(int argc, char *argv[])
 {
 	SetSelfAsMainThread();
-	char *musicdriver = nullptr;
-	char *sounddriver = nullptr;
-	char *videodriver = nullptr;
-	char *blitter = nullptr;
-	char *graphics_set = nullptr;
-	char *sounds_set = nullptr;
-	char *music_set = nullptr;
+	std::string musicdriver;
+	std::string sounddriver;
+	std::string videodriver;
+	std::string blitter;
+	std::string graphics_set;
+	std::string sounds_set;
+	std::string music_set;
 	Dimension resolution = {0, 0};
-	/* AfterNewGRFScan sets save_config to true after scanning completed. */
-	bool save_config = false;
-	AfterNewGRFScan *scanner = new AfterNewGRFScan(&save_config);
+	std::unique_ptr<AfterNewGRFScan> scanner(new AfterNewGRFScan());
 	bool dedicated = false;
 	char *debuglog_conn = nullptr;
 
@@ -692,22 +702,18 @@ int openttd_main(int argc, char *argv[])
 	int i;
 	while ((i = mgo.GetOpt()) != -1) {
 		switch (i) {
-		case 'I': free(graphics_set); graphics_set = stredup(mgo.opt); break;
-		case 'S': free(sounds_set); sounds_set = stredup(mgo.opt); break;
-		case 'M': free(music_set); music_set = stredup(mgo.opt); break;
-		case 'm': free(musicdriver); musicdriver = stredup(mgo.opt); break;
-		case 's': free(sounddriver); sounddriver = stredup(mgo.opt); break;
-		case 'v': free(videodriver); videodriver = stredup(mgo.opt); break;
-		case 'b': free(blitter); blitter = stredup(mgo.opt); break;
+		case 'I': graphics_set = mgo.opt; break;
+		case 'S': sounds_set = mgo.opt; break;
+		case 'M': music_set = mgo.opt; break;
+		case 'm': musicdriver = mgo.opt; break;
+		case 's': sounddriver = mgo.opt; break;
+		case 'v': videodriver = mgo.opt; break;
+		case 'b': blitter = mgo.opt; break;
 		case 'D':
-			free(musicdriver);
-			free(sounddriver);
-			free(videodriver);
-			free(blitter);
-			musicdriver = stredup("null");
-			sounddriver = stredup("null");
-			videodriver = stredup("dedicated");
-			blitter = stredup("null");
+			musicdriver = "null";
+			sounddriver = "null";
+			videodriver = "dedicated";
+			blitter = "null";
 			dedicated = true;
 			SetDebugString("net=6");
 			if (mgo.opt != nullptr) {
@@ -771,7 +777,7 @@ int openttd_main(int argc, char *argv[])
 			DeterminePaths(argv[0]);
 			if (StrEmpty(mgo.opt)) {
 				ret = 1;
-				goto exit_noshutdown;
+				return ret;
 			}
 
 			char title[80];
@@ -779,7 +785,8 @@ int openttd_main(int argc, char *argv[])
 			FiosGetSavegameListCallback(SLO_LOAD, mgo.opt, strrchr(mgo.opt, '.'), title, lastof(title));
 
 			_load_check_data.Clear();
-			if (i == 'K') _load_check_data.want_debug_log_data = true;
+			if (i == 'K') _load_check_data.want_debug_data = true;
+			_load_check_data.want_grf_compatibility = false;
 			SaveOrLoadResult res = SaveOrLoad(mgo.opt, SLO_CHECK, DFT_GAME_FILE, SAVE_DIR, false);
 			if (res != SL_OK || _load_check_data.HasErrors()) {
 				fprintf(stderr, "Failed to open savegame\n");
@@ -790,7 +797,7 @@ int openttd_main(int argc, char *argv[])
 					GetString(buf, _load_check_data.error, lastof(buf));
 					fprintf(stderr, "%s\n", buf);
 				}
-				goto exit_noshutdown;
+				return ret;
 			}
 
 			if (i == 'q') {
@@ -798,8 +805,7 @@ int openttd_main(int argc, char *argv[])
 			} else {
 				WriteSavegameDebugData(title);
 			}
-
-			goto exit_noshutdown;
+			return ret;
 		}
 		case 'G': scanner->generation_seed = strtoul(mgo.opt, nullptr, 10); break;
 		case 'c': free(_config_file); _config_file = stredup(mgo.opt); break;
@@ -807,7 +813,7 @@ int openttd_main(int argc, char *argv[])
 		case 'J': _quit_after_days = Clamp(atoi(mgo.opt), 0, INT_MAX); break;
 		case 'Z': {
 			CrashLog::VersionInfoLog();
-			goto exit_noshutdown;
+			return ret;
 		}
 		case 'h':
 			i = -2; // Force printing of help.
@@ -828,8 +834,7 @@ int openttd_main(int argc, char *argv[])
 		BaseSounds::FindSets();
 		BaseMusic::FindSets();
 		ShowHelp();
-
-		goto exit_noshutdown;
+		return ret;
 	}
 
 	DeterminePaths(argv[0]);
@@ -877,24 +882,23 @@ int openttd_main(int argc, char *argv[])
 	InitWindowSystem();
 
 	BaseGraphics::FindSets();
-	if (graphics_set == nullptr && BaseGraphics::ini_set != nullptr) graphics_set = stredup(BaseGraphics::ini_set);
+	if (graphics_set.empty() && !BaseGraphics::ini_set.empty()) graphics_set = BaseGraphics::ini_set;
 	if (!BaseGraphics::SetSet(graphics_set)) {
-		if (!StrEmpty(graphics_set)) {
-			BaseGraphics::SetSet(nullptr);
+		if (!graphics_set.empty()) {
+			BaseGraphics::SetSet({});
 
 			ErrorMessageData msg(STR_CONFIG_ERROR, STR_CONFIG_ERROR_INVALID_BASE_GRAPHICS_NOT_FOUND);
-			msg.SetDParamStr(0, graphics_set);
+			msg.SetDParamStr(0, graphics_set.c_str());
 			ScheduleErrorMessage(msg);
 		}
 	}
-	free(graphics_set);
 
 	/* Initialize game palette */
 	GfxInitPalettes();
 
 	DEBUG(misc, 1, "Loading blitter...");
-	if (blitter == nullptr && _ini_blitter != nullptr) blitter = stredup(_ini_blitter);
-	_blitter_autodetected = StrEmpty(blitter);
+	if (blitter.empty() && !_ini_blitter.empty()) blitter = _ini_blitter;
+	_blitter_autodetected = blitter.empty();
 	/* Activate the initial blitter.
 	 * This is only some initial guess, after NewGRFs have been loaded SwitchNewGRFBlitter may switch to a different one.
 	 *  - Never guess anything, if the user specified a blitter. (_blitter_autodetected)
@@ -905,16 +909,14 @@ int openttd_main(int argc, char *argv[])
 			(_support8bpp != S8BPP_NONE && (BaseGraphics::GetUsedSet() == nullptr || BaseGraphics::GetUsedSet()->blitter == BLT_8BPP)) ||
 			BlitterFactory::SelectBlitter("32bpp-anim") == nullptr) {
 		if (BlitterFactory::SelectBlitter(blitter) == nullptr) {
-			StrEmpty(blitter) ?
+			blitter.empty() ?
 				usererror("Failed to autoprobe blitter") :
-				usererror("Failed to select requested blitter '%s'; does it exist?", blitter);
+				usererror("Failed to select requested blitter '%s'; does it exist?", blitter.c_str());
 		}
 	}
-	free(blitter);
 
-	if (videodriver == nullptr && _ini_videodriver != nullptr) videodriver = stredup(_ini_videodriver);
+	if (videodriver.empty() && !_ini_videodriver.empty()) videodriver = _ini_videodriver;
 	DriverFactoryBase::SelectDriver(videodriver, Driver::DT_VIDEO);
-	free(videodriver);
 
 	InitializeSpriteSorter();
 
@@ -938,8 +940,7 @@ int openttd_main(int argc, char *argv[])
 
 	if (!HandleBootstrap()) {
 		ShutdownGame();
-
-		goto exit_bootstrap;
+		return ret;
 	}
 
 	VideoDriver::GetInstance()->ClaimMousePointer();
@@ -948,38 +949,34 @@ int openttd_main(int argc, char *argv[])
 	InitializeScreenshotFormats();
 
 	BaseSounds::FindSets();
-	if (sounds_set == nullptr && BaseSounds::ini_set != nullptr) sounds_set = stredup(BaseSounds::ini_set);
+	if (sounds_set.empty() && !BaseSounds::ini_set.empty()) sounds_set = BaseSounds::ini_set;
 	if (!BaseSounds::SetSet(sounds_set)) {
-		if (StrEmpty(sounds_set) || !BaseSounds::SetSet(nullptr)) {
+		if (sounds_set.empty() || !BaseSounds::SetSet({})) {
 			usererror("Failed to find a sounds set. Please acquire a sounds set for OpenTTD. See section 1.4 of README.md.");
 		} else {
 			ErrorMessageData msg(STR_CONFIG_ERROR, STR_CONFIG_ERROR_INVALID_BASE_SOUNDS_NOT_FOUND);
-			msg.SetDParamStr(0, sounds_set);
+			msg.SetDParamStr(0, sounds_set.c_str());
 			ScheduleErrorMessage(msg);
 		}
 	}
-	free(sounds_set);
 
 	BaseMusic::FindSets();
-	if (music_set == nullptr && BaseMusic::ini_set != nullptr) music_set = stredup(BaseMusic::ini_set);
+	if (music_set.empty() && !BaseMusic::ini_set.empty()) music_set = BaseMusic::ini_set;
 	if (!BaseMusic::SetSet(music_set)) {
-		if (StrEmpty(music_set) || !BaseMusic::SetSet(nullptr)) {
+		if (music_set.empty() || !BaseMusic::SetSet({})) {
 			usererror("Failed to find a music set. Please acquire a music set for OpenTTD. See section 1.4 of README.md.");
 		} else {
 			ErrorMessageData msg(STR_CONFIG_ERROR, STR_CONFIG_ERROR_INVALID_BASE_MUSIC_NOT_FOUND);
-			msg.SetDParamStr(0, music_set);
+			msg.SetDParamStr(0, music_set.c_str());
 			ScheduleErrorMessage(msg);
 		}
 	}
-	free(music_set);
 
-	if (sounddriver == nullptr && _ini_sounddriver != nullptr) sounddriver = stredup(_ini_sounddriver);
+	if (sounddriver.empty() && !_ini_sounddriver.empty()) sounddriver = _ini_sounddriver;
 	DriverFactoryBase::SelectDriver(sounddriver, Driver::DT_SOUND);
-	free(sounddriver);
 
-	if (musicdriver == nullptr && _ini_musicdriver != nullptr) musicdriver = stredup(_ini_musicdriver);
+	if (musicdriver.empty() && !_ini_musicdriver.empty()) musicdriver = _ini_musicdriver;
 	DriverFactoryBase::SelectDriver(musicdriver, Driver::DT_MUSIC);
-	free(musicdriver);
 
 	/* Take our initial lock on whatever we might want to do! */
 	try {
@@ -999,8 +996,7 @@ int openttd_main(int argc, char *argv[])
 	CheckForMissingGlyphs();
 
 	/* ScanNewGRFFiles now has control over the scanner. */
-	ScanNewGRFFiles(scanner);
-	scanner = nullptr;
+	ScanNewGRFFiles(scanner.release());
 
 	VideoDriver::GetInstance()->MainLoop();
 
@@ -1010,7 +1006,7 @@ int openttd_main(int argc, char *argv[])
 	WaitTillGeneratedWorld(); // Make sure any generate world threads have been joined.
 
 	/* only save config if we have to */
-	if (save_config) {
+	if (_save_config) {
 		SaveToConfig();
 		SaveHotkeysToConfig();
 		WindowDesc::SaveToConfig();
@@ -1019,38 +1015,6 @@ int openttd_main(int argc, char *argv[])
 
 	/* Reset windowing system, stop drivers, free used memory, ... */
 	ShutdownGame();
-	goto exit_normal;
-
-exit_noshutdown:
-	/* These three are normally freed before bootstrap. */
-	free(graphics_set);
-	free(videodriver);
-	free(blitter);
-
-exit_bootstrap:
-	/* These are normally freed before exit, but after bootstrap. */
-	free(sounds_set);
-	free(music_set);
-	free(musicdriver);
-	free(sounddriver);
-
-exit_normal:
-	free(BaseGraphics::ini_set);
-	free(BaseSounds::ini_set);
-	free(BaseMusic::ini_set);
-
-	free(_ini_musicdriver);
-	free(_ini_sounddriver);
-	free(_ini_videodriver);
-	free(_ini_blitter);
-
-	delete scanner;
-
-	extern FILE *_log_fd;
-	if (_log_fd != nullptr) {
-		fclose(_log_fd);
-	}
-
 	return ret;
 }
 
@@ -1082,7 +1046,7 @@ static void MakeNewGameDone()
 	}
 
 	/* Create a single company */
-	DoStartupNewCompany(false);
+	DoStartupNewCompany(DSNC_NONE);
 
 	Company *c = Company::Get(COMPANY_FIRST);
 	c->settings = _settings_client.company;
@@ -1253,7 +1217,22 @@ void SwitchToMode(SwitchMode new_mode)
 			MakeNewEditorWorld();
 			break;
 
-		case SM_RESTARTGAME: // Restart --> 'Random game' with current settings
+		case SM_RESTARTGAME: // Restart --> Current settings preserved
+			if (_file_to_saveload.abstract_ftype == FT_SAVEGAME || _file_to_saveload.abstract_ftype == FT_SCENARIO) {
+				/* Restart current savegame/scenario */
+				_switch_mode = _game_mode == GM_EDITOR ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
+				SwitchToMode(_switch_mode);
+				break;
+			} else if (_file_to_saveload.abstract_ftype == FT_HEIGHTMAP) {
+				/* Restart current heightmap */
+				_switch_mode = _game_mode == GM_EDITOR ? SM_LOAD_HEIGHTMAP : SM_RESTART_HEIGHTMAP;
+				SwitchToMode(_switch_mode);
+				break;
+			}
+			/* No break here, to enter the next case:
+			 * Restart --> 'Random game' with current settings */
+			FALLTHROUGH;
+
 		case SM_NEWGAME: // New Game --> 'Random game'
 			if (_network_server) {
 				seprintf(_network_game_info.map_name, lastof(_network_game_info.map_name), "Random Map");
@@ -1274,8 +1253,8 @@ void SwitchToMode(SwitchMode new_mode)
 					EngineOverrideManager::ResetToCurrentNewGRFConfig();
 				}
 				/* Update the local company for a loaded game. It is either always
-				 * company #1 (eg 0) or in the case of a dedicated server a spectator */
-				SetLocalCompany(_network_dedicated ? COMPANY_SPECTATOR : COMPANY_FIRST);
+				 * a company or in the case of a dedicated server a spectator */
+				SetLocalCompany(_network_dedicated ? COMPANY_SPECTATOR : GetDefaultLocalCompany());
 				if (_ctrl_pressed && !_network_dedicated) {
 					DoCommandP(0, PM_PAUSED_NORMAL, 1, CMD_PAUSE);
 				}
@@ -1290,11 +1269,12 @@ void SwitchToMode(SwitchMode new_mode)
 			break;
 		}
 
+		case SM_RESTART_HEIGHTMAP: // Load a heightmap and start a new game from it with current settings
 		case SM_START_HEIGHTMAP: // Load a heightmap and start a new game from it
 			if (_network_server) {
 				seprintf(_network_game_info.map_name, lastof(_network_game_info.map_name), "%s (Heightmap)", _file_to_saveload.title);
 			}
-			MakeNewGame(true, true);
+			MakeNewGame(true, new_mode == SM_START_HEIGHTMAP);
 			break;
 
 		case SM_LOAD_HEIGHTMAP: // Load heightmap from scenario editor
@@ -1320,9 +1300,9 @@ void SwitchToMode(SwitchMode new_mode)
 
 		case SM_MENU: // Switch to game intro menu
 			LoadIntroGame();
-			if (BaseSounds::ini_set == nullptr && BaseSounds::GetUsedSet()->fallback) {
+			if (BaseSounds::ini_set.empty() && BaseSounds::GetUsedSet()->fallback && SoundDriver::GetInstance()->HasOutput()) {
 				ShowErrorMessage(STR_WARNING_FALLBACK_SOUNDSET, INVALID_STRING_ID, WL_CRITICAL);
-				BaseSounds::ini_set = stredup(BaseSounds::GetUsedSet()->name);
+				BaseSounds::ini_set = BaseSounds::GetUsedSet()->name;
 			}
 			break;
 
@@ -1355,6 +1335,22 @@ void SwitchToMode(SwitchMode new_mode)
 	SmallMapWindow::RebuildColourIndexIfNecessary();
 }
 
+void WriteVehicleInfo(char *&p, const char *last, const Vehicle *u, const Vehicle *v, uint length)
+{
+	p += seprintf(p, last, ": type %i, vehicle %i (%i), company %i, unit number %i, wagon %i, engine: ",
+			(int)u->type, u->index, v->index, (int)u->owner, v->unitnumber, length);
+	SetDParam(0, u->engine_type);
+	p = GetString(p, STR_ENGINE_NAME, last);
+	uint32 grfid = u->GetGRFID();
+	if (grfid) {
+		p += seprintf(p, last, ", GRF: %08X", BSWAP32(grfid));
+		GRFConfig *grfconfig = GetGRFConfig(grfid);
+		if (grfconfig) {
+			p += seprintf(p, last, ", %s, %s", grfconfig->GetName(), grfconfig->filename);
+		}
+	}
+}
+
 /**
  * Check the validity of some of the caches.
  * Especially in the sense of desyncs between
@@ -1383,18 +1379,7 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 }
 
 	auto output_veh_info = [&](char *&p, const Vehicle *u, const Vehicle *v, uint length) {
-		p += seprintf(p, lastof(cclog_buffer), ": type %i, vehicle %i (%i), company %i, unit number %i, wagon %i, engine: ",
-				(int)u->type, u->index, v->index, (int)u->owner, v->unitnumber, length);
-		SetDParam(0, u->engine_type);
-		p = GetString(p, STR_ENGINE_NAME, lastof(cclog_buffer));
-		uint32 grfid = u->GetGRFID();
-		if (grfid) {
-			p += seprintf(p, lastof(cclog_buffer), ", GRF: %08X", BSWAP32(grfid));
-			GRFConfig *grfconfig = GetGRFConfig(grfid);
-			if (grfconfig) {
-				p += seprintf(p, lastof(cclog_buffer), ", %s, %s", grfconfig->GetName(), grfconfig->filename);
-			}
-		}
+		WriteVehicleInfo(p, lastof(cclog_buffer), u, v, length);
 	};
 
 #define CCLOGV(...) { \
@@ -1410,29 +1395,25 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 
 	/* Check the town caches. */
 	std::vector<TownCache> old_town_caches;
-	std::vector<CargoTypes> old_town_cargo_accepted_totals;
-	std::vector<CargoTypes> old_town_cargo_produced;
 	std::vector<StationList> old_town_stations_nears;
 	for (const Town *t : Town::Iterate()) {
 		old_town_caches.push_back(t->cache);
-		old_town_cargo_accepted_totals.push_back(t->cargo_accepted_total);
-		old_town_cargo_produced.push_back(t->cargo_produced);
 		old_town_stations_nears.push_back(t->stations_near);
 	}
 
 	std::vector<IndustryList> old_station_industries_nears;
 	std::vector<BitmapTileArea> old_station_catchment_tiles;
+	std::vector<uint> old_station_tiles;
 	for (Station *st : Station::Iterate()) {
 		old_station_industries_nears.push_back(st->industries_near);
 		old_station_catchment_tiles.push_back(st->catchment_tiles);
+		old_station_tiles.push_back(st->station_tiles);
 	}
 
 	std::vector<StationList> old_industry_stations_nears;
 	for (Industry *ind : Industry::Iterate()) {
 		old_industry_stations_nears.push_back(ind->stations_near);
 	}
-
-	const CargoTypes old_town_cargoes_accepted = _town_cargoes_accepted;
 
 	extern void RebuildTownCaches(bool cargo_update_required);
 	RebuildTownCaches(false);
@@ -1445,19 +1426,10 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 		if (MemCmpT(old_town_caches.data() + i, &t->cache) != 0) {
 			CCLOG("town cache mismatch: town %i", (int)t->index);
 		}
-		if (old_town_cargo_accepted_totals[i] != t->cargo_accepted_total) {
-			CCLOG("town cargo_accepted_total mismatch: town %i, old: " OTTD_PRINTFHEX64 ". new: " OTTD_PRINTFHEX64, (int)t->index, old_town_cargo_accepted_totals[i], t->cargo_accepted_total);
-		}
-		if (old_town_cargo_produced[i] != t->cargo_produced) {
-			CCLOG("town cargo_produced mismatch: town %i, old: " OTTD_PRINTFHEX64 ". new: " OTTD_PRINTFHEX64, (int)t->index, old_town_cargo_produced[i], t->cargo_produced);
-		}
 		if (old_town_stations_nears[i] != t->stations_near) {
 			CCLOG("town stations_near mismatch: town %i, (old size: %u, new size: %u)", (int)t->index, (uint)old_town_stations_nears[i].size(), (uint)t->stations_near.size());
 		}
 		i++;
-	}
-	if (old_town_cargoes_accepted != _town_cargoes_accepted) {
-		CCLOG("_town_cargoes_accepted mismatch: old: " OTTD_PRINTFHEX64 ". new: " OTTD_PRINTFHEX64, old_town_cargoes_accepted, _town_cargoes_accepted);
 	}
 	i = 0;
 	for (Station *st : Station::Iterate()) {
@@ -1466,6 +1438,9 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 		}
 		if (!(old_station_catchment_tiles[i] == st->catchment_tiles)) {
 			CCLOG("station catchment_tiles mismatch: st %i", (int)st->index);
+		}
+		if (!(old_station_tiles[i] == st->station_tiles)) {
+			CCLOG("station station_tiles mismatch: st %i, (old: %u, new: %u)", (int)st->index, old_station_tiles[i], st->station_tiles);
 		}
 		i++;
 	}
@@ -1481,7 +1456,11 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 				CCLOG("industry neutral station stations_near mismatch: ind %i, (recalc size: %u, neutral size: %u)", (int)ind->index, (uint)ind->stations_near.size(), (uint)stlist.size());
 			}
 		} else {
-			FindStationsAroundTiles(ind->location, &stlist, false, ind->index);
+			ForAllStationsAroundTiles(ind->location, [ind, &stlist](Station *st, TileIndex tile) {
+				if (!IsTileType(tile, MP_INDUSTRY) || GetIndustryIndex(tile) != ind->index) return false;
+				stlist.insert(st);
+				return true;
+			});
 			if (ind->stations_near != stlist) {
 				CCLOG("industry FindStationsAroundTiles mismatch: ind %i, (recalc size: %u, find size: %u)", (int)ind->index, (uint)ind->stations_near.size(), (uint)stlist.size());
 			}
@@ -1633,13 +1612,32 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 			if (veh_old[length]->vehicle_flags != u->vehicle_flags) {
 				CCLOGV("vehicle_flags mismatch");
 			}
+			auto print_gv_cache_diff = [&](const char *vtype, const GroundVehicleCache &a, const GroundVehicleCache &b) {
+				CCLOGV("%s ground vehicle cache mismatch: %c%c%c%c%c%c%c%c%c%c",
+						vtype,
+						a.cached_weight != b.cached_weight ? 'w' : '-',
+						a.cached_slope_resistance != b.cached_slope_resistance ? 'r' : '-',
+						a.cached_max_te != b.cached_max_te ? 't' : '-',
+						a.cached_axle_resistance != b.cached_axle_resistance ? 'a' : '-',
+						a.cached_max_track_speed != b.cached_max_track_speed ? 's' : '-',
+						a.cached_power != b.cached_power ? 'p' : '-',
+						a.cached_air_drag != b.cached_air_drag ? 'd' : '-',
+						a.cached_total_length != b.cached_total_length ? 'l' : '-',
+						a.first_engine != b.first_engine ? 'e' : '-',
+						a.cached_veh_length != b.cached_veh_length ? 'L' : '-');
+			};
 			switch (u->type) {
 				case VEH_TRAIN:
 					if (memcmp(&gro_cache[length], &Train::From(u)->gcache, sizeof(GroundVehicleCache)) != 0) {
-						CCLOGV("train ground vehicle cache mismatch");
+						print_gv_cache_diff("train", gro_cache[length], Train::From(u)->gcache);
 					}
 					if (memcmp(&tra_cache[length], &Train::From(u)->tcache, sizeof(TrainCache)) != 0) {
-						CCLOGV("train cache mismatch");
+						CCLOGV("train cache mismatch: %c%c%c%c%c",
+								tra_cache[length].cached_override != Train::From(u)->tcache.cached_override ? 'o' : '-',
+								tra_cache[length].cached_tilt != Train::From(u)->tcache.cached_tilt ? 't' : '-',
+								tra_cache[length].cached_num_engines != Train::From(u)->tcache.cached_num_engines ? 'e' : '-',
+								tra_cache[length].user_def_data != Train::From(u)->tcache.user_def_data ? 'u' : '-',
+								tra_cache[length].cached_max_curve_speed != Train::From(u)->tcache.cached_max_curve_speed ? 'c' : '-');
 					}
 					if (Train::From(veh_old[length])->railtype != Train::From(u)->railtype) {
 						CCLOGV("railtype mismatch");
@@ -1653,12 +1651,14 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 					break;
 				case VEH_ROAD:
 					if (memcmp(&gro_cache[length], &RoadVehicle::From(u)->gcache, sizeof(GroundVehicleCache)) != 0) {
-						CCLOGV("road vehicle ground vehicle cache mismatch");
+						print_gv_cache_diff("road vehicle", gro_cache[length], Train::From(u)->gcache);
 					}
 					break;
 				case VEH_AIRCRAFT:
 					if (memcmp(&air_cache[length], &Aircraft::From(u)->acache, sizeof(AircraftCache)) != 0) {
-						CCLOGV("Aircraft vehicle cache mismatch");
+						CCLOGV("Aircraft vehicle cache mismatch: %c%c",
+								air_cache[length].cached_max_range != Aircraft::From(u)->acache.cached_max_range ? 'r' : '-',
+								air_cache[length].cached_max_range_sqr != Aircraft::From(u)->acache.cached_max_range_sqr ? 's' : '-');
 					}
 					break;
 				default:
@@ -1690,6 +1690,23 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 			memcpy(buff, &st->goods[c].cargo, sizeof(StationCargoList));
 			st->goods[c].cargo.InvalidateCache();
 			assert(memcmp(&st->goods[c].cargo, buff, sizeof(StationCargoList)) == 0);
+		}
+
+		/* Check docking tiles */
+		TileArea ta;
+		std::map<TileIndex, bool> docking_tiles;
+		TILE_AREA_LOOP(tile, st->docking_station) {
+			ta.Add(tile);
+			docking_tiles[tile] = IsDockingTile(tile);
+		}
+		UpdateStationDockingTiles(st);
+		if (ta.tile != st->docking_station.tile || ta.w != st->docking_station.w || ta.h != st->docking_station.h) {
+			CCLOG("station docking mismatch: station %i, company %i", st->index, (int)st->owner);
+		}
+		TILE_AREA_LOOP(tile, ta) {
+			if (docking_tiles[tile] != IsDockingTile(tile)) {
+				CCLOG("docking tile mismatch: tile %i", (int)tile);
+			}
 		}
 	}
 
@@ -1874,6 +1891,28 @@ static void DoAutosave()
 	}
 }
 
+void GameLoopSpecial()
+{
+	/* autosave game? */
+	if (_do_autosave) {
+		DoAutosave();
+		_do_autosave = false;
+		SetWindowDirty(WC_STATUS_BAR, 0);
+	}
+
+	extern std::string _switch_baseset;
+	if (!_switch_baseset.empty()) {
+		if (BaseGraphics::GetUsedSet()->name != _switch_baseset) {
+			BaseGraphics::SetSet(_switch_baseset);
+
+			ReloadNewGRFData();
+		}
+		_switch_baseset.clear();
+	}
+
+	_check_special_modes = false;
+}
+
 void GameLoop()
 {
 	if (_game_mode == GM_BOOTSTRAP) {
@@ -1885,12 +1924,7 @@ void GameLoop()
 
 	ProcessAsyncSaveFinish();
 
-	/* autosave game? */
-	if (_do_autosave) {
-		DoAutosave();
-		_do_autosave = false;
-		SetWindowDirty(WC_STATUS_BAR, 0);
-	}
+	if (unlikely(_check_special_modes)) GameLoopSpecial();
 
 	/* switch game mode? */
 	if (_switch_mode != SM_NONE && !HasModalProgress()) {
@@ -1916,8 +1950,6 @@ void GameLoop()
 		/* Singleplayer */
 		StateGameLoop();
 	}
-
-	if (!_pause_mode && HasBit(_display_opt, DO_FULL_ANIMATION)) DoPaletteAnimations();
 
 	InputLoop();
 

@@ -395,7 +395,7 @@ STR_FILE_MENU_EXIT                                              :離開
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :世界地圖
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :打開新視野
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :打開新視野
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :貨物流程索引
 STR_MAP_MENU_SIGN_LIST                                          :標誌清單
 
@@ -470,6 +470,7 @@ STR_ABOUT_MENU_SEPARATOR                                        :
 STR_ABOUT_MENU_TOGGLE_CONSOLE                                   :切換主控台
 STR_ABOUT_MENU_AI_DEBUG                                         :AI/遊戲腳本除錯
 STR_ABOUT_MENU_SCREENSHOT                                       :擷取畫面
+STR_ABOUT_MENU_SHOW_FRAMERATE                                   :顯示幀率
 STR_ABOUT_MENU_ABOUT_OPENTTD                                    :關於「OpenTTD」
 STR_ABOUT_MENU_SPRITE_ALIGNER                                   :子畫面定位工具
 STR_ABOUT_MENU_TOGGLE_BOUNDING_BOXES                            :切換邊界框
@@ -642,6 +643,7 @@ STR_MUSIC_EFFECTS_VOLUME                                        :{TINY_FONT}{BLA
 STR_MUSIC_TRACK_NONE                                            :{TINY_FONT}{DKGREEN}--
 STR_MUSIC_TRACK_DIGIT                                           :{TINY_FONT}{DKGREEN}{ZEROFILL_NUM}
 STR_MUSIC_TITLE_NONE                                            :{TINY_FONT}{DKGREEN}------
+STR_MUSIC_TITLE_NOMUSIC                                         :{TINY_FONT}{DKGREEN}沒有可用音樂
 STR_MUSIC_TITLE_NAME                                            :{TINY_FONT}{DKGREEN}「{STRING}」
 STR_MUSIC_TRACK                                                 :{TINY_FONT}{BLACK}音軌
 STR_MUSIC_XTITLE                                                :{TINY_FONT}{BLACK}標題
@@ -869,7 +871,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}{TOWN} 的地方政府與 {STRING} 簽訂了一年的專屬運輸權合約！
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}視野 {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}視野 {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}複製至本視野
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}將主視野的位置複製到此視窗
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}貼上至主視野
@@ -1506,8 +1508,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :詳細
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :彩色報紙登場年份：{STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :設定報紙轉用彩色印刷的年份。在此之前，所有在報紙上的圖像皆為黑白
 STR_CONFIG_SETTING_STARTING_YEAR                                :開始年份：{STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :開啟平滑經濟模式 (更多、更小的變動)：{STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :如啟用此選項，工業會較頻繁地更改其產量，但幅度則較輕微。此選項不會影響由 NewGRF 提供的工業種類
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :允許購買其它公司的股票：{STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :啟用此選項以容許公司買賣股票。一所公司必須達到一定的年齡方能買賣股票
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :轉運服務所得的收入百分比： {STRING}
@@ -1753,17 +1753,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}此段�
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}離開
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}您確定要放棄進行中的遊戲{}返回 {STRING}？
 STR_QUIT_YES                                                    :{BLACK}是
 STR_QUIT_NO                                                     :{BLACK}否
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}放棄遊戲
@@ -2668,7 +2659,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :公司所有土
 STR_ABOUT_OPENTTD                                               :{WHITE}關於 OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}原著作權為 {COPYRIGHT} 1995 Chris Sawyer，保留所有權利
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD 版本 {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 OpenTTD 開發小組
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} OpenTTD 開發小組
 
 # Framerate display window
 STR_FRAMERATE_DATA_POINTS                                       :{BLACK}數據基於 {COMMA} 個採樣

@@ -21,11 +21,15 @@ enum SaveLoadVersion : uint16;
  */
 enum SlXvFeatureIndex {
 	XSLFI_NULL                          = 0,      ///< Unused value, to indicate that no extended feature test is in use
+	XSLFI_VERSION_LABEL,                          ///< Version label
 	XSLFI_TRACE_RESTRICT,                         ///< Trace restrict
 	XSLFI_TRACE_RESTRICT_OWNER,                   ///< Trace restrict: train owner test
 	XSLFI_TRACE_RESTRICT_ORDRCND,                 ///< Trace restrict: slot conditional order
 	XSLFI_TRACE_RESTRICT_STATUSCND,               ///< Trace restrict: train status condition
 	XSLFI_TRACE_RESTRICT_REVERSE,                 ///< Trace restrict: reverse
+	XSLFI_TRACE_RESTRICT_NEWSCTRL,                ///< Trace restrict: news control
+	XSLFI_TRACE_RESTRICT_COUNTER,                 ///< Trace restrict: counters
+	XSLFI_TRACE_RESTRICT_TIMEDATE,                ///< Trace restrict: time/date
 	XSLFI_PROG_SIGS,                              ///< programmable pre-signals patch
 	XSLFI_ADJACENT_CROSSINGS,                     ///< Adjacent level crossings closure patch
 	XSLFI_SAFER_CROSSINGS,                        ///< Safer level crossings
@@ -72,11 +76,27 @@ enum SlXvFeatureIndex {
 	XSLFI_LINKGRAPH_MODES,                        ///< Linkgraph additional distribution modes
 	XSLFI_GAME_EVENTS,                            ///< Game event flags
 	XSLFI_ROAD_LAYOUT_CHANGE_CTR,                 ///< Road layout change counter
-	XSLFI_TOWN_CARGO_MATRIX,                      ///< Town cargo matrix savegame format changes
+	XSLFI_TOWN_CARGO_MATRIX,                      ///< Town cargo matrix savegame format changes (now obsolete)
 	XSLFI_STATE_CHECKSUM,                         ///< State checksum
 	XSLFI_DEBUG,                                  ///< Debugging info
 	XSLFI_FLOW_STAT_FLAGS,                        ///< FlowStat flags
 	XSLFI_SPEED_RESTRICTION,                      ///< Train speed restrictions
+	XSLFI_STATION_GOODS_EXTRA,                    ///< Extra station goods entry statuses
+	XSLFI_DOCKING_CACHE_VER,                      ///< Multiple docks - docking tile cache version
+	XSLFI_EXTRA_CHEATS,                           ///< Extra cheats
+	XSLFI_TOWN_MULTI_BUILDING,                    ///< Allow multiple stadium/church buildings in a single town
+	XSLFI_SHIP_LOST_COUNTER,                      ///< Ship lost counter
+	XSLFI_BUILD_OBJECT_RATE_LIMIT,                ///< Build object rate limit
+	XSLFI_LOCAL_COMPANY,                          ///< Local company ID
+	XSLFI_THROUGH_TRAIN_DEPOT,                    ///< Drive-through train depots
+	XSLFI_MORE_VEHICLE_ORDERS,                    ///< More vehicle orders - VehicleOrderID is 16 bits instead of 8
+	XSLFI_ORDER_FLAGS_EXTRA,                      ///< Order flags field extra size
+	XSLFI_ONE_WAY_DT_ROAD_STOP,                   ///< One-way drive-through road stops
+	XSLFI_ONE_WAY_ROAD_STATE,                     ///< One-way road state cache
+	XSLFI_VENC_CHUNK,                             ///< VENC chunk
+	XSLFI_ANIMATED_TILE_EXTRA,                    ///< Animated tile extra info
+	XSLFI_NEWGRF_INFO_EXTRA,                      ///< Extra NewGRF info in savegame
+	XSLFI_INDUSTRY_CARGO_ADJ,                     ///< Industry cargo adjustment patch
 
 	XSLFI_RIFF_HEADER_60_BIT,                     ///< Size field in RIFF chunk header is 60 bit
 	XSLFI_HEIGHT_8_BIT,                           ///< Map tile height is 8 bit instead of 4 bit, but savegame version may be before this became true in trunk

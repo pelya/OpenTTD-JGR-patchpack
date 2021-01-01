@@ -395,7 +395,7 @@ STR_FILE_MENU_EXIT                                              :Ofslute
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Wrâldkaart
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Ekstra finster
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Ekstra finster
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Frachtstreamleginda
 STR_MAP_MENU_SIGN_LIST                                          :Buordsjeslist
 
@@ -869,7 +869,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Gemeente fan {TOWN} tekent in kontrakt mei {STRING} foar in jier lang eksklusive ferfiersrjochen!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Loaitsfinster {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Loaitsfinster {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Kopiearje nei loaitsfinster
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Kopiearje de lokaasje fan it haadfinster nei dit loaitsfinster
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Plak fanút loaitsfinster
@@ -1495,7 +1495,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Folslein
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Krante verskient yn kleur yn: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :It jier wêrop kranteberjochten oergean op kleur. Foar dit jier oan binne sy swart/wyt
 STR_CONFIG_SETTING_STARTING_YEAR                                :Begjin jier: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Jou de ekonomy mear lytse veroarings: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Stea it keapjen fan oandielen ta: {STRING}
 STR_CONFIG_SETTING_DRAG_SIGNALS_DENSITY                         :By slepe, pleats seinen eltse: {STRING}
 STR_CONFIG_SETTING_DRAG_SIGNALS_DENSITY_VALUE                   :{COMMA} tegel{P 0 "" s}
@@ -1687,17 +1686,8 @@ STR_INTRO_TOOLTIP_QUIT                                          :{BLACK}Slút 'O
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Ôfslúte
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Witte jo seker dat jo dit spul ôfslúte wolle en werom gean wolle nei {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Ja
 STR_QUIT_NO                                                     :{BLACK}Nee
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Ferlit Spul
@@ -2458,7 +2448,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Lân fan bedriu
 STR_ABOUT_OPENTTD                                               :{WHITE}Oer OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Orizjineel copyright {COPYRIGHT} 1995 Chris Sawyer, All rights reserved
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD-ferzje {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-2019 It OpenTTD team
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-{STRING} It OpenTTD team
 
 # Framerate display window
 ############ Leave those lines in this order!!

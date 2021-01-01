@@ -14,12 +14,15 @@
 #include "strings_type.h"
 #include "table/strings.h"
 
+#include <vector>
+
 class LinkGraphOverlay;
 
 enum ViewportMapType {
 	VPMT_BEGIN = 0,
 	VPMT_VEGETATION = 0,
 	VPMT_OWNER,
+	VPMT_ROUTES,
 	VPMT_INDUSTRY,
 	VPMT_END,
 
@@ -27,10 +30,15 @@ enum ViewportMapType {
 	VPMT_MAX = VPMT_INDUSTRY,
 };
 
+struct ViewPortMapDrawVehiclesCache {
+	uint64 done_hash_bits[64];
+	std::vector<bool> vehicle_pixels;
+};
+
 /**
  * Data structure for viewport, display of a part of the world
  */
-struct ViewPort {
+struct Viewport {
 	int left;    ///< Screen coordinate left edge of the viewport
 	int top;     ///< Screen coordinate top edge of the viewport
 	int width;   ///< Screen width of the viewport
@@ -45,6 +53,37 @@ struct ViewPort {
 	ViewportMapType map_type;  ///< Rendering type
 
 	LinkGraphOverlay *overlay;
+
+	std::vector<bool> dirty_blocks;
+	uint dirty_blocks_per_column;
+	uint dirty_blocks_per_row;
+	uint8 dirty_block_left_margin;
+	bool is_dirty = false;
+	bool is_drawn = false;
+	ViewPortMapDrawVehiclesCache map_draw_vehicles_cache;
+	std::vector<byte> land_pixel_cache;
+
+	uint GetDirtyBlockWidthShift() const { return this->GetDirtyBlockShift(); }
+	uint GetDirtyBlockHeightShift() const { return this->GetDirtyBlockShift(); }
+	uint GetDirtyBlockWidth() const { return 1 << this->GetDirtyBlockWidthShift(); }
+	uint GetDirtyBlockHeight() const { return 1 << this->GetDirtyBlockHeightShift(); }
+
+	void ClearDirty()
+	{
+		if (this->is_dirty) {
+			this->dirty_blocks.assign(this->dirty_blocks.size(), false);
+			this->is_dirty = false;
+		}
+		this->is_drawn = false;
+	}
+
+private:
+	uint GetDirtyBlockShift() const
+	{
+		if (this->zoom >= ZOOM_LVL_DRAW_MAP) return 3;
+		if (this->zoom >= ZOOM_LVL_OUT_8X) return 4;
+		return 7 - this->zoom;
+	}
 };
 
 /** Margins for the viewport sign */
@@ -140,6 +179,7 @@ enum ViewportDragDropSelectionProcess {
 	DDSP_MEASURE,              ///< Measurement tool
 	DDSP_DRAW_PLANLINE,        ///< Draw a line for a plan
 	DDSP_BUY_LAND,             ///< Purchase land
+	DDSP_BUILD_OBJECT,         ///< Build object
 
 	/* Rail specific actions */
 	DDSP_PLACE_RAIL,           ///< Rail placement
@@ -176,5 +216,12 @@ enum FoundationPart {
 	FOUNDATION_PART_HALFTILE = 1,     ///< Second part (halftile foundation)
 	FOUNDATION_PART_END
 };
+
+enum ViewportMarkDirtyFlags : byte {
+	VMDF_NONE                = 0,
+	VMDF_NOT_MAP_MODE        = 0x1,
+	VMDF_NOT_LANDSCAPE       = 0x2,
+};
+DECLARE_ENUM_AS_BIT_SET(ViewportMarkDirtyFlags)
 
 #endif /* VIEWPORT_TYPE_H */

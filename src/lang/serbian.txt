@@ -583,7 +583,7 @@ STR_FILE_MENU_EXIT                                              :Izađi
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Karta sveta
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Dodatno gledište
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Dodatno gledište
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Legenda protoka tereta
 STR_MAP_MENU_SIGN_LIST                                          :Lista Znakova
 
@@ -1068,7 +1068,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Vlasti grada {TOWN} su potpisale ugovor sa preduzećem {STRING} o ekskluzivnom pravu prevoza na godinu dana!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Pogled{COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Pogled{COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK} Kopiraj u prozor za pogled
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Premešta pogled na trenutnu poziciju glavnog pogleda
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Promenite glavni prikaz
@@ -1713,8 +1713,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Potpuno
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Vesti u boji se objavljuju počev od godine: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Godina počev od koje se vesti objavljuju u boji. Pre ove godine se objavljuju u crno/beloj tehnici.
 STR_CONFIG_SETTING_STARTING_YEAR                                :Početna godina: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Uključena glatka ekonomija (više, manjih promena): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Ako je omogućeno, industrijska proizvodnja se češće menja u manjim koracima. Ako se vrste industrija učitavaju preko NewGRF dodataka ovo podešavanje uglavnom nema efekta
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Dozvoljena kupovina deonica drugih preduzeća: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Ako je omogućeno, dozvoljava kupovinu i prodaju deonica preduzeća. Deonice su dostupne tek kad preduzeće dostigne određenu starost
 STR_CONFIG_SETTING_FEEDER_PAYMENT_SHARE                         :Procenat prihoda koji će biti predan srednjim dionicama prevoza u fider sustavima: {STRING}
@@ -1960,17 +1958,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Ovom pre
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Izlaz
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Da li ste sigurni da želite da napustite OpenTTD i vratite se u {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Da
 STR_QUIT_NO                                                     :{BLACK}Ne
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Napuštanje partije
@@ -2876,7 +2865,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Zemljište u po
 STR_ABOUT_OPENTTD                                               :{WHITE}O OpenTTD-u
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Originalni kopirajt {COPYRIGHT} 1995 Chris Sawyer, Sva prava zadržana
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD verzija {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 OpenTTD tim
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} OpenTTD tim
 
 # Framerate display window
 ############ Leave those lines in this order!!

@@ -287,7 +287,7 @@ CommandCost CmdBuildRailWaypoint(TileIndex start_tile, DoCommandFlag flags, uint
 			MakeRailWaypoint(tile, wp->owner, wp->index, axis, layout_ptr[i], GetRailType(tile));
 			SetCustomStationSpecIndex(tile, map_spec_index);
 			SetRailStationReservation(tile, reserved);
-			MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+			MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 
 			DeallocateSpecFromStation(wp, old_specindex);
 			YapfNotifyTrackLayoutChange(tile, AxisToTrack(axis));
@@ -402,7 +402,7 @@ CommandCost RemoveBuoy(TileIndex tile, DoCommandFlag flags)
 static bool IsUniqueWaypointName(const char *name)
 {
 	for (const Waypoint *wp : Waypoint::Iterate()) {
-		if (wp->name != nullptr && strcmp(wp->name, name) == 0) return false;
+		if (!wp->name.empty() && wp->name == name) return false;
 	}
 
 	return true;
@@ -435,8 +435,11 @@ CommandCost CmdRenameWaypoint(TileIndex tile, DoCommandFlag flags, uint32 p1, ui
 	}
 
 	if (flags & DC_EXEC) {
-		free(wp->name);
-		wp->name = reset ? nullptr : stredup(text);
+		if (reset) {
+			wp->name.clear();
+		} else {
+			wp->name = text;
+		}
 
 		wp->UpdateVirtCoord();
 	}

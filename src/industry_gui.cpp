@@ -222,7 +222,7 @@ void SortIndustryTypes()
  * @param p2     Additional data of the #CMD_BUILD_INDUSTRY command.
  * @param cmd    Unused.
  */
-void CcBuildIndustry(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
+void CcBuildIndustry(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
 {
 	if (result.Succeeded()) return;
 
@@ -270,8 +270,6 @@ static WindowDesc _build_industry_desc(
 class BuildIndustryWindow : public Window {
 	int selected_index;                         ///< index of the element in the matrix
 	IndustryType selected_type;                 ///< industry corresponding to the above index
-	uint16 callback_timer;                      ///< timer counter for callback eventual verification
-	bool timer_enabled;                         ///< timer can be used
 	uint16 count;                               ///< How many industries are loaded
 	IndustryType index[NUM_INDUSTRYTYPES + 1];  ///< Type of industry, in the order it was loaded
 	bool enabled[NUM_INDUSTRYTYPES + 1];        ///< availability state, coming from CBID_INDUSTRY_PROBABILITY (if ever)
@@ -295,7 +293,6 @@ class BuildIndustryWindow : public Window {
 			this->index[this->count] = INVALID_INDUSTRYTYPE;
 			this->enabled[this->count] = true;
 			this->count++;
-			this->timer_enabled = false;
 		}
 		/* Fill the arrays with industries.
 		 * The tests performed after the enabled allow to load the industries
@@ -387,12 +384,8 @@ class BuildIndustryWindow : public Window {
 public:
 	BuildIndustryWindow() : Window(&_build_industry_desc)
 	{
-		this->timer_enabled = _loaded_newgrf_features.has_newindustries;
-
 		this->selected_index = -1;
 		this->selected_type = INVALID_INDUSTRYTYPE;
-
-		this->callback_timer = DAY_TICKS;
 
 		this->CreateNestedTree();
 		this->vscroll = this->GetScrollbar(WID_DPI_SCROLLBAR);
@@ -423,10 +416,11 @@ public:
 			}
 
 			case WID_DPI_INFOPANEL: {
-				/* Extra line for cost outside of editor + extra lines for 'extra' information for NewGRFs. */
-				int height = 2 + (_game_mode == GM_EDITOR ? 0 : 1) + (_loaded_newgrf_features.has_newindustries ? 4 : 0);
+				/* Extra line for cost outside of editor. */
+				int height = 2 + (_game_mode == GM_EDITOR ? 0 : 1);
 				uint extra_lines_req = 0;
 				uint extra_lines_prd = 0;
+				uint extra_lines_newgrf = 0;
 				uint max_minwidth = FONT_HEIGHT_NORMAL * MAX_MINWIDTH_LINEHEIGHTS;
 				Dimension d = {0, 0};
 				for (byte i = 0; i < this->count; i++) {
@@ -454,10 +448,15 @@ public:
 						strdim.width = max_minwidth;
 					}
 					d = maxdim(d, strdim);
+
+					if (indsp->grf_prop.grffile != nullptr) {
+						/* Reserve a few extra lines for text from an industry NewGRF. */
+						extra_lines_newgrf = 4;
+					}
 				}
 
 				/* Set it to something more sane :) */
-				height += extra_lines_prd + extra_lines_req;
+				height += extra_lines_prd + extra_lines_req + extra_lines_newgrf;
 				size->height = height * FONT_HEIGHT_NORMAL + WD_FRAMERECT_TOP + WD_FRAMERECT_BOTTOM;
 				size->width  = d.width + WD_FRAMERECT_LEFT + WD_FRAMERECT_RIGHT;
 				break;
@@ -673,25 +672,19 @@ public:
 		if (success && !_settings_client.gui.persistent_buildingtools) ResetObjectToPlace();
 	}
 
-	void OnGameTick() override
+	void OnHundredthTick() override
 	{
-		if (!this->timer_enabled) return;
-		if (--this->callback_timer == 0) {
-			/* We have just passed another day.
-			 * See if we need to update availability of currently selected industry */
-			this->callback_timer = DAY_TICKS; // restart counter
+		if (_game_mode == GM_EDITOR) return;
+		const IndustrySpec *indsp = GetIndustrySpec(this->selected_type);
 
-			const IndustrySpec *indsp = GetIndustrySpec(this->selected_type);
+		if (indsp->enabled) {
+			bool call_back_result = GetIndustryProbabilityCallback(this->selected_type, IACT_USERCREATION, 1) > 0;
 
-			if (indsp->enabled) {
-				bool call_back_result = GetIndustryProbabilityCallback(this->selected_type, IACT_USERCREATION, 1) > 0;
-
-				/* Only if result does match the previous state would it require a redraw. */
-				if (call_back_result != this->enabled[this->selected_index]) {
-					this->enabled[this->selected_index] = call_back_result;
-					this->SetButtons();
-					this->SetDirty();
-				}
+			/* Only if result does match the previous state would it require a redraw. */
+			if (call_back_result != this->enabled[this->selected_index]) {
+				this->enabled[this->selected_index] = call_back_result;
+				this->SetButtons();
+				this->SetDirty();
 			}
 		}
 	}
@@ -1023,7 +1016,7 @@ public:
 			case WID_IV_GOTO: {
 				Industry *i = Industry::Get(this->window_number);
 				if (_ctrl_pressed) {
-					ShowExtraViewPortWindow(i->location.GetCenterTile());
+					ShowExtraViewportWindow(i->location.GetCenterTile());
 				} else {
 					ScrollMainWindowToTile(i->location.GetCenterTile());
 				}
@@ -1087,7 +1080,7 @@ public:
 		const Industry *i = Industry::Get(this->window_number);
 		if (IsProductionAlterable(i)) {
 			const IndustrySpec *ind = GetIndustrySpec(i->type);
-			this->editable = ind->UsesSmoothEconomy() ? EA_RATE : EA_MULTIPLIER;
+			this->editable = ind->UsesOriginalEconomy() ? EA_MULTIPLIER : EA_RATE;
 		} else {
 			this->editable = EA_NONE;
 		}
@@ -1107,11 +1100,11 @@ public:
 static void UpdateIndustryProduction(Industry *i)
 {
 	const IndustrySpec *indspec = GetIndustrySpec(i->type);
-	if (!indspec->UsesSmoothEconomy()) i->RecomputeProductionMultipliers();
+	if (indspec->UsesOriginalEconomy()) i->RecomputeProductionMultipliers();
 
 	for (byte j = 0; j < lengthof(i->produced_cargo); j++) {
 		if (i->produced_cargo[j] != CT_INVALID) {
-			i->last_month_production[j] = 8 * i->production_rate[j];
+			i->last_month_production[j] = ScaleQuantity(8 * i->production_rate[j], _settings_game.economy.industry_cargo_scale_factor);
 		}
 	}
 }
@@ -1261,14 +1254,14 @@ protected:
 
 	CargoID cargo_filter[NUM_CARGO + 2];        ///< Available cargo filters; CargoID or CF_ANY or CF_NONE
 	StringID cargo_filter_texts[NUM_CARGO + 3]; ///< Texts for filter_cargo, terminated by INVALID_STRING_ID
-	CargoID produced_cargo_filter_criteria;     ///< Selected produced cargo filter
-	CargoID accepted_cargo_filter_criteria;     ///< Selected accepted cargo filter
+	byte produced_cargo_filter_criteria;        ///< Selected produced cargo filter index
+	byte accepted_cargo_filter_criteria;        ///< Selected accepted cargo filter index
 
 	/**
 	 * Set cargo filter list item index.
 	 * @param index The index of the cargo to be set
 	 */
-	void SetProducedCargoFilterIndex(int index)
+	void SetProducedCargoFilterIndex(byte index)
 	{
 		if (this->produced_cargo_filter_criteria != index) {
 			this->produced_cargo_filter_criteria = index;
@@ -1285,7 +1278,7 @@ protected:
 	 * Set cargo filter list item index.
 	 * @param index The index of the cargo to be set
 	 */
-	void SetAcceptedCargoFilterIndex(int index)
+	void SetAcceptedCargoFilterIndex(byte index)
 	{
 		if (this->accepted_cargo_filter_criteria != index) {
 			this->accepted_cargo_filter_criteria = index;
@@ -1303,7 +1296,7 @@ protected:
 	 */
 	void SetCargoFilterArray()
 	{
-		uint filter_items = 0;
+		byte filter_items = 0;
 
 		/* Add item for disabling filtering. */
 		this->cargo_filter[filter_items] = CF_ANY;
@@ -1634,7 +1627,7 @@ public:
 				uint p = this->vscroll->GetScrolledRowFromWidget(pt.y, this, WID_ID_INDUSTRY_LIST, WD_FRAMERECT_TOP);
 				if (p < this->industries.size()) {
 					if (_ctrl_pressed) {
-						ShowExtraViewPortWindow(this->industries[p]->location.tile);
+						ShowExtraViewportWindow(this->industries[p]->location.tile);
 					} else {
 						ScrollMainWindowToTile(this->industries[p]->location.tile);
 					}

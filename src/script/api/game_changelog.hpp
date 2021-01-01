@@ -17,6 +17,23 @@
  *
  * This version is not yet released. The following changes are not set in stone yet.
  *
+ * API additions:
+ * \li GSEventStoryPageButtonClick
+ * \li GSEventStoryPageTileSelect
+ * \li GSEventStoryPageVehicleSelect
+ * \li GSIndustry::GetCargoLastAcceptedDate
+ * \li GSIndustry::GetControlFlags
+ * \li GSIndustry::GetExclusiveConsumer
+ * \li GSIndustry::GetExclusiveSupplier
+ * \li GSIndustry::GetLastProductionYear
+ * \li GSIndustry::SetControlFlags
+ * \li GSIndustry::SetExclusiveConsumer
+ * \li GSIndustry::SetExclusiveSupplier
+ * \li GSStoryPage::MakePushButtonReference
+ * \li GSStoryPage::MakeTileButtonReference
+ * \li GSStoryPage::MakeVehicleButtonReference
+ * \li GSPriorityQueue
+ *
  * \b 1.10.0
  *
  * API additions:

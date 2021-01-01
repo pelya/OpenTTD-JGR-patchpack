@@ -50,7 +50,7 @@ struct HouseScopeResolver : public CommonHouseScopeResolver {
 	}
 
 	uint32 GetRandomBits() const override;
-	uint32 GetVariable(byte variable, uint32 parameter, bool *available) const override;
+	uint32 GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const override;
 	uint32 GetTriggers() const override;
 };
 
@@ -70,7 +70,7 @@ struct FakeHouseScopeResolver : public CommonHouseScopeResolver {
 		: CommonHouseScopeResolver(ro, house_id)
 	{ }
 
-	/* virtual */ uint32 GetVariable(byte variable, uint32 parameter, bool *available) const;
+	/* virtual */ uint32 GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const;
 };
 
 /** Resolver object to be used for houses (feature 07 spritegroups). */
@@ -144,6 +144,7 @@ void DrawNewHouseTile(TileInfo *ti, HouseID house_id);
 void DrawNewHouseTileInGUI(int x, int y, HouseID house_id, bool ground);
 void AnimateNewHouseTile(TileIndex tile);
 void AnimateNewHouseConstruction(TileIndex tile);
+uint8 GetNewHouseTileAnimationSpeed(TileIndex tile);
 
 uint16 GetHouseCallback(CallbackID callback, uint32 param1, uint32 param2, HouseID house_id, Town *town = nullptr, TileIndex tile = INVALID_TILE,
 		bool not_yet_constructed = false, uint8 initial_random_bits = 0, CargoTypes watched_cargo_triggers = 0);

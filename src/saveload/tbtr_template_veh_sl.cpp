@@ -37,7 +37,8 @@ const SaveLoad* GTD() {
 
 		SLE_VAR(TemplateVehicle, max_speed, SLE_UINT16),
 		SLE_VAR(TemplateVehicle, power, SLE_UINT32),
-		SLE_VAR(TemplateVehicle, weight, SLE_UINT32),
+		SLE_VAR(TemplateVehicle, empty_weight, SLE_UINT32),
+		SLE_CONDVAR_X(TemplateVehicle, full_weight, SLE_UINT32, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_TEMPLATE_REPLACEMENT, 6)),
 		SLE_VAR(TemplateVehicle, max_te, SLE_UINT32),
 
 		SLE_CONDNULL_X(1, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_TEMPLATE_REPLACEMENT, 0, 3)),
@@ -98,7 +99,7 @@ void AfterLoadTemplateVehicles()
 	}
 }
 
-void AfterLoadTemplateVehiclesUpdateImage()
+void AfterLoadTemplateVehiclesUpdate()
 {
 	SavedRandomSeeds saved_seeds;
 	SaveRandomSeeds(&saved_seeds);
@@ -112,29 +113,37 @@ void AfterLoadTemplateVehiclesUpdateImage()
 		}
 	}
 
+	RestoreRandomSeeds(saved_seeds);
+
+	InvalidateTemplateReplacementImages();
+}
+
+void AfterLoadTemplateVehiclesUpdateImages()
+{
+	InvalidateTemplateReplacementImages();
+}
+
+void AfterLoadTemplateVehiclesUpdateProperties()
+{
+	SavedRandomSeeds saved_seeds;
+	SaveRandomSeeds(&saved_seeds);
+
 	for (TemplateVehicle *tv : TemplateVehicle::Iterate()) {
 		if (tv->Prev() == nullptr) {
 			Backup<CompanyID> cur_company(_current_company, tv->owner, FILE_LINE);
 			StringID err;
-			Train* t = VirtualTrainFromTemplateVehicle(tv, err);
+			Train* t = VirtualTrainFromTemplateVehicle(tv, err, 0);
 			if (t != nullptr) {
-				int tv_len = 0;
-				for (TemplateVehicle *u = tv; u != nullptr; u = u->Next()) {
-					tv_len++;
-				}
-				int t_len = 0;
+				uint32 full_cargo_weight = 0;
 				for (Train *u = t; u != nullptr; u = u->Next()) {
-					t_len++;
+					full_cargo_weight += u->GetCargoWeight(u->cargo_cap);
 				}
-				if (t_len == tv_len) {
-					Train *v = t;
-					for (TemplateVehicle *u = tv; u != nullptr; u = u->Next(), v = v->Next()) {
-						v->GetImage(DIR_W, EIT_IN_DEPOT, &u->sprite_seq);
-						u->image_dimensions.SetFromTrain(v);
-					}
-				} else {
-					DEBUG(misc, 0, "AfterLoadTemplateVehiclesUpdateImage: vehicle count mismatch: %u, %u", t_len, tv_len);
-				}
+				const GroundVehicleCache *gcache = t->GetGroundVehicleCache();
+				tv->max_speed = t->GetDisplayMaxSpeed();
+				tv->power = gcache->cached_power;
+				tv->empty_weight = gcache->cached_weight;
+				tv->full_weight = gcache->cached_weight + full_cargo_weight;
+				tv->max_te = gcache->cached_max_te;
 				delete t;
 			}
 			cur_company.Restore();

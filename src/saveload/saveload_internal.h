@@ -17,7 +17,7 @@
 
 void InitializeOldNames();
 StringID RemapOldStringID(StringID s);
-char *CopyFromOldName(StringID id);
+std::string CopyFromOldName(StringID id);
 void ResetOldNames();
 
 void ResetOldWaypoints();
@@ -50,7 +50,9 @@ void ResetTempEngineData();
 Engine *GetTempDataEngine(EngineID index);
 void CopyTempEngineData();
 
-void AfterLoadTemplateVehiclesUpdateImage();
+void AfterLoadTemplateVehiclesUpdate();
+void AfterLoadTemplateVehiclesUpdateImages();
+void AfterLoadTemplateVehiclesUpdateProperties();
 
 extern int32 _saved_scrollpos_x;
 extern int32 _saved_scrollpos_y;

@@ -268,7 +268,7 @@ TownScopeResolver *StationResolverObject::GetTown()
 	return this->town_scope;
 }
 
-/* virtual */ uint32 StationScopeResolver::GetVariable(byte variable, uint32 parameter, bool *available) const
+/* virtual */ uint32 StationScopeResolver::GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const
 {
 	if (this->st == nullptr) {
 		/* Station does not exist, so we're in a purchase list or the land slope check callback. */
@@ -296,7 +296,7 @@ TownScopeResolver *StationResolverObject::GetTown()
 			case 0xFA: return Clamp(_date - DAYS_TILL_ORIGINAL_BASE_YEAR, 0, 65535); // Build date, clamped to a 16 bit value
 		}
 
-		*available = false;
+		extra->available = false;
 		return UINT_MAX;
 	}
 
@@ -386,7 +386,7 @@ TownScopeResolver *StationResolverObject::GetTown()
 		case 0xFA: return Clamp(this->st->build_date - DAYS_TILL_ORIGINAL_BASE_YEAR, 0, 65535);
 	}
 
-	return this->st->GetNewGRFVariable(this->ro, variable, parameter, available);
+	return this->st->GetNewGRFVariable(this->ro, variable, parameter, &(extra->available));
 }
 
 uint32 Station::GetNewGRFVariable(const ResolverObject &object, byte variable, byte parameter, bool *available) const
@@ -425,10 +425,10 @@ uint32 Station::GetNewGRFVariable(const ResolverObject &object, byte variable, b
 
 		switch (variable) {
 			case 0x60: return min(ge->cargo.TotalCount(), 4095);
-			case 0x61: return ge->HasVehicleEverTriedLoading() ? ge->time_since_pickup : 0;
+			case 0x61: return ge->HasVehicleEverTriedLoading() && ge->IsSupplyAllowed() ? ge->time_since_pickup : 0;
 			case 0x62: return ge->HasRating() ? ge->rating : 0xFFFFFFFF;
 			case 0x63: return ge->cargo.DaysInTransit();
-			case 0x64: return ge->HasVehicleEverTriedLoading() ? ge->last_speed | (ge->last_age << 8) : 0xFF00;
+			case 0x64: return ge->HasVehicleEverTriedLoading() && ge->IsSupplyAllowed() ? ge->last_speed | (ge->last_age << 8) : 0xFF00;
 			case 0x65: return GB(ge->status, GoodsEntry::GES_ACCEPTANCE, 1) << 3;
 			case 0x69: {
 				assert_compile((int)GoodsEntry::GES_EVER_ACCEPTED + 1 == (int)GoodsEntry::GES_LAST_MONTH);
@@ -924,6 +924,14 @@ void AnimateStationTile(TileIndex tile)
 	StationAnimationBase::AnimateTile(ss, BaseStation::GetByTile(tile), tile, HasBit(ss->flags, SSF_CB141_RANDOM_BITS));
 }
 
+uint8 GetStationTileAnimationSpeed(TileIndex tile)
+{
+	const StationSpec *ss = GetStationSpec(tile);
+	if (ss == nullptr) return 0;
+
+	return StationAnimationBase::GetAnimationSpeed(ss);
+}
+
 void TriggerStationAnimation(BaseStation *st, TileIndex tile, StationAnimationTrigger trigger, CargoID cargo_type)
 {
 	/* List of coverage areas for each animation trigger */
@@ -1029,7 +1037,7 @@ void TriggerStationRandomisation(Station *st, TileIndex tile, StationRandomTrigg
 					random_bits |= Random() & reseed;
 					SetStationTileRandomBits(tile, random_bits);
 
-					MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+					MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 				}
 			}
 		}

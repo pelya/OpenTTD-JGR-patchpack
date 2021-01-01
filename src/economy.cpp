@@ -51,6 +51,7 @@
 #include "linkgraph/refresh.h"
 #include "tracerestrict.h"
 #include "tbtr_template_vehicle.h"
+#include "tbtr_template_vehicle_func.h"
 #include "scope_info.h"
 #include "pathfinder/yapf/yapf_cache.h"
 
@@ -466,6 +467,7 @@ void ChangeOwnershipOfCompanyItems(Owner old_owner, Owner new_owner)
 				/* Owner changes, clear cache */
 				v->colourmap = PAL_NONE;
 				v->InvalidateNewGRFCache();
+				v->InvalidateImageCache();
 
 				if (v->IsEngineCountable()) {
 					GroupStatistics::CountEngine(v, 1);
@@ -576,6 +578,8 @@ void ChangeOwnershipOfCompanyItems(Owner old_owner, Owner new_owner)
 	YapfNotifyTrackLayoutChange(INVALID_TILE, INVALID_TRACK);
 
 	NotifyRoadLayoutChanged();
+
+	InvalidateTemplateReplacementImages();
 
 	cur_company.Restore();
 
@@ -720,7 +724,7 @@ static void CompaniesGenStatistics()
 	cur_company.Restore();
 
 	/* Only run the economic statics and update company stats every 3rd month (1st of quarter). */
-	if (!HasBit(1 << 0 | 1 << 3 | 1 << 6 | 1 << 9, _cur_month)) return;
+	if (!HasBit(1 << 0 | 1 << 3 | 1 << 6 | 1 << 9, _cur_date_ymd.month)) return;
 
 	for (Company *c : Company::Iterate()) {
 		/* Drop the oldest history off the end */
@@ -788,7 +792,7 @@ bool AddInflation(bool check_year)
 void RecomputePrices()
 {
 	/* Setup maximum loan */
-	_economy.max_loan = (_settings_game.difficulty.max_loan * _economy.inflation_prices >> 16) / 50000 * 50000;
+	_economy.max_loan = ((uint64)_settings_game.difficulty.max_loan * _economy.inflation_prices >> 16) / 50000 * 50000;
 
 	/* Setup price bases */
 	for (Price i = PR_BEGIN; i < PR_END; i++) {
@@ -874,8 +878,8 @@ static void CompaniesPayInterest()
 		if (c->money < 0) {
 			yearly_fee += -c->money *_economy.interest_rate / 100;
 		}
-		Money up_to_previous_month = yearly_fee * _cur_month / 12;
-		Money up_to_this_month = yearly_fee * (_cur_month + 1) / 12;
+		Money up_to_previous_month = yearly_fee * _cur_date_ymd.month / 12;
+		Money up_to_this_month = yearly_fee * (_cur_date_ymd.month + 1) / 12;
 
 		SubtractMoneyFromCompany(CommandCost(EXPENSES_LOAN_INT, up_to_this_month - up_to_previous_month));
 
@@ -1084,6 +1088,8 @@ static uint DeliverGoodsToIndustry(const Station *st, CargoID cargo_type, uint n
 		/* Check if industry temporarily refuses acceptance */
 		if (IndustryTemporarilyRefusesCargo(ind, cargo_type)) continue;
 
+		if (ind->exclusive_supplier != INVALID_OWNER && ind->exclusive_supplier != st->owner) continue;
+
 		/* Insert the industry into _cargo_delivery_destinations, if not yet contained */
 		include(_cargo_delivery_destinations, ind);
 
@@ -1220,12 +1226,14 @@ CargoPayment::~CargoPayment()
 		SndPlayVehicleFx(SND_14_CASHTILL, this->front);
 	}
 
-	if (this->visual_transfer != 0) {
-		ShowFeederIncomeAnimation(this->front->x_pos, this->front->y_pos,
-				this->front->z_pos, this->visual_transfer, -this->visual_profit);
-	} else if (this->visual_profit != 0) {
-		ShowCostOrIncomeAnimation(this->front->x_pos, this->front->y_pos,
-				this->front->z_pos, -this->visual_profit);
+	if (HasBit(_extra_display_opt, XDO_SHOW_MONEY_TEXT_EFFECTS)) {
+		if (this->visual_transfer != 0) {
+			ShowFeederIncomeAnimation(this->front->x_pos, this->front->y_pos,
+					this->front->z_pos, this->visual_transfer, -this->visual_profit);
+		} else if (this->visual_profit != 0) {
+			ShowCostOrIncomeAnimation(this->front->x_pos, this->front->y_pos,
+					this->front->z_pos, -this->visual_profit);
+		}
 	}
 
 	cur_company.Restore();
@@ -1920,14 +1928,18 @@ static void LoadUnloadVehicle(Vehicle *front)
 			ClrBit(v->vehicle_flags, VF_CARGO_UNLOADING);
 		}
 
-		/* Do not pick up goods when we have no-load set or loading is stopped. */
-		if (GetLoadType(v) & OLFB_NO_LOAD || HasBit(front->vehicle_flags, VF_STOP_LOADING)) continue;
+		/* Do not pick up goods when we have no-load set or loading is stopped.
+		 * Per-cargo no-load orders can only be checked after attempting to refit. */
+		if (front->current_order.GetLoadType() & OLFB_NO_LOAD || HasBit(front->vehicle_flags, VF_STOP_LOADING)) continue;
 
 		/* This order has a refit, if this is the first vehicle part carrying cargo and the whole vehicle is empty, try refitting. */
 		if (front->current_order.IsRefit() && artic_part == 1) {
 			HandleStationRefit(v, consist_capleft, st, next_station, front->current_order.GetRefitCargo());
 			ge = &st->goods[v->cargo_type];
 		}
+
+		/* Do not pick up goods when we have no-load set. */
+		if (GetLoadType(v) & OLFB_NO_LOAD) continue;
 
 		/* As we're loading here the following link can carry the full capacity of the vehicle. */
 		v->refit_cap = v->cargo_cap;
@@ -2031,15 +2043,35 @@ static void LoadUnloadVehicle(Vehicle *front)
 
 	ClrBit(front->vehicle_flags, VF_STOP_LOADING);
 
-	bool has_full_load_order = front->current_order.GetLoadType() & OLFB_FULL_LOAD;
-	if (front->current_order.GetLoadType() == OLFB_CARGO_TYPE_LOAD) {
+	CargoTypes full_load_cargo_mask = 0;
+	if (front->current_order.GetLoadType() & OLFB_FULL_LOAD) {
+		full_load_cargo_mask = ALL_CARGOTYPES;
+	} else if (front->current_order.GetLoadType() == OLFB_CARGO_TYPE_LOAD) {
 		for (Vehicle *v = front; v != nullptr; v = v->Next()) {
 			if (front->current_order.GetCargoLoadTypeRaw(v->cargo_type) & OLFB_FULL_LOAD) {
-				has_full_load_order = true;
-				break;
+				SetBit(full_load_cargo_mask, v->cargo_type);
 			}
 		}
 	}
+	auto may_leave_early = [&]() -> bool {
+		switch (front->current_order.GetLeaveType()) {
+			case OLT_NORMAL:
+				return false;
+
+			case OLT_LEAVE_EARLY:
+				return true;
+
+			case OLT_LEAVE_EARLY_FULL_ANY:
+				return !((front->type == VEH_AIRCRAFT && IsCargoInClass(front->cargo_type, CC_PASSENGERS) && front->cargo_cap > front->cargo.StoredCount()) ||
+					((cargo_not_full | not_yet_in_station_cargo_not_full) != 0 && ((cargo_full | beyond_platform_end_cargo_full) & ~(cargo_not_full | not_yet_in_station_cargo_not_full)) == 0));
+
+			case OLT_LEAVE_EARLY_FULL_ALL:
+				return (cargo_not_full | not_yet_in_station_cargo_not_full) == 0;
+
+			default:
+				NOT_REACHED();
+		}
+	};
 	if (anything_loaded || anything_unloaded) {
 		if (_settings_game.order.gradual_loading) {
 			/* The time it takes to load one 'slice' of cargo or passengers depends
@@ -2050,17 +2082,20 @@ static void LoadUnloadVehicle(Vehicle *front)
 		}
 		/* We loaded less cargo than possible for all cargo types and it's not full
 		 * load and we're not supposed to wait any longer: stop loading. */
-		if (!anything_unloaded && full_load_amount == 0 && reservation_left == 0 && !has_full_load_order &&
+		if (!anything_unloaded && full_load_amount == 0 && reservation_left == 0 && full_load_cargo_mask == 0 &&
 				(front->current_order_time >= (uint)max<int>(front->current_order.GetTimetabledWait() - front->lateness_counter, 0) ||
-				front->current_order.GetLeaveType() == OLT_LEAVE_EARLY)) {
+				may_leave_early())) {
 			SetBit(front->vehicle_flags, VF_STOP_LOADING);
+			if (may_leave_early()) {
+				front->current_order.SetLeaveType(OLT_LEAVE_EARLY);
+			}
 		}
 
 		UpdateLoadUnloadTicks(front, st, new_load_unload_ticks, platform_length_left);
 	} else {
 		UpdateLoadUnloadTicks(front, st, 20, platform_length_left); // We need the ticks for link refreshing.
 		bool finished_loading = true;
-		if (has_full_load_order) {
+		if (full_load_cargo_mask != 0) {
 			const bool full_load_any_order = front->current_order.GetLoadType() == OLF_FULL_LOAD_ANY;
 			if (full_load_any_order) {
 				/* if the aircraft carries passengers and is NOT full, then
@@ -2069,7 +2104,7 @@ static void LoadUnloadVehicle(Vehicle *front)
 						(cargo_not_full != 0 && ((cargo_full | beyond_platform_end_cargo_full) & ~cargo_not_full) == 0)) { // There are still non-full cargoes
 					finished_loading = false;
 				}
-			} else if (cargo_not_full != 0) {
+			} else if ((cargo_not_full & full_load_cargo_mask) != 0) {
 				finished_loading = false;
 			}
 			if (finished_loading && pull_through_mode) {
@@ -2099,6 +2134,10 @@ static void LoadUnloadVehicle(Vehicle *front)
 		if (!finished_loading) LinkRefresher::Run(front, true, true);
 
 		SB(front->vehicle_flags, VF_LOADING_FINISHED, 1, finished_loading);
+
+		if (finished_loading && may_leave_early()) {
+			front->current_order.SetLeaveType(OLT_LEAVE_EARLY);
+		}
 	}
 
 	/* Calculate the loading indicator fill percent and display
@@ -2126,7 +2165,7 @@ static void LoadUnloadVehicle(Vehicle *front)
 	}
 
 	if (dirty_vehicle) {
-		SetWindowDirty(GetWindowClassForVehicleType(front->type), front->owner);
+		DirtyVehicleListWindowForVehicle(front);
 		SetWindowDirty(WC_VEHICLE_DETAILS, front->index);
 		front->MarkDirty();
 	}
@@ -2225,6 +2264,7 @@ static void DoAcquireCompany(Company *c)
 	InvalidateWindowClassesData(WC_SHIPS_LIST, 0);
 	InvalidateWindowClassesData(WC_ROADVEH_LIST, 0);
 	InvalidateWindowClassesData(WC_AIRCRAFT_LIST, 0);
+	InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 
 	delete c;
 
@@ -2361,4 +2401,36 @@ CommandCost CmdBuyCompany(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 		DoAcquireCompany(c);
 	}
 	return cost;
+}
+
+uint ScaleQuantity(uint amount, int scale_factor)
+{
+	scale_factor += 200; // ensure factor is positive
+	assert(scale_factor >= 0);
+	int cf = (scale_factor / 10) - 20;
+	int fine = scale_factor % 10;
+	return ScaleQuantity(amount, cf, fine);
+}
+
+uint ScaleQuantity(uint amount, int cf, int fine)
+{
+	if (fine != 0) {
+		// 2^0.1 << 16 to 2^0.9 << 16
+		const uint32 adj[9] = {70239, 75281, 80684, 86475, 92681, 99334, 106463, 114104, 122294};
+		uint64 scaled_amount = ((uint64) amount) * ((uint64) adj[fine - 1]);
+		amount = scaled_amount >> 16;
+	}
+
+	// apply scale factor
+	if (cf < 0) {
+		// approx (amount / 2^cf)
+		// adjust with a constant offset of {(2 ^ cf) - 1} (i.e. add cf * 1-bits) before dividing to ensure that it doesn't become zero
+		// this skews the curve a little so that isn't entirely exponential, but will still decrease
+		amount = (amount + ((1 << -cf) - 1)) >> -cf;
+	} else if (cf > 0) {
+		// approx (amount * 2^cf)
+		amount = amount << cf;
+	}
+
+	return amount;
 }

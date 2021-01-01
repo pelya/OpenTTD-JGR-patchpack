@@ -402,7 +402,7 @@ STR_FILE_MENU_EXIT                                              :退出
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :缩略地图
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :额外视点
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :额外视点
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :客货流图标
 STR_MAP_MENU_SIGN_LIST                                          :标志列表
 
@@ -884,7 +884,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}{TOWN}一年期的运输专营权已经被{STRING}购买!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}视点 {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}视点 {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}将主视角复制到视点
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}将额外视点移动到屏幕中心的位置
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}移动主视角到该视点
@@ -935,6 +935,7 @@ STR_GAME_OPTIONS_CURRENCY_MXN                                   :墨西哥比索
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :新台币 (NTD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :中国人民币 (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :港币 (HKD)
+STR_GAME_OPTIONS_CURRENCY_INR                                   :印度卢布（INR）
 ############ end of currency region
 
 STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}汽车行驶
@@ -1552,8 +1553,6 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :结束计分年
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :游戏结束计分的年份。在这一年的年底，公司的分数将被记录，并展示高分榜；在此之后玩家仍可继续游戏。{}如果该年份早于游戏开始年份，则高分榜将不会展示。
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :从不
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :启用平滑经济模式 (更多小的经济变化)：{STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :“打开”时，工业产量变化频繁而幅度小，如果工业是由NewGRF控制的，本选项不起作用
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :允许购买其他公司的股份：{STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :“打开”时，允许买卖其它公司股份。被入股公司必须经营一定年限
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :公司可发售股份的最小已存续年份数：{STRING}
@@ -1806,17 +1805,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}中文�
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}退出
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}你确定要放弃当前游戏并{}退出到 {STRING} 吗？
 STR_QUIT_YES                                                    :{BLACK}是
 STR_QUIT_NO                                                     :{BLACK}否
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}放弃游戏
@@ -2733,7 +2723,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :公司属地
 STR_ABOUT_OPENTTD                                               :{WHITE}关于 OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}原始版权由 {COPYRIGHT} 1995 Chris Sawyer 所有，保留一切权力。
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD 版本 {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 OpenTTD 团队
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} OpenTTD 团队
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}帧率
@@ -4484,7 +4474,6 @@ STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}无法�
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}无法转换电车道类型
 STR_ERROR_NO_SUITABLE_ROAD                                      :{WHITE}没有合适的道路
 STR_ERROR_NO_SUITABLE_TRAMWAY                                   :{WHITE}没有合适的电车道
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... 不兼容的道路
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :{WHITE}... 不兼容的电车道
 
 # Waterway construction errors

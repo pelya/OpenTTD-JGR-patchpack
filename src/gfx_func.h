@@ -21,7 +21,7 @@
  * (this is btw. also possible if needed). This is used to avoid a
  * flickering of the screen by the video driver constantly repainting it.
  *
- * This whole mechanism is controlled by an rectangle defined in #_invalid_rect. This
+ * This whole mechanism was controlled by an rectangle defined in #_invalid_rect. This
  * rectangle defines the area on the screen which must be repaint. If a new object
  * needs to be repainted this rectangle is extended to 'catch' the object on the
  * screen. At some point (which is normally uninteresting for patch writers) this
@@ -32,7 +32,6 @@
  * rectangle information. Then a new round begins by marking objects "dirty".
  *
  * @see VideoDriver::MakeDirty
- * @see _invalid_rect
  * @see _screen
  */
 
@@ -45,6 +44,7 @@
 #include "string_type.h"
 
 void GameLoop();
+void GameLoopPaletteAnimations();
 
 void CreateConsole();
 
@@ -114,7 +114,7 @@ int DrawString(int left, int right, int top, StringID str, TextColour colour = T
 int DrawStringMultiLine(int left, int right, int top, int bottom, const char *str, TextColour colour = TC_FROMSTRING, StringAlignment align = (SA_TOP | SA_LEFT), bool underline = false, FontSize fontsize = FS_NORMAL);
 int DrawStringMultiLine(int left, int right, int top, int bottom, StringID str, TextColour colour = TC_FROMSTRING, StringAlignment align = (SA_TOP | SA_LEFT), bool underline = false, FontSize fontsize = FS_NORMAL);
 
-void DrawCharCentered(uint32 c, int x, int y, TextColour colour);
+void DrawCharCentered(WChar c, int x, int y, TextColour colour);
 
 void GfxFillRect(int left, int top, int right, int bottom, int colour, FillRectMode mode = FILLRECT_OPAQUE);
 void GfxFillPolygon(const std::vector<Point> &shape, int colour, FillRectMode mode = FILLRECT_OPAQUE);
@@ -134,6 +134,8 @@ const char *GetCharAtPosition(const char *str, int x, FontSize start_fontsize = 
 
 void DrawDirtyBlocks();
 void SetDirtyBlocks(int left, int top, int right, int bottom);
+void SetPendingDirtyBlocks(int left, int top, int right, int bottom);
+void UnsetDirtyBlocks(int left, int top, int right, int bottom);
 void MarkWholeScreenDirty();
 
 void GfxInitPalettes();
@@ -154,6 +156,12 @@ static inline int CenterBounds(int min, int max, int size)
 }
 
 /* window.cpp */
+enum DrawOverlappedWindowFlags {
+	DOWF_NONE         =      0,
+	DOWF_MARK_DIRTY   = 1 << 0,
+	DOWF_SHOW_DEBUG   = 1 << 1,
+};
+DECLARE_ENUM_AS_BIT_SET(DrawOverlappedWindowFlags)
 void DrawOverlappedWindowForAll(int left, int top, int right, int bottom);
 
 void SetMouseCursorBusy(bool busy);
@@ -166,7 +174,7 @@ void SortResolutions();
 bool ToggleFullScreen(bool fs);
 
 /* gfx.cpp */
-byte GetCharacterWidth(FontSize size, uint32 key);
+byte GetCharacterWidth(FontSize size, WChar key);
 byte GetDigitWidth(FontSize size = FS_NORMAL);
 void GetBroadestDigit(uint *front, uint *next, FontSize size = FS_NORMAL);
 
@@ -203,6 +211,7 @@ TextColour GetContrastColour(uint8 background, uint8 threshold = 128);
  * 8 colours per gradient from darkest (0) to lightest (7)
  */
 extern byte _colour_gradient[COLOUR_END][8];
+extern byte _colour_value[COLOUR_END];
 
 extern bool _palette_remap_grf[];
 

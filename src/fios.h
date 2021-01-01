@@ -41,13 +41,15 @@ struct LoadCheckData {
 	CompanyPropertiesMap companies;               ///< Company information.
 
 	GRFConfig *grfconfig;                         ///< NewGrf configuration from save.
+	bool want_grf_compatibility = true;
 	GRFListCompatibility grf_compatibility;       ///< Summary state of NewGrfs, whether missing files or only compatible found.
 
 	struct LoggedAction *gamelog_action;          ///< Gamelog actions
 	uint gamelog_actions;                         ///< Number of gamelog actions
 
-	bool want_debug_log_data = false;
+	bool want_debug_data = false;
 	std::string debug_log_data;
+	std::string debug_config_data;
 
 	LoadCheckData() : error_data(nullptr), grfconfig(nullptr),
 			grf_compatibility(GLC_NOT_FOUND), gamelog_action(nullptr), gamelog_actions(0)

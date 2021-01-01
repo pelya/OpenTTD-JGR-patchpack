@@ -105,7 +105,7 @@ static void FindStationsAroundSelection()
 
 	Station *adjacent = nullptr;
 
-	/* Direct loop instead of FindStationsAroundTiles as we are not interested in catchment area */
+	/* Direct loop instead of ForAllStationsAroundTiles as we are not interested in catchment area */
 	TILE_AREA_LOOP(tile, ta) {
 		if (IsTileType(tile, MP_STATION) && GetTileOwner(tile) == _local_company) {
 			Station *st = Station::GetByTile(tile);
@@ -126,7 +126,7 @@ static void FindStationsAroundSelection()
  * If it is needed actually make the window for redrawing.
  * @param w the window to check.
  */
-void CheckRedrawStationCoverage(const Window *w)
+void CheckRedrawStationCoverage(Window *w)
 {
 	/* Test if ctrl state changed */
 	static bool _last_ctrl_pressed;
@@ -540,7 +540,7 @@ public:
 				assert(st->owner == (Owner)this->window_number || st->owner == OWNER_NONE);
 
 				if (_ctrl_pressed) {
-					ShowExtraViewPortWindow(st->xy);
+					ShowExtraViewportWindow(st->xy);
 				} else {
 					ScrollMainWindowToTile(st->xy);
 				}
@@ -1877,7 +1877,11 @@ struct StationViewWindow : public Window {
 			SetDParam(1, lg != nullptr ? lg->Monthly((*lg)[ge->node].Supply()) : 0);
 			SetDParam(2, STR_CARGO_RATING_APPALLING + (ge->rating >> 5));
 			SetDParam(3, ToPercent8(ge->rating));
-			DrawString(r.left + WD_FRAMERECT_LEFT + 6, r.right - WD_FRAMERECT_RIGHT - 6, y, STR_STATION_VIEW_CARGO_SUPPLY_RATING);
+			int x = DrawString(r.left + WD_FRAMERECT_LEFT + 6, r.right - WD_FRAMERECT_RIGHT - 6, y, STR_STATION_VIEW_CARGO_SUPPLY_RATING);
+			if (!ge->IsSupplyAllowed() && x != 0) {
+				int line_y = y + (FONT_HEIGHT_NORMAL / 2) - 1;
+				GfxDrawLine(r.left + WD_FRAMERECT_LEFT + 6, line_y, x, line_y, PC_WHITE, 1);
+			}
 			y += FONT_HEIGHT_NORMAL;
 		}
 		return CeilDiv(y - r.top - WD_FRAMERECT_TOP, FONT_HEIGHT_NORMAL);
@@ -1931,7 +1935,7 @@ struct StationViewWindow : public Window {
 
 			case WID_SV_LOCATION:
 				if (_ctrl_pressed) {
-					ShowExtraViewPortWindow(Station::Get(this->window_number)->xy);
+					ShowExtraViewportWindow(Station::Get(this->window_number)->xy);
 				} else {
 					ScrollMainWindowToTile(Station::Get(this->window_number)->xy);
 				}
@@ -1996,6 +2000,23 @@ struct StationViewWindow : public Window {
 
 			case WID_SV_DEPARTURES: {
 				ShowStationDepartures((StationID)this->window_number);
+				break;
+			}
+
+			case WID_SV_ACCEPT_RATING_LIST: {
+				if (this->owner != _local_company || !_ctrl_pressed || this->GetWidget<NWidgetCore>(WID_SV_ACCEPTS_RATINGS)->widget_data == STR_STATION_VIEW_RATINGS_BUTTON) break;
+				int row = this->GetRowFromWidget(pt.y, WID_SV_ACCEPT_RATING_LIST, WD_FRAMERECT_TOP, FONT_HEIGHT_NORMAL);
+				if (row < 1) break;
+				const Station *st = Station::Get(this->window_number);
+				const CargoSpec *cs;
+				FOR_ALL_SORTED_STANDARD_CARGOSPECS(cs) {
+					const GoodsEntry *ge = &st->goods[cs->Index()];
+					if (!ge->HasRating()) continue;
+					if (row == 1) {
+						DoCommandP(0, this->window_number, cs->Index() | (ge->IsSupplyAllowed() ? 0 : 1 << 8), CMD_SET_STATION_CARGO_ALLOWED_SUPPLY | CMD_MSG(STR_ERROR_CAN_T_DO_THIS));
+					}
+					row--;
+				}
 				break;
 			}
 		}
@@ -2311,7 +2332,7 @@ struct SelectStationWindow : Window {
 
 	~SelectStationWindow()
 	{
-		if (_settings_client.gui.station_show_coverage) SetViewportCatchmentStation(nullptr, true);
+		SetViewportCatchmentStation(nullptr, true);
 
 		_thd.freeze = false;
 	}

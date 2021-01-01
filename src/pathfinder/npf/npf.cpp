@@ -287,14 +287,14 @@ static void NPFMarkTile(TileIndex tile)
 			/* DEBUG: mark visited tiles by mowing the grass under them ;-) */
 			if (!IsRailDepot(tile)) {
 				SetRailGroundType(tile, RAIL_GROUND_BARREN);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 			}
 			break;
 
 		case MP_ROAD:
 			if (!IsRoadDepot(tile)) {
 				SetRoadside(tile, ROADSIDE_BARREN);
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 			}
 			break;
 
@@ -307,7 +307,7 @@ static Vehicle *CountShipProc(Vehicle *v, void *data)
 {
 	uint *count = (uint *)data;
 	/* Ignore other vehicles (aircraft) and ships inside depot. */
-	if (v->type == VEH_SHIP && (v->vehstatus & VS_HIDDEN) == 0) (*count)++;
+	if ((v->vehstatus & VS_HIDDEN) == 0) (*count)++;
 
 	return nullptr;
 }
@@ -331,7 +331,7 @@ static int32 NPFWaterPathCost(AyStar *as, AyStarNode *current, OpenListNode *par
 	if (IsDockingTile(current->tile)) {
 		/* Check docking tile for occupancy */
 		uint count = 1;
-		HasVehicleOnPos(current->tile, &count, &CountShipProc);
+		HasVehicleOnPos(current->tile, VEH_SHIP, &count, &CountShipProc);
 		cost += count * 3 * _trackdir_length[trackdir];
 	}
 
@@ -369,7 +369,11 @@ static int32 NPFRoadPathCost(AyStar *as, AyStarNode *current, OpenListNode *pare
 					/* When we're the first road stop in a 'queue' of them we increase
 					 * cost based on the fill percentage of the whole queue. */
 					const RoadStop::Entry *entry = rs->GetEntry(dir);
-					cost += entry->GetOccupied() * _settings_game.pf.npf.npf_road_dt_occupied_penalty / entry->GetLength();
+					if (GetDriveThroughStopDisallowedRoadDirections(tile) != DRD_NONE) {
+						cost += (entry->GetOccupied() + rs->GetEntry(ReverseDiagDir(dir))->GetOccupied()) * _settings_game.pf.npf.npf_road_dt_occupied_penalty / (2 * entry->GetLength());
+					} else {
+						cost += entry->GetOccupied() * _settings_game.pf.npf.npf_road_dt_occupied_penalty / entry->GetLength();
+					}
 				}
 			} else {
 				/* Increase cost for filled road stops */

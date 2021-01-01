@@ -31,6 +31,7 @@
 #include "core/geometry_func.hpp"
 #include "autoreplace_func.h"
 #include "train.h"
+#include "error.h"
 
 #include "widgets/build_vehicle_widget.h"
 
@@ -127,6 +128,25 @@ static bool EngineIntroDateSorter(const EngineID &a, const EngineID &b)
 }
 
 /**
+ * Determines order of engines by vehicle count
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
+ */
+static bool EngineVehicleCountSorter(const EngineID &a, const EngineID &b)
+{
+	const GroupStatistics &stats = GroupStatistics::Get(_local_company, ALL_GROUP, Engine::Get(a)->type);
+	const int r = ((int) stats.num_engines[a]) - ((int) stats.num_engines[b]);
+
+	/* Use EngineID to sort instead since we want consistent sorting */
+	if (r == 0) return EngineNumberSorter(a, b);
+	return _engine_sort_direction ? r > 0 : r < 0;
+}
+
+/* cached values for EngineNameSorter to spare many GetString() calls */
+static EngineID _last_engine[2] = { INVALID_ENGINE, INVALID_ENGINE };
+
+/**
  * Determines order of engines by name
  * @param a first engine to compare
  * @param b second engine to compare
@@ -134,17 +154,16 @@ static bool EngineIntroDateSorter(const EngineID &a, const EngineID &b)
  */
 static bool EngineNameSorter(const EngineID &a, const EngineID &b)
 {
-	static EngineID last_engine[2] = { INVALID_ENGINE, INVALID_ENGINE };
-	static char     last_name[2][64] = { "\0", "\0" };
+	static char     last_name[2][64] = { "", "" };
 
-	if (a != last_engine[0]) {
-		last_engine[0] = a;
+	if (a != _last_engine[0]) {
+		_last_engine[0] = a;
 		SetDParam(0, a);
 		GetString(last_name[0], STR_ENGINE_NAME, lastof(last_name[0]));
 	}
 
-	if (b != last_engine[1]) {
-		last_engine[1] = b;
+	if (b != _last_engine[1]) {
+		_last_engine[1] = b;
 		SetDParam(0, b);
 		GetString(last_name[1], STR_ENGINE_NAME, lastof(last_name[1]));
 	}
@@ -427,7 +446,7 @@ static bool AircraftRangeSorter(const EngineID &a, const EngineID &b)
 }
 
 /** Sort functions for the vehicle sort criteria, for each vehicle type. */
-EngList_SortTypeFunction * const _engine_sort_functions[][11] = {{
+EngList_SortTypeFunction * const _engine_sort_functions[][12] = {{
 	/* Trains */
 	&EngineNumberSorter,
 	&EngineCostSorter,
@@ -440,6 +459,7 @@ EngList_SortTypeFunction * const _engine_sort_functions[][11] = {{
 	&EnginePowerVsRunningCostSorter,
 	&EngineReliabilitySorter,
 	&TrainEngineCapacitySorter,
+	&EngineVehicleCountSorter,
 }, {
 	/* Road vehicles */
 	&EngineNumberSorter,
@@ -453,6 +473,7 @@ EngList_SortTypeFunction * const _engine_sort_functions[][11] = {{
 	&EnginePowerVsRunningCostSorter,
 	&EngineReliabilitySorter,
 	&RoadVehEngineCapacitySorter,
+	&EngineVehicleCountSorter,
 }, {
 	/* Ships */
 	&EngineNumberSorter,
@@ -463,6 +484,7 @@ EngList_SortTypeFunction * const _engine_sort_functions[][11] = {{
 	&EngineRunningCostSorter,
 	&EngineReliabilitySorter,
 	&ShipEngineCapacitySorter,
+	&EngineVehicleCountSorter,
 }, {
 	/* Aircraft */
 	&EngineNumberSorter,
@@ -473,11 +495,12 @@ EngList_SortTypeFunction * const _engine_sort_functions[][11] = {{
 	&EngineRunningCostSorter,
 	&EngineReliabilitySorter,
 	&AircraftEngineCargoSorter,
+	&EngineVehicleCountSorter,
 	&AircraftRangeSorter,
 }};
 
 /** Dropdown menu strings for the vehicle sort criteria. */
-const StringID _engine_sort_listing[][12] = {{
+const StringID _engine_sort_listing[][13] = {{
 	/* Trains */
 	STR_SORT_BY_ENGINE_ID,
 	STR_SORT_BY_COST,
@@ -490,6 +513,7 @@ const StringID _engine_sort_listing[][12] = {{
 	STR_SORT_BY_POWER_VS_RUNNING_COST,
 	STR_SORT_BY_RELIABILITY,
 	STR_SORT_BY_CARGO_CAPACITY,
+	STR_SORT_BY_VEHICLE_COUNT,
 	INVALID_STRING_ID
 }, {
 	/* Road vehicles */
@@ -504,6 +528,7 @@ const StringID _engine_sort_listing[][12] = {{
 	STR_SORT_BY_POWER_VS_RUNNING_COST,
 	STR_SORT_BY_RELIABILITY,
 	STR_SORT_BY_CARGO_CAPACITY,
+	STR_SORT_BY_VEHICLE_COUNT,
 	INVALID_STRING_ID
 }, {
 	/* Ships */
@@ -515,6 +540,7 @@ const StringID _engine_sort_listing[][12] = {{
 	STR_SORT_BY_RUNNING_COST,
 	STR_SORT_BY_RELIABILITY,
 	STR_SORT_BY_CARGO_CAPACITY,
+	STR_SORT_BY_VEHICLE_COUNT,
 	INVALID_STRING_ID
 }, {
 	/* Aircraft */
@@ -526,6 +552,7 @@ const StringID _engine_sort_listing[][12] = {{
 	STR_SORT_BY_RUNNING_COST,
 	STR_SORT_BY_RELIABILITY,
 	STR_SORT_BY_CARGO_CAPACITY,
+	STR_SORT_BY_VEHICLE_COUNT,
 	STR_SORT_BY_RANGE,
 	INVALID_STRING_ID
 }};
@@ -1302,6 +1329,9 @@ struct BuildVehicleWindow : Window {
 
 		this->SelectEngine(sel_id);
 
+		/* invalidate cached values for name sorter - engine names could change */
+		_last_engine[0] = _last_engine[1] = INVALID_ENGINE;
+
 		/* make engines first, and then wagons, sorted by selected sort_criteria */
 		_engine_sort_direction = false;
 		EngList_Sort(&this->eng_list, TrainEnginesThenWagonsSorter);
@@ -1668,17 +1698,16 @@ struct BuildVehicleWindow : Window {
 
 		if (*(this->virtual_train_out) == nullptr) {
 			*(this->virtual_train_out) = toadd;
+			InvalidateWindowClassesData(WC_CREATE_TEMPLATE);
 		} else {
 			VehicleID target = (*(this->virtual_train_out))->GetLastUnit()->index;
 
-			DoCommandP(0, (1 << 23) | (1 << 21) | toadd->index, target, CMD_MOVE_RAIL_VEHICLE);
+			DoCommandP(0, (1 << 23) | (1 << 21) | toadd->index, target, CMD_MOVE_RAIL_VEHICLE | CMD_MSG(STR_ERROR_CAN_T_MOVE_VEHICLE), CcMoveNewVirtualEngine);
 		}
-		InvalidateWindowClassesData(WC_CREATE_TEMPLATE);
-		InvalidateWindowClassesData(WC_TEMPLATEGUI_MAIN);
 	}
 };
 
-void CcAddVirtualEngine(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
+void CcAddVirtualEngine(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
 {
 	if (result.Failed()) return;
 
@@ -1686,7 +1715,23 @@ void CcAddVirtualEngine(const CommandCost &result, TileIndex tile, uint32 p1, ui
 	if (window) {
 		Train* train = Train::From(Vehicle::Get(_new_vehicle_id));
 		((BuildVehicleWindow*) window)->AddVirtualEngine(train);
+	} else {
+		DoCommandP(0, _new_vehicle_id | (1 << 21), 0, CMD_SELL_VEHICLE | CMD_MSG(STR_ERROR_CAN_T_SELL_TRAIN));
 	}
+}
+
+void CcMoveNewVirtualEngine(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
+{
+	if (result.Failed()) return;
+
+	Window* window = FindWindowById(WC_BUILD_VIRTUAL_TRAIN, 0);
+	if (window) {
+		if (result.IsSuccessWithMessage()) {
+			CommandCost res = result.UnwrapSuccessWithMessage();
+			ShowErrorMessage(STR_ERROR_CAN_T_MOVE_VEHICLE, res.GetErrorMessage(), WL_INFO, 0, 0, res.GetTextRefStackGRF(), res.GetTextRefStackSize(), res.GetTextRefStack(), res.GetExtraErrorMessage());
+		}
+	}
+	InvalidateWindowClassesData(WC_CREATE_TEMPLATE);
 }
 
 static WindowDesc _build_vehicle_desc(

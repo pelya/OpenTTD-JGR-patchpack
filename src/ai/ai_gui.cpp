@@ -52,6 +52,11 @@ static ScriptConfig *GetConfig(CompanyID slot)
 	return AIConfig::GetConfig(slot);
 }
 
+static bool UserIsAllowedToChangeGameScript()
+{
+	return _game_mode != GM_NORMAL || _settings_client.gui.ai_developer_tools;
+}
+
 /**
  * Window that let you choose an available AI.
  */
@@ -169,17 +174,23 @@ struct AIListWindow : public Window {
 	 */
 	void ChangeAI()
 	{
+		if (_game_mode == GM_NORMAL && slot == OWNER_DEITY) Game::Uninitialize(false);
 		if (this->selected == -1) {
 			GetConfig(slot)->Change(nullptr);
 		} else {
 			ScriptInfoList::const_iterator it = this->info_list->begin();
 			for (int i = 0; i < this->selected; i++) it++;
 			GetConfig(slot)->Change((*it).second->GetName(), (*it).second->GetVersion());
+			if (_game_mode == GM_NORMAL && slot == OWNER_DEITY) Game::StartNew();
 		}
 		InvalidateWindowData(WC_GAME_OPTIONS, WN_GAME_OPTIONS_AI);
 		InvalidateWindowClassesData(WC_AI_SETTINGS);
 		DeleteWindowByClass(WC_QUERY_STRING);
 		InvalidateWindowClassesData(WC_TEXTFILE);
+		if (_game_mode == GM_NORMAL && slot == OWNER_DEITY) {
+			InvalidateWindowData(WC_AI_DEBUG, 0, -1);
+			SetWindowClassesDirty(WC_AI_DEBUG);
+		}
 	}
 
 	void OnClick(Point pt, int widget, int click_count) override
@@ -813,7 +824,7 @@ struct AIConfigWindow : public Window {
 	 */
 	static bool IsEditable(CompanyID slot)
 	{
-		if (slot == OWNER_DEITY) return _game_mode != GM_NORMAL || Game::GetInstance() != nullptr;
+		if (slot == OWNER_DEITY) return UserIsAllowedToChangeGameScript() || Game::GetInstance() != nullptr;
 
 		if (_game_mode != GM_NORMAL) {
 			return slot > 0 && slot <= GetGameSettings().difficulty.max_no_competitors;
@@ -891,7 +902,7 @@ struct AIConfigWindow : public Window {
 			case WID_AIC_GAMELIST: {
 				this->selected_slot = OWNER_DEITY;
 				this->InvalidateData();
-				if (click_count > 1 && this->selected_slot != INVALID_COMPANY && _game_mode != GM_NORMAL) ShowAIListWindow((CompanyID)this->selected_slot);
+				if (click_count > 1 && this->selected_slot != INVALID_COMPANY && UserIsAllowedToChangeGameScript()) ShowAIListWindow((CompanyID)this->selected_slot);
 				break;
 			}
 
@@ -957,7 +968,7 @@ struct AIConfigWindow : public Window {
 
 		this->SetWidgetDisabledState(WID_AIC_DECREASE, GetGameSettings().difficulty.max_no_competitors == 0);
 		this->SetWidgetDisabledState(WID_AIC_INCREASE, GetGameSettings().difficulty.max_no_competitors == MAX_COMPANIES - 1);
-		this->SetWidgetDisabledState(WID_AIC_CHANGE, (this->selected_slot == OWNER_DEITY && _game_mode == GM_NORMAL) || this->selected_slot == INVALID_COMPANY);
+		this->SetWidgetDisabledState(WID_AIC_CHANGE, (this->selected_slot == OWNER_DEITY && !UserIsAllowedToChangeGameScript()) || this->selected_slot == INVALID_COMPANY);
 		this->SetWidgetDisabledState(WID_AIC_CONFIGURE, this->selected_slot == INVALID_COMPANY || GetConfig(this->selected_slot)->GetConfigList()->size() == 0);
 		this->SetWidgetDisabledState(WID_AIC_MOVE_UP, this->selected_slot == OWNER_DEITY || this->selected_slot == INVALID_COMPANY || !IsEditable((CompanyID)(this->selected_slot - 1)));
 		this->SetWidgetDisabledState(WID_AIC_MOVE_DOWN, this->selected_slot == OWNER_DEITY || this->selected_slot == INVALID_COMPANY || !IsEditable((CompanyID)(this->selected_slot + 1)));
@@ -1287,7 +1298,14 @@ struct AIDebugWindow : public Window {
 				break;
 
 			case WID_AID_RELOAD_TOGGLE:
-				if (ai_debug_company == OWNER_DEITY) break;
+				if (ai_debug_company == OWNER_DEITY) {
+					if (UserIsAllowedToChangeGameScript()) {
+						Game::Uninitialize(true);
+						Game::StartNew();
+						this->InvalidateData(-1);
+					}
+					break;
+				}
 				/* First kill the company of the AI, then start a new one. This should start the current AI again */
 				DoCommandP(0, CCA_DELETE | ai_debug_company << 16 | CRR_MANUAL << 24, 0, CMD_COMPANY_CTRL);
 				DoCommandP(0, CCA_NEW_AI | ai_debug_company << 16, 0, CMD_COMPANY_CTRL);
@@ -1407,7 +1425,7 @@ struct AIDebugWindow : public Window {
 		this->SetWidgetLoweredState(WID_AID_MATCH_CASE_BTN, this->case_sensitive_break_check);
 
 		this->SetWidgetDisabledState(WID_AID_SETTINGS, ai_debug_company == INVALID_COMPANY);
-		this->SetWidgetDisabledState(WID_AID_RELOAD_TOGGLE, ai_debug_company == INVALID_COMPANY || ai_debug_company == OWNER_DEITY);
+		this->SetWidgetDisabledState(WID_AID_RELOAD_TOGGLE, ai_debug_company == INVALID_COMPANY || (ai_debug_company == OWNER_DEITY && !UserIsAllowedToChangeGameScript()));
 		this->SetWidgetDisabledState(WID_AID_CONTINUE_BTN, ai_debug_company == INVALID_COMPANY ||
 				(ai_debug_company == OWNER_DEITY ? !Game::IsPaused() : !AI::IsPaused(ai_debug_company)));
 	}

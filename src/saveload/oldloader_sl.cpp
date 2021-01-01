@@ -26,6 +26,7 @@
 #include "../engine_func.h"
 #include "../company_base.h"
 #include "../disaster_vehicle.h"
+#include "../animated_tile.h"
 #include "../core/smallvec_type.hpp"
 #include "saveload_internal.h"
 #include "oldloader.h"
@@ -483,7 +484,6 @@ static inline uint RemapOrderIndex(uint x)
 	return _savegame_type == SGT_TTO ? (x - 0x1AC4) / 2 : (x - 0x1C18) / 2;
 }
 
-extern std::vector<TileIndex> _animated_tiles;
 extern char *_old_name_array;
 
 static uint32 _old_town_index;
@@ -643,7 +643,7 @@ static bool LoadOldAnimTileList(LoadgameState *ls, int num)
 	/* The first zero in the loaded array indicates the end of the list. */
 	for (int i = 0; i < 256; i++) {
 		if (anim_list[i] == 0) break;
-		_animated_tiles.push_back(anim_list[i]);
+		_animated_tiles[anim_list[i]] = {};
 	}
 
 	return true;
@@ -1131,7 +1131,7 @@ static const OldChunks vehicle_chunk[] = {
 	OCL_VAR ( OC_UINT16,   1, &_old_order ),
 
 	OCL_NULL ( 1 ), ///< num_orders, now calculated
-	OCL_SVAR(  OC_UINT8, Vehicle, cur_implicit_order_index ),
+	OCL_SVAR( OC_FILE_U8 | OC_VAR_U16, Vehicle, cur_implicit_order_index ),
 	OCL_SVAR(   OC_TILE, Vehicle, dest_tile ),
 	OCL_SVAR( OC_UINT16, Vehicle, load_unload_ticks ),
 	OCL_SVAR( OC_FILE_U16 | OC_VAR_U32, Vehicle, date_of_last_service ),
@@ -1243,6 +1243,7 @@ bool LoadOldVehicle(LoadgameState *ls, int num)
 			if (!LoadChunk(ls, v, vehicle_chunk)) return false;
 			if (v == nullptr) continue;
 			v->refit_cap = v->cargo_cap;
+			if (v->cur_implicit_order_index == 0xFF) v->cur_implicit_order_index = INVALID_VEH_ORDER_ID;
 
 			SpriteID sprite = v->sprite_seq.seq[0].sprite;
 			/* no need to override other sprites */
@@ -1321,6 +1322,7 @@ bool LoadOldVehicle(LoadgameState *ls, int num)
 
 			if (!LoadChunk(ls, v, vehicle_chunk)) return false;
 			if (v == nullptr) continue;
+			if (v->cur_implicit_order_index == 0xFF) v->cur_implicit_order_index = INVALID_VEH_ORDER_ID;
 
 			_old_vehicle_names[_current_vehicle_id] = RemapOldStringID(_old_string_id);
 

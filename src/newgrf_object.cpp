@@ -230,7 +230,7 @@ static uint32 GetCountAndDistanceOfClosestInstance(byte local_id, uint32 grfid, 
 }
 
 /** Used by the resolver to get values for feature 0F deterministic spritegroups. */
-/* virtual */ uint32 ObjectScopeResolver::GetVariable(byte variable, uint32 parameter, bool *available) const
+/* virtual */ uint32 ObjectScopeResolver::GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const
 {
 	/* We get the town from the object, or we calculate the closest
 	 * town if we need to when there's no object. */
@@ -337,7 +337,7 @@ static uint32 GetCountAndDistanceOfClosestInstance(byte local_id, uint32 grfid, 
 unhandled:
 	DEBUG(grf, 1, "Unhandled object variable 0x%X", variable);
 
-	*available = false;
+	extra->available = false;
 	return UINT_MAX;
 }
 
@@ -528,6 +528,14 @@ void AnimateNewObjectTile(TileIndex tile)
 	if (spec == nullptr || !(spec->flags & OBJECT_FLAG_ANIMATION)) return;
 
 	ObjectAnimationBase::AnimateTile(spec, Object::GetByTile(tile), tile, (spec->flags & OBJECT_FLAG_ANIM_RANDOM_BITS) != 0);
+}
+
+uint8 GetNewObjectTileAnimationSpeed(TileIndex tile)
+{
+	const ObjectSpec *spec = ObjectSpec::GetByTile(tile);
+	if (spec == nullptr || !(spec->flags & OBJECT_FLAG_ANIMATION)) return 0;
+
+	return ObjectAnimationBase::GetAnimationSpeed(spec);
 }
 
 /**

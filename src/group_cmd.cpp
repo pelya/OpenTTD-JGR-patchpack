@@ -278,6 +278,7 @@ void PropagateChildLivery(const Group *g)
 			for (Vehicle *u = v; u != nullptr; u = u->Next()) {
 				u->colourmap = PAL_NONE;
 				u->InvalidateNewGRFCache();
+				u->InvalidateImageCache();
 			}
 		}
 	}
@@ -296,11 +297,6 @@ Group::Group(Owner owner)
 {
 	this->owner = owner;
 	this->folded = false;
-}
-
-Group::~Group()
-{
-	free(this->name);
 }
 
 
@@ -346,6 +342,7 @@ CommandCost CmdCreateGroup(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 		InvalidateWindowData(GetWindowClassForVehicleType(vt), VehicleListIdentifier(VL_GROUP_LIST, vt, _current_company).Pack());
 		InvalidateWindowData(WC_COMPANY_COLOUR, g->owner, g->vehicle_type);
+		InvalidateWindowData(WC_TEMPLATEGUI_MAIN, 0, 0, 0);
 	}
 
 	return CommandCost();
@@ -405,6 +402,7 @@ CommandCost CmdDeleteGroup(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 		InvalidateWindowData(GetWindowClassForVehicleType(vt), VehicleListIdentifier(VL_GROUP_LIST, vt, _current_company).Pack());
 		InvalidateWindowData(WC_COMPANY_COLOUR, _current_company, vt);
+		InvalidateWindowData(WC_TEMPLATEGUI_MAIN, 0, 0, 0);
 	}
 
 	return CommandCost();
@@ -436,10 +434,12 @@ CommandCost CmdAlterGroup(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 		}
 
 		if (flags & DC_EXEC) {
-			/* Delete the old name */
-			free(g->name);
 			/* Assign the new one */
-			g->name = reset ? nullptr : stredup(text);
+			if (reset) {
+				g->name.clear();
+			} else {
+				g->name = text;
+			}
 		}
 	} else {
 		/* Set group parent */
@@ -473,6 +473,7 @@ CommandCost CmdAlterGroup(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 		InvalidateWindowData(WC_REPLACE_VEHICLE, g->vehicle_type, 1);
 		InvalidateWindowData(GetWindowClassForVehicleType(g->vehicle_type), VehicleListIdentifier(VL_GROUP_LIST, g->vehicle_type, _current_company).Pack());
 		InvalidateWindowData(WC_COMPANY_COLOUR, g->owner, g->vehicle_type);
+		InvalidateWindowData(WC_TEMPLATEGUI_MAIN, 0, 0, 0);
 	}
 
 	return CommandCost();
@@ -547,6 +548,7 @@ static void AddVehicleToGroup(Vehicle *v, GroupID new_g)
 			for (Vehicle *u = v; u != nullptr; u = u->Next()) {
 				u->colourmap = PAL_NONE;
 				u->InvalidateNewGRFCache();
+				u->InvalidateImageCache();
 				u->UpdateViewport(true);
 			}
 			break;
@@ -797,6 +799,7 @@ void SetTrainGroupID(Train *v, GroupID new_g)
 		u->group_id = new_g;
 		u->colourmap = PAL_NONE;
 		u->InvalidateNewGRFCache();
+		u->InvalidateImageCache();
 		u->UpdateViewport(true);
 	}
 
@@ -824,6 +827,7 @@ void UpdateTrainGroupID(Train *v)
 		u->group_id = new_g;
 		u->colourmap = PAL_NONE;
 		u->InvalidateNewGRFCache();
+		u->InvalidateImageCache();
 	}
 
 	/* Update the Replace Vehicle Windows */

@@ -26,14 +26,14 @@
 enum CharSetFilter {
 	CS_ALPHANUMERAL,      ///< Both numeric and alphabetic and spaces and stuff
 	CS_NUMERAL,           ///< Only numeric ones
-	CS_NUMERAL_DECIMAL,   ///< Only numeric and decimal separaters
+	CS_NUMERAL_DECIMAL,   ///< Only numeric, decimal separaters, and minus/negative
 	CS_NUMERAL_SPACE,     ///< Only numbers and spaces
 	CS_ALPHA,             ///< Only alphabetic values
 	CS_HEXADECIMAL,       ///< Only hexadecimal characters
 };
 
 /** Type for wide characters, i.e. non-UTF8 encoded unicode characters. */
-typedef uint32 WChar;
+typedef char32_t WChar;
 
 /* The following are directional formatting codes used to get the LTR and RTL strings right:
  * http://www.unicode.org/unicode/reports/tr9/#Directional_Formatting_Codes */

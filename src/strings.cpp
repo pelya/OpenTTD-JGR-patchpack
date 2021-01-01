@@ -415,7 +415,7 @@ static char *FormatBytes(char *buff, int64 number, const char *last)
 
 static char *FormatWallClockString(char *buff, DateTicksScaled ticks, const char *last, bool show_date, uint case_index)
 {
-	Minutes minutes = ticks / _settings_client.gui.ticks_per_minute + _settings_client.gui.clock_offset;
+	Minutes minutes = ticks / _settings_time.ticks_per_minute + _settings_time.clock_offset;
 	char hour[3], minute[3];
 	seprintf(hour,   lastof(hour),   "%02i", (int) MINUTES_HOUR(minutes)  );
 	seprintf(minute, lastof(minute), "%02i", (int) MINUTES_MINUTE(minutes));
@@ -434,6 +434,16 @@ static char *FormatWallClockString(char *buff, DateTicksScaled ticks, const char
 		StringParameters tmp_params(args);
 		return FormatString(buff, GetStringPtr(STR_FORMAT_DATE_MINUTES), &tmp_params, last, case_index);
 	}
+}
+
+static char *FormatTimeHHMMString(char *buff, uint time, const char *last, uint case_index)
+{
+	char hour[9], minute[3];
+	seprintf(hour,   lastof(hour),   "%02i", (int) time / 100);
+	seprintf(minute, lastof(minute), "%02i", (int) time % 100);
+	int64 args[2] = { (int64)hour, (int64)minute };
+	StringParameters tmp_params(args);
+	return FormatString(buff, GetStringPtr(STR_FORMAT_DATE_MINUTES), &tmp_params, last, case_index);
 }
 
 static char *FormatYmdString(char *buff, Date date, const char *last, uint case_index)
@@ -699,6 +709,7 @@ struct UnitConversion {
 struct Units {
 	UnitConversion c; ///< Conversion
 	StringID s;       ///< String for the unit
+	unsigned int decimal_places; ///< Number of decimal places embedded in the value. For example, 1 if the value is in tenths, and 3 if the value is in thousandths.
 };
 
 /** Information about a specific unit system with a long variant. */
@@ -710,16 +721,17 @@ struct UnitsLong {
 
 /** Unit conversions for velocity. */
 static const Units _units_velocity[] = {
-	{ {   1,  0}, STR_UNITS_VELOCITY_IMPERIAL },
-	{ { 103,  6}, STR_UNITS_VELOCITY_METRIC   },
-	{ {1831, 12}, STR_UNITS_VELOCITY_SI       },
+	{ {    1,  0}, STR_UNITS_VELOCITY_IMPERIAL,     0 },
+	{ {  103,  6}, STR_UNITS_VELOCITY_METRIC,       0 },
+	{ { 1831, 12}, STR_UNITS_VELOCITY_SI,           0 },
+	{ {37888, 16}, STR_UNITS_VELOCITY_GAMEUNITS,    1 },
 };
 
 /** Unit conversions for velocity. */
 static const Units _units_power[] = {
-	{ {   1,  0}, STR_UNITS_POWER_IMPERIAL },
-	{ {4153, 12}, STR_UNITS_POWER_METRIC   },
-	{ {6109, 13}, STR_UNITS_POWER_SI       },
+	{ {   1,  0}, STR_UNITS_POWER_IMPERIAL, 0 },
+	{ {4153, 12}, STR_UNITS_POWER_METRIC,   0 },
+	{ {6109, 13}, STR_UNITS_POWER_SI,       0 },
 };
 
 /** Unit conversions for weight. */
@@ -738,16 +750,16 @@ static const UnitsLong _units_volume[] = {
 
 /** Unit conversions for force. */
 static const Units _units_force[] = {
-	{ {3597,  4}, STR_UNITS_FORCE_IMPERIAL },
-	{ {3263,  5}, STR_UNITS_FORCE_METRIC   },
-	{ {   1,  0}, STR_UNITS_FORCE_SI       },
+	{ {3597,  4}, STR_UNITS_FORCE_IMPERIAL, 0 },
+	{ {3263,  5}, STR_UNITS_FORCE_METRIC,   0 },
+	{ {   1,  0}, STR_UNITS_FORCE_SI,       0 },
 };
 
 /** Unit conversions for height. */
 static const Units _units_height[] = {
-	{ {   3,  0}, STR_UNITS_HEIGHT_IMPERIAL }, // "Wrong" conversion factor for more nicer GUI values
-	{ {   1,  0}, STR_UNITS_HEIGHT_METRIC   },
-	{ {   1,  0}, STR_UNITS_HEIGHT_SI       },
+	{ {   3,  0}, STR_UNITS_HEIGHT_IMPERIAL, 0 }, // "Wrong" conversion factor for more nicer GUI values
+	{ {   1,  0}, STR_UNITS_HEIGHT_METRIC,   0 },
+	{ {   1,  0}, STR_UNITS_HEIGHT_SI,       0 },
 };
 
 /**
@@ -1424,7 +1436,7 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				break;
 
 			case SCC_DATE_WALLCLOCK_LONG: { // {DATE_WALLCLOCK_LONG}
-				if (_settings_client.gui.time_in_minutes) {
+				if (_settings_time.time_in_minutes) {
 					buff = FormatWallClockString(buff, args->GetInt64(SCC_DATE_WALLCLOCK_LONG), last, _settings_client.gui.date_with_time, next_substr_case_index);
 				} else {
 					buff = FormatYmdString(buff, args->GetInt64(SCC_DATE_WALLCLOCK_LONG) / (DAY_TICKS * _settings_game.economy.day_length_factor), last, next_substr_case_index);
@@ -1433,7 +1445,7 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 			}
 
 			case SCC_DATE_WALLCLOCK_SHORT: { // {DATE_WALLCLOCK_SHORT}
-				if (_settings_client.gui.time_in_minutes) {
+				if (_settings_time.time_in_minutes) {
 					buff = FormatWallClockString(buff, args->GetInt64(SCC_DATE_WALLCLOCK_SHORT), last, _settings_client.gui.date_with_time, next_substr_case_index);
 				} else {
 					buff = FormatYmdString(buff, args->GetInt64(SCC_DATE_WALLCLOCK_SHORT) / (DAY_TICKS * _settings_game.economy.day_length_factor), last, next_substr_case_index);
@@ -1442,7 +1454,7 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 			}
 
 			case SCC_DATE_WALLCLOCK_TINY: { // {DATE_WALLCLOCK_TINY}
-				if (_settings_client.gui.time_in_minutes) {
+				if (_settings_time.time_in_minutes) {
 					buff = FormatWallClockString(buff, args->GetInt64(SCC_DATE_WALLCLOCK_TINY), last, false, next_substr_case_index);
 				} else {
 					buff = FormatTinyOrISODate(buff, args->GetInt64(SCC_DATE_WALLCLOCK_TINY) / (DAY_TICKS * _settings_game.economy.day_length_factor), STR_FORMAT_DATE_TINY, last);
@@ -1451,7 +1463,7 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 			}
 
 			case SCC_DATE_WALLCLOCK_ISO: { // {DATE_WALLCLOCK_ISO}
-				if (_settings_client.gui.time_in_minutes) {
+				if (_settings_time.time_in_minutes) {
 					buff = FormatWallClockString(buff, args->GetInt64(SCC_DATE_WALLCLOCK_ISO), last, false, next_substr_case_index);
 				} else {
 					buff = FormatTinyOrISODate(buff, args->GetInt64(SCC_DATE_WALLCLOCK_ISO) / (DAY_TICKS * _settings_game.economy.day_length_factor), STR_FORMAT_DATE_ISO, last);
@@ -1461,6 +1473,10 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 
 			case SCC_DATE_ISO: // {DATE_ISO}
 				buff = FormatTinyOrISODate(buff, args->GetInt32(), STR_FORMAT_DATE_ISO, last);
+				break;
+
+			case SCC_TIME_HHMM: // {TIME_HHMM}
+				buff = FormatTimeHHMMString(buff, args->GetInt64(SCC_TIME_HHMM), last, next_substr_case_index);
 				break;
 
 			case SCC_FORCE: { // {FORCE}
@@ -1489,8 +1505,9 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 
 			case SCC_VELOCITY: { // {VELOCITY}
 				assert(_settings_game.locale.units_velocity < lengthof(_units_velocity));
-				int64 args_array[] = {ConvertKmhishSpeedToDisplaySpeed(args->GetInt64(SCC_VELOCITY))};
-				StringParameters tmp_params(args_array);
+				unsigned int decimal_places = _units_velocity[_settings_game.locale.units_velocity].decimal_places;
+				uint64 args_array[] = {ConvertKmhishSpeedToDisplaySpeed(args->GetInt64(SCC_VELOCITY)), decimal_places};
+				StringParameters tmp_params(args_array, decimal_places ? 2 : 1, nullptr);
 				buff = FormatString(buff, GetStringPtr(_units_velocity[_settings_game.locale.units_velocity].s), &tmp_params, last);
 				break;
 			}
@@ -1547,8 +1564,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Company *c = Company::GetIfValid(args->GetInt32());
 				if (c == nullptr) break;
 
-				if (c->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)c->name};
+				if (!c->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)c->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1582,8 +1599,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				}
 
 				const Depot *d = Depot::Get(args->GetInt32());
-				if (d->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)d->name};
+				if (!d->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)d->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1598,8 +1615,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Engine *e = Engine::GetIfValid(args->GetInt32(SCC_ENGINE_NAME));
 				if (e == nullptr) break;
 
-				if (e->name != nullptr && e->IsEnabled()) {
-					int64 args_array[] = {(int64)(size_t)e->name};
+				if (!e->name.empty() && e->IsEnabled()) {
+					int64 args_array[] = {(int64)(size_t)e->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1613,8 +1630,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Group *g = Group::GetIfValid(args->GetInt32());
 				if (g == nullptr) break;
 
-				if (g->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)g->name};
+				if (!g->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)g->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1650,8 +1667,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Company *c = Company::GetIfValid(args->GetInt32(SCC_PRESIDENT_NAME));
 				if (c == nullptr) break;
 
-				if (c->president_name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)c->president_name};
+				if (!c->president_name.empty()) {
+					int64 args_array[] = {(int64)(size_t)c->president_name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1675,8 +1692,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 					break;
 				}
 
-				if (st->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)st->name};
+				if (!st->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)st->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1705,8 +1722,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Town *t = Town::GetIfValid(args->GetInt32(SCC_TOWN_NAME));
 				if (t == nullptr) break;
 
-				if (t->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)t->name};
+				if (!t->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)t->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1719,8 +1736,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				Waypoint *wp = Waypoint::GetIfValid(args->GetInt32(SCC_WAYPOINT_NAME));
 				if (wp == nullptr) break;
 
-				if (wp->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)wp->name};
+				if (!wp->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)wp->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1737,8 +1754,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Vehicle *v = Vehicle::GetIfValid(args->GetInt32(SCC_VEHICLE_NAME));
 				if (v == nullptr) break;
 
-				if (v->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)v->name};
+				if (!v->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)v->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1763,8 +1780,8 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const Sign *si = Sign::GetIfValid(args->GetInt32());
 				if (si == nullptr) break;
 
-				if (si->name != nullptr) {
-					int64 args_array[] = {(int64)(size_t)si->name};
+				if (!si->name.empty()) {
+					int64 args_array[] = {(int64)(size_t)si->name.c_str()};
 					StringParameters tmp_params(args_array);
 					buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				} else {
@@ -1778,6 +1795,15 @@ static char *FormatString(char *buff, const char *str_arg, StringParameters *arg
 				const TraceRestrictSlot *slot = TraceRestrictSlot::GetIfValid(args->GetInt32(SCC_TR_SLOT_NAME));
 				if (slot == nullptr) break;
 				int64 args_array[] = {(int64)(size_t)slot->name.c_str()};
+				StringParameters tmp_params(args_array);
+				buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
+				break;
+			}
+
+			case SCC_TR_COUNTER_NAME: { // {TRCOUNTER}
+				const TraceRestrictCounter *ctr = TraceRestrictCounter::GetIfValid(args->GetInt32(SCC_TR_SLOT_NAME));
+				if (ctr == nullptr) break;
+				int64 args_array[] = {(int64)(size_t)ctr->name.c_str()};
 				StringParameters tmp_params(args_array);
 				buff = GetStringWithArgs(buff, STR_JUST_RAW_STRING, &tmp_params, last);
 				break;

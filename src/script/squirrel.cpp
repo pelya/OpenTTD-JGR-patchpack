@@ -129,6 +129,13 @@ size_t Squirrel::GetAllocatedMemory() const noexcept
 	return this->allocator->allocated_size;
 }
 
+void Squirrel::SetMemoryAllocationLimit(size_t limit) noexcept
+{
+	if (this->allocator != nullptr) {
+		this->allocator->allocation_limit = limit;
+	}
+}
+
 
 void Squirrel::CompileError(HSQUIRRELVM vm, const SQChar *desc, const SQChar *source, SQInteger line, SQInteger column)
 {
@@ -478,7 +485,7 @@ void Squirrel::Initialize()
 
 	/* Handle compile-errors ourself, so we can display it nicely */
 	sq_setcompilererrorhandler(this->vm, &Squirrel::CompileError);
-	sq_notifyallexceptions(this->vm, SQTrue);
+	sq_notifyallexceptions(this->vm, _debug_script_level > 5);
 	/* Set a good print-function */
 	sq_setprintfunc(this->vm, &Squirrel::PrintFunc);
 	/* Handle runtime-errors ourself, so we can display it nicely */

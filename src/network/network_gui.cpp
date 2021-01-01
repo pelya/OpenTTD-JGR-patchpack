@@ -206,6 +206,19 @@ public:
 		return nullptr;
 	}
 
+	void FillDirtyWidgets(std::vector<NWidgetBase *> &dirty_widgets) override
+	{
+		if (this->base_flags & WBF_DIRTY) {
+			dirty_widgets.push_back(this);
+		} else {
+			int i = 0;
+			for (NWidgetBase *child_wid = this->head; child_wid != nullptr; child_wid = child_wid->next) {
+				if (!this->visible[i++]) continue;
+				child_wid->FillDirtyWidgets(dirty_widgets);
+			}
+		}
+	}
+
 	/**
 	 * Checks whether the given widget is actually visible.
 	 * @param widget the widget to check for visibility
@@ -666,7 +679,9 @@ public:
 			DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_NETWORK_SERVER_LIST_SERVER_VERSION); // server version
 			y += FONT_HEIGHT_NORMAL;
 
-			SetDParamStr(0, sel->address.GetAddressAsString());
+			char network_addr_buffer[NETWORK_HOSTNAME_LENGTH + 6 + 7];
+			sel->address.GetAddressAsString(network_addr_buffer, lastof(network_addr_buffer));
+			SetDParamStr(0, network_addr_buffer);
 			DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_NETWORK_SERVER_LIST_SERVER_ADDRESS); // server address
 			y += FONT_HEIGHT_NORMAL;
 
@@ -1580,7 +1595,7 @@ struct NetworkLobbyWindow : public Window {
 				NetworkTCPQueryServer(NetworkAddress(_settings_client.network.last_host, _settings_client.network.last_port)); // company info
 				NetworkUDPQueryServer(NetworkAddress(_settings_client.network.last_host, _settings_client.network.last_port)); // general data
 				/* Clear the information so removed companies don't remain */
-				memset(this->company_info, 0, sizeof(this->company_info));
+				for (auto &company : this->company_info) company = {};
 				break;
 		}
 	}

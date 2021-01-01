@@ -35,6 +35,7 @@
 #include "goal_base.h"
 #include "story_base.h"
 #include "zoning.h"
+#include "tbtr_template_vehicle_func.h"
 
 #include "table/strings.h"
 
@@ -44,6 +45,7 @@ void ClearEnginesHiddenFlagOfCompany(CompanyID cid);
 
 CompanyID _local_company;   ///< Company controlled by the human player at this client. Can also be #COMPANY_SPECTATOR.
 CompanyID _current_company; ///< Company currently doing an action.
+CompanyID _loaded_local_company; ///< Local company in loaded savegame
 Colours _company_colours[MAX_COMPANIES];  ///< NOSAVE: can be determined from company structs.
 CompanyManagerFace _company_manager_face; ///< for company manager face storage in openttd.cfg
 uint _next_competitor_start;              ///< the number of ticks before the next AI is started
@@ -66,6 +68,7 @@ Company::Company(uint16 name_1, bool is_ai)
 	this->clear_limit     = _settings_game.construction.clear_frame_burst << 16;
 	this->tree_limit      = _settings_game.construction.tree_frame_burst << 16;
 	this->purchase_land_limit = _settings_game.construction.purchase_land_frame_burst << 16;
+	this->build_object_limit = _settings_game.construction.build_object_frame_burst << 16;
 
 	for (uint j = 0; j < 4; j++) this->share_owners[j] = COMPANY_SPECTATOR;
 	InvalidateWindowData(WC_PERFORMANCE_DETAIL, 0, INVALID_COMPANY);
@@ -116,6 +119,12 @@ void SetLocalCompany(CompanyID new_company)
 
 	/* Delete any construction windows... */
 	if (switching_company) DeleteConstructionWindows();
+
+	if (switching_company && Company::IsValidID(new_company)) {
+		for (Town *town : Town::Iterate()) {
+			town->UpdateLabel();
+		}
+	}
 
 	/* ... and redraw the whole screen. */
 	MarkWholeScreenDirty();
@@ -273,6 +282,7 @@ void UpdateLandscapingLimits()
 		c->clear_limit     = min(c->clear_limit     + _settings_game.construction.clear_per_64k_frames,     (uint32)_settings_game.construction.clear_frame_burst << 16);
 		c->tree_limit      = min(c->tree_limit      + _settings_game.construction.tree_per_64k_frames,      (uint32)_settings_game.construction.tree_frame_burst << 16);
 		c->purchase_land_limit = min(c->purchase_land_limit + _settings_game.construction.purchase_land_per_64k_frames, (uint32)_settings_game.construction.purchase_land_frame_burst << 16);
+		c->build_object_limit = min(c->build_object_limit + _settings_game.construction.build_object_per_64k_frames, (uint32)_settings_game.construction.build_object_frame_burst << 16);
 	}
 }
 
@@ -359,7 +369,7 @@ static void GenerateCompanyName(Company *c)
 
 	StringID str;
 	uint32 strp;
-	if (t->name == nullptr && IsInsideMM(t->townnametype, SPECSTR_TOWNNAME_START, SPECSTR_TOWNNAME_LAST + 1)) {
+	if (t->name.empty() && IsInsideMM(t->townnametype, SPECSTR_TOWNNAME_START, SPECSTR_TOWNNAME_LAST + 1)) {
 		str = t->townnametype - SPECSTR_TOWNNAME_START + SPECSTR_COMPANY_NAME_START;
 		strp = t->townnameparts;
 
@@ -535,13 +545,15 @@ void ResetCompanyLivery(Company *c)
 /**
  * Create a new company and sets all company variables default values
  *
- * @param is_ai is an AI company?
+ * @param flags oepration flags
  * @param company CompanyID to use for the new company
  * @return the company struct
  */
-Company *DoStartupNewCompany(bool is_ai, CompanyID company = INVALID_COMPANY)
+Company *DoStartupNewCompany(DoStartupNewCompanyFlag flags, CompanyID company)
 {
 	if (!Company::CanAllocateItem()) return nullptr;
+
+	const bool is_ai = (flags & DSNC_AI);
 
 	/* we have to generate colour before this company is valid */
 	Colours colour = GenerateCompanyColour();
@@ -559,7 +571,7 @@ Company *DoStartupNewCompany(bool is_ai, CompanyID company = INVALID_COMPANY)
 	ResetCompanyLivery(c);
 	_company_colours[c->index] = (Colours)c->colour;
 
-	c->money = c->current_loan = (100000ll * _economy.inflation_prices >> 16) / 50000 * 50000;
+	c->money = c->current_loan = (min(INITIAL_LOAN, _economy.max_loan) * _economy.inflation_prices >> 16) / 50000 * 50000;
 
 	c->share_owners[0] = c->share_owners[1] = c->share_owners[2] = c->share_owners[3] = INVALID_OWNER;
 
@@ -585,7 +597,7 @@ Company *DoStartupNewCompany(bool is_ai, CompanyID company = INVALID_COMPANY)
 	AI::BroadcastNewEvent(new ScriptEventCompanyNew(c->index), c->index);
 	Game::NewEvent(new ScriptEventCompanyNew(c->index));
 
-	if (!is_ai) UpdateAllTownVirtCoords();
+	if (!is_ai && !(flags & DSNC_DURING_LOAD)) UpdateAllTownVirtCoords();
 
 	return c;
 }
@@ -839,7 +851,7 @@ CommandCost CmdCompanyCtrl(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 			/* Delete multiplayer progress bar */
 			DeleteWindowById(WC_NETWORK_STATUS_WINDOW, WN_NETWORK_STATUS_WINDOW_JOIN);
 
-			Company *c = DoStartupNewCompany(false);
+			Company *c = DoStartupNewCompany(DSNC_NONE);
 
 			/* A new company could not be created, revert to being a spectator */
 			if (c == nullptr) {
@@ -874,7 +886,7 @@ CommandCost CmdCompanyCtrl(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 			if (!(flags & DC_EXEC)) return CommandCost();
 
 			if (company_id != INVALID_COMPANY && (company_id >= MAX_COMPANIES || Company::IsValidID(company_id))) return CMD_ERROR;
-			Company *c = DoStartupNewCompany(true, company_id);
+			Company *c = DoStartupNewCompany(DSNC_AI, company_id);
 			if (c != nullptr) {
 				NetworkServerNewCompany(c, nullptr);
 				DEBUG(desync, 1, "new_company_ai: date{%08x; %02x; %02x}, company_id: %u", _date, _date_fract, _tick_skip_counter, c->index);
@@ -915,6 +927,8 @@ CommandCost CmdCompanyCtrl(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 			CompanyAdminRemove(c_index, (CompanyRemoveReason)reason);
 
 			if (StoryPage::GetNumItems() == 0 || Goal::GetNumItems() == 0) InvalidateWindowData(WC_MAIN_TOOLBAR, 0);
+
+			InvalidateWindowClassesData(WC_DEPARTURES_BOARD, 0);
 
 			extern void CheckCaches(bool force_check, std::function<void(const char *)> log);
 			CheckCaches(true, nullptr);
@@ -1028,6 +1042,7 @@ CommandCost CmdSetCompanyColour(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 		}
 
 		ResetVehicleColourMap();
+		InvalidateTemplateReplacementImages();
 		MarkWholeScreenDirty();
 
 		/* All graph related to companies use the company colour. */
@@ -1041,9 +1056,15 @@ CommandCost CmdSetCompanyColour(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 		BuildOwnerLegend();
 		InvalidateWindowData(WC_SMALLMAP, 0, 1);
 
+		extern void MarkAllViewportMapLandscapesDirty();
+		MarkAllViewportMapLandscapesDirty();
+
 		/* Company colour data is indirectly cached. */
 		for (Vehicle *v : Vehicle::Iterate()) {
-			if (v->owner == _current_company) v->InvalidateNewGRFCache();
+			if (v->owner == _current_company) {
+				v->InvalidateNewGRFCache();
+				v->InvalidateImageCache();
+			}
 		}
 
 		extern void UpdateObjectColours(const Company *c);
@@ -1060,7 +1081,7 @@ CommandCost CmdSetCompanyColour(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 static bool IsUniqueCompanyName(const char *name)
 {
 	for (const Company *c : Company::Iterate()) {
-		if (c->name != nullptr && strcmp(c->name, name) == 0) return false;
+		if (!c->name.empty() && c->name == name) return false;
 	}
 
 	return true;
@@ -1086,8 +1107,11 @@ CommandCost CmdRenameCompany(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 
 	if (flags & DC_EXEC) {
 		Company *c = Company::Get(_current_company);
-		free(c->name);
-		c->name = reset ? nullptr : stredup(text);
+		if (reset) {
+			c->name.clear();
+		} else {
+			c->name = text;
+		}
 		MarkWholeScreenDirty();
 		CompanyAdminUpdate(c);
 	}
@@ -1103,7 +1127,7 @@ CommandCost CmdRenameCompany(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
 static bool IsUniquePresidentName(const char *name)
 {
 	for (const Company *c : Company::Iterate()) {
-		if (c->president_name != nullptr && strcmp(c->president_name, name) == 0) return false;
+		if (!c->president_name.empty() && c->president_name == name) return false;
 	}
 
 	return true;
@@ -1129,14 +1153,13 @@ CommandCost CmdRenamePresident(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 
 	if (flags & DC_EXEC) {
 		Company *c = Company::Get(_current_company);
-		free(c->president_name);
 
 		if (reset) {
-			c->president_name = nullptr;
+			c->president_name.clear();
 		} else {
-			c->president_name = stredup(text);
+			c->president_name = text;
 
-			if (c->name_1 == STR_SV_UNNAMED && c->name == nullptr) {
+			if (c->name_1 == STR_SV_UNNAMED && c->name.empty()) {
 				char buf[80];
 
 				seprintf(buf, lastof(buf), "%s Transport", text);
@@ -1167,6 +1190,20 @@ int CompanyServiceInterval(const Company *c, VehicleType type)
 		case VEH_AIRCRAFT: return vds->servint_aircraft;
 		case VEH_SHIP:     return vds->servint_ships;
 	}
+}
+
+/**
+ * Get the default local company after loading a new game
+ */
+CompanyID GetDefaultLocalCompany()
+{
+	if (_loaded_local_company < MAX_COMPANIES && Company::IsValidID(_loaded_local_company)) {
+		return _loaded_local_company;
+	}
+	for (CompanyID i = COMPANY_FIRST; i < MAX_COMPANIES; i++) {
+		if (Company::IsValidID(i)) return i;
+	}
+	return COMPANY_FIRST;
 }
 
 /**

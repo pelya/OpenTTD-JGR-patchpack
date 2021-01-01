@@ -5,7 +5,7 @@
  * See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with OpenTTD. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/** @file null_v.cpp The videio driver that doesn't blit. */
+/** @file null_v.cpp The video driver that doesn't blit. */
 
 #include "../stdafx.h"
 #include "../gfx_func.h"
@@ -19,7 +19,7 @@ static FVideoDriver_Null iFVideoDriver_Null;
 
 extern bool _exit_game;
 
-const char *VideoDriver_Null::Start(const char * const *parm)
+const char *VideoDriver_Null::Start(const StringList &parm)
 {
 #ifdef _MSC_VER
 	/* Disable the MSVC assertion message box. */
@@ -48,11 +48,13 @@ void VideoDriver_Null::MainLoop()
 	if (this->until_exit) {
 		while (!_exit_game) {
 			GameLoop();
+			GameLoopPaletteAnimations();
 			UpdateWindows();
 		}
 	} else {
 		for (int i = 0; i < this->ticks; i++) {
 			GameLoop();
+			GameLoopPaletteAnimations();
 			UpdateWindows();
 		}
 	}

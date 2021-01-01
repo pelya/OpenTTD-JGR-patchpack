@@ -62,7 +62,7 @@ private:
 
 protected:
 	const LinkGraph link_graph;       ///< Link graph to by analyzed. Is copied when job is started and mustn't be modified later.
-	std::shared_ptr<LinkGraphJobGroup> group; ///< JOb group thread the job is running in or nullptr if it's running in the main thread.
+	std::shared_ptr<LinkGraphJobGroup> group; ///< Job group thread the job is running in or nullptr if it's running in the main thread.
 	const LinkGraphSettings settings; ///< Copy of _settings_game.linkgraph at spawn time.
 	DateTicks join_date_ticks;        ///< Date when the job is to be joined.
 	DateTicks start_date_ticks;       ///< Date when the job was started.
@@ -173,9 +173,9 @@ public:
 		 * @return Pair of the edge currently pointed to and the ID of its
 		 *         other end.
 		 */
-		SmallPair<NodeID, Edge> operator*() const
+		std::pair<NodeID, Edge> operator*() const
 		{
-			return SmallPair<NodeID, Edge>(this->current, Edge(this->base[this->current], this->base_anno[this->current]));
+			return std::pair<NodeID, Edge>(this->current, Edge(this->base[this->current], this->base_anno[this->current]));
 		}
 
 		/**

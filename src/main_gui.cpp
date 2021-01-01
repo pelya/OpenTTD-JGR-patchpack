@@ -31,6 +31,8 @@
 #include "tilehighlight_func.h"
 #include "hotkeys.h"
 #include "guitimer_func.h"
+#include "error.h"
+#include "news_gui.h"
 
 #include "saveload/saveload.h"
 
@@ -46,7 +48,7 @@
 
 #include "safeguards.h"
 
-void CcGiveMoney(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
+void CcGiveMoney(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
 {
 	if (result.Failed() || !_settings_game.economy.give_money || !_networking) return;
 
@@ -96,7 +98,7 @@ bool HandlePlacePushButton(Window *w, int widget, CursorID cursor, HighLightStyl
 }
 
 
-void CcPlaySound_EXPLOSION(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd)
+void CcPlaySound_EXPLOSION(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd)
 {
 	if (result.Succeeded() && _settings_client.sound.confirm) SndPlayTileFx(SND_12_EXPLOSION, tile);
 }
@@ -110,7 +112,7 @@ void CcPlaySound_EXPLOSION(const CommandCost &result, TileIndex tile, uint32 p1,
  */
 bool DoZoomInOutWindow(ZoomStateChange how, Window *w)
 {
-	ViewPort *vp;
+	Viewport *vp;
 
 	assert(w != nullptr);
 	vp = w->viewport;
@@ -149,6 +151,7 @@ bool DoZoomInOutWindow(ZoomStateChange how, Window *w)
 	if (vp != nullptr) { // the vp can be null when how == ZOOM_NONE
 		vp->virtual_left = w->viewport->scrollpos_x;
 		vp->virtual_top = w->viewport->scrollpos_y;
+		UpdateViewportSizeZoom(vp);
 	}
 	/* Update the windows that have zoom-buttons to perhaps disable their buttons */
 	w->InvalidateData();
@@ -163,7 +166,7 @@ void ZoomInOrOutToCursorWindow(bool in, Window *w)
 	assert(w != nullptr);
 
 	if (_game_mode != GM_MENU) {
-		ViewPort *vp = w->viewport;
+		Viewport *vp = w->viewport;
 		if ((in && vp->zoom <= _settings_client.gui.zoom_min) || (!in && vp->zoom >= _settings_client.gui.zoom_max)) return;
 
 		Point pt = GetTileZoomCenterWindow(in, w);
@@ -179,10 +182,11 @@ void FixTitleGameZoom()
 {
 	if (_game_mode != GM_MENU) return;
 
-	ViewPort *vp = FindWindowByClass(WC_MAIN_WINDOW)->viewport;
+	Viewport *vp = FindWindowByClass(WC_MAIN_WINDOW)->viewport;
 	vp->zoom = _gui_zoom;
 	vp->virtual_width = ScaleByZoom(vp->width, vp->zoom);
 	vp->virtual_height = ScaleByZoom(vp->height, vp->zoom);
+	UpdateViewportSizeZoom(vp);
 }
 
 static const struct NWidgetPart _nested_main_window_widgets[] = {
@@ -213,6 +217,8 @@ enum {
 	GHK_CHAT_ALL,
 	GHK_CHAT_COMPANY,
 	GHK_CHAT_SERVER,
+	GHK_CLOSE_NEWS,
+	GHK_CLOSE_ERROR,
 	GHK_CHANGE_MAP_MODE_PREV,
 	GHK_CHANGE_MAP_MODE_NEXT,
 };
@@ -337,8 +343,12 @@ struct MainWindow : Window
 				break;
 
 			case GHK_MONEY: // Gimme money
-				/* You can only cheat for money in single player. */
-				if (!_networking) DoCommandP(0, 10000000, 0, CMD_MONEY_CHEAT);
+				/* You can only cheat for money in single player or when otherwise suitably authorised. */
+				if (!_networking || _settings_game.difficulty.money_cheat_in_multiplayer) {
+					DoCommandP(0, 10000000, 0, CMD_MONEY_CHEAT);
+				} else if (_network_server || _network_settings_access) {
+					DoCommandP(0, 10000000, 0, CMD_MONEY_CHEAT_ADMIN);
+				}
 				break;
 
 			case GHK_UPDATE_COORDS: // Update the coordinates of all station signs
@@ -408,21 +418,29 @@ struct MainWindow : Window
 				}
 				break;
 
+			case GHK_CLOSE_NEWS: // close active news window
+				if (!HideActiveNewsMessage()) return ES_NOT_HANDLED;
+				break;
+
+			case GHK_CLOSE_ERROR: // close active error window
+				if (!HideActiveErrorMessage()) return ES_NOT_HANDLED;
+				break;
+
 			case GHK_CHANGE_MAP_MODE_PREV:
 				if (_focused_window && _focused_window->viewport && _focused_window->viewport->zoom >= ZOOM_LVL_DRAW_MAP) {
-					_focused_window->viewport->map_type = ChangeRenderMode(_focused_window->viewport, true);
+					ChangeRenderMode(_focused_window->viewport, true);
 					_focused_window->SetDirty();
 				} else if (this->viewport->zoom >= ZOOM_LVL_DRAW_MAP) {
-					this->viewport->map_type = ChangeRenderMode(this->viewport, true);
+					ChangeRenderMode(this->viewport, true);
 					this->SetDirty();
 				}
 				break;
 			case GHK_CHANGE_MAP_MODE_NEXT:
 				if (_focused_window && _focused_window->viewport && _focused_window->viewport->zoom >= ZOOM_LVL_DRAW_MAP) {
-					_focused_window->viewport->map_type = ChangeRenderMode(_focused_window->viewport, false);
+					ChangeRenderMode(_focused_window->viewport, false);
 					_focused_window->SetDirty();
 				} else if (this->viewport->zoom >= ZOOM_LVL_DRAW_MAP) {
-					this->viewport->map_type = ChangeRenderMode(this->viewport, false);
+					ChangeRenderMode(this->viewport, false);
 					this->SetDirty();
 				}
 				break;
@@ -445,7 +463,7 @@ struct MainWindow : Window
 	{
 		if (_ctrl_pressed) {
 			/* Cycle through the drawing modes */
-			this->viewport->map_type = ChangeRenderMode(this->viewport, wheel < 0);
+			ChangeRenderMode(this->viewport, wheel < 0);
 			this->SetDirty();
 		} else if (_settings_client.gui.scrollwheel_scrolling != 2) {
 			ZoomInOrOutToCursorWindow(wheel < 0, this);
@@ -534,6 +552,8 @@ static Hotkey global_hotkeys[] = {
 	Hotkey(_ghk_chat_all_keys, "chat_all", GHK_CHAT_ALL),
 	Hotkey(_ghk_chat_company_keys, "chat_company", GHK_CHAT_COMPANY),
 	Hotkey(_ghk_chat_server_keys, "chat_server", GHK_CHAT_SERVER),
+	Hotkey(WKC_SPACE, "close_news", GHK_CLOSE_NEWS),
+	Hotkey(WKC_SPACE, "close_error", GHK_CLOSE_ERROR),
 	Hotkey(WKC_PAGEUP,   "previous_map_mode", GHK_CHANGE_MAP_MODE_PREV),
 	Hotkey(WKC_PAGEDOWN, "next_map_mode",     GHK_CHANGE_MAP_MODE_NEXT),
 	HOTKEY_LIST_END
@@ -613,5 +633,4 @@ void GameSizeChanged()
 	_cur_resolution.height = _screen.height;
 	ScreenSizeChanged();
 	RelocateAllWindows(_screen.width, _screen.height);
-	MarkWholeScreenDirty();
 }

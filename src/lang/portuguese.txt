@@ -401,7 +401,7 @@ STR_FILE_MENU_EXIT                                              :Sair
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Mapa do mundo
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Visualizador extra
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Visualizador extra
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Legenda de fluxo de carga
 STR_MAP_MENU_SIGN_LIST                                          :Lista de sinais
 
@@ -882,7 +882,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Autoridade local de {TOWN} assina contrato com {STRING} por um ano de direitos exclusivos de transporte!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Visualizador {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Visualizador {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Alterar janela de exibição
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Copiar a localização do visualizador global para este visualizador
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Alterar vista principal
@@ -1542,8 +1542,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Completo
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Noticias a cores aparecem em: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Ano em que os anúncios de jornal começam a ser mostrados a cores. Antes deste ano, serão mostrados a preto e branco.
 STR_CONFIG_SETTING_STARTING_YEAR                                :Data de início: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Activar economia regular (alterações menores): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Quando activa, a produção de indústrias muda frequentemente, em pequenos incrementos. Esta preferência não costuma ter efeito, se os tipos de indústria forem provenientes de um NewGRF
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Permite comprar acções de outras empresas: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Quando activo, permite a compra e venda de acções de companhias. As acções apenas estarão disponíveis quando a companhia atinge uma determinada idade.
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES_HELPTEXT                :Definir a idade mínima de uma companhia a partir da qual outros jogadores poderão comprar ou vender ações da mesma.
@@ -1795,17 +1793,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Faltam {
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Sair
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Tem a certeza que deseja abandonar este jogo e voltar ao {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Sim
 STR_QUIT_NO                                                     :{BLACK}Não
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Abandonar jogo
@@ -2720,7 +2709,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Terreno proprie
 STR_ABOUT_OPENTTD                                               :{WHITE}Sobre o OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Direitos de autor originais {COPYRIGHT} 1995 Chris Sawyer, Todos os direitos reservados
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD versão {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 A equipa do OpenTTD
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} A equipa do OpenTTD
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Taxa de fotograma
@@ -4448,7 +4437,6 @@ STR_ERROR_THERE_IS_NO_ROAD                                      :{WHITE}... não
 STR_ERROR_THERE_IS_NO_TRAMWAY                                   :{WHITE}... não há carris para eléctricos
 STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}Não é possível converter aqui o tipo de estrada...
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}Não é possível converter aqui o tipo de carril para eléctricos...
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... estrada não-compatível
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :Cisterna de bebida de cola
 
 # Waterway construction errors

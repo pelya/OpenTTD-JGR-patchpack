@@ -198,6 +198,25 @@ public:
 	 * @return the number of bytes written
 	 */
 	int WriteSummaryMessage(char *buf, char *last, StringID cmd_msg = 0) const;
+
+	bool IsSuccessWithMessage() const
+	{
+		return this->Succeeded() && this->message != INVALID_STRING_ID;
+	}
+
+	void MakeSuccessWithMessage()
+	{
+		assert(this->message != INVALID_STRING_ID);
+		this->success = true;
+	}
+
+	CommandCost UnwrapSuccessWithMessage() const
+	{
+		assert(this->IsSuccessWithMessage());
+		CommandCost res = *this;
+		res.success = false;
+		return res;
+	}
 };
 
 /**
@@ -224,6 +243,7 @@ enum Commands {
 	CMD_TERRAFORM_LAND,               ///< terraform a tile
 	CMD_BUILD_OBJECT,                 ///< build an object
 	CMD_PURCHASE_LAND_AREA,           ///< purchase an area of landscape
+	CMD_BUILD_OBJECT_AREA,            ///< build an area of objects
 	CMD_BUILD_HOUSE,                  ///< build a house
 	CMD_BUILD_TUNNEL,                 ///< build a tunnel
 
@@ -271,6 +291,7 @@ enum Commands {
 	CMD_CHANGE_SERVICE_INT,           ///< change the server interval of a vehicle
 
 	CMD_BUILD_INDUSTRY,               ///< build a new industry
+	CMD_INDUSTRY_CTRL,                ///< change industry properties
 
 	CMD_SET_COMPANY_MANAGER_FACE,     ///< set the manager's face of the company
 	CMD_SET_COMPANY_COLOUR,           ///< set the colour of the company
@@ -289,6 +310,7 @@ enum Commands {
 	CMD_RENAME_PRESIDENT,             ///< change the president name
 	CMD_RENAME_STATION,               ///< rename a station
 	CMD_RENAME_DEPOT,                 ///< rename a depot
+	CMD_SET_STATION_CARGO_ALLOWED_SUPPLY, ///< set station cargo allowed supply
 
 	CMD_PLACE_SIGN,                   ///< place a sign
 	CMD_RENAME_SIGN,                  ///< rename a sign
@@ -316,7 +338,9 @@ enum Commands {
 	CMD_CLEAR_AREA,                   ///< clear an area
 
 	CMD_MONEY_CHEAT,                  ///< do the money cheat
+	CMD_MONEY_CHEAT_ADMIN,            ///< do the money cheat (admin mode)
 	CMD_CHANGE_BANK_BALANCE,          ///< change bank balance to charge costs or give money from a GS
+	CMD_CHEAT_SETTING,                ///< change a cheat setting
 	CMD_BUILD_CANAL,                  ///< build a canal
 
 	CMD_CREATE_SUBSIDY,               ///< create a new subsidy
@@ -338,6 +362,7 @@ enum Commands {
 	CMD_REMOVE_STORY_PAGE,            ///< remove a story page
 	CMD_REMOVE_STORY_PAGE_ELEMENT,    ///< remove a story page element
 	CMD_SCROLL_VIEWPORT,              ///< scroll main viewport of players
+	CMD_STORY_PAGE_BUTTON,            ///< selection via story page button
 
 	CMD_LEVEL_LAND,                   ///< level land
 
@@ -388,6 +413,7 @@ enum Commands {
 	CMD_SET_GROUP_LIVERY,             ///< set the livery for a group
 
 	CMD_MOVE_ORDER,                   ///< move an order
+	CMD_REVERSE_ORDER_LIST,           ///< reverse order list
 	CMD_CHANGE_TIMETABLE,             ///< change the timetable for a vehicle
 	CMD_BULK_CHANGE_TIMETABLE,        ///< change the timetable for all orders of a vehicle
 	CMD_SET_VEHICLE_ON_TIME,          ///< set the vehicle on time feature (timetable)
@@ -404,6 +430,9 @@ enum Commands {
 	CMD_DELETE_TRACERESTRICT_SLOT,    ///< delete a tracerestrict slot
 	CMD_ADD_VEHICLE_TRACERESTRICT_SLOT,    ///< add a vehicle to a tracerestrict slot
 	CMD_REMOVE_VEHICLE_TRACERESTRICT_SLOT, ///< remove a vehicle from a tracerestrict slot
+	CMD_CREATE_TRACERESTRICT_COUNTER, ///< create a tracerestrict counter
+	CMD_ALTER_TRACERESTRICT_COUNTER,  ///< alter a tracerestrict counter
+	CMD_DELETE_TRACERESTRICT_COUNTER, ///< delete a tracerestrict counter
 
 	CMD_INSERT_SIGNAL_INSTRUCTION,    ///< insert a signal instruction
 	CMD_MODIFY_SIGNAL_INSTRUCTION,    ///< modifies a signal instruction
@@ -423,6 +452,7 @@ enum Commands {
 	CMD_REMOVE_PLAN,
 	CMD_REMOVE_PLAN_LINE,
 	CMD_CHANGE_PLAN_VISIBILITY,
+	CMD_CHANGE_PLAN_COLOUR,
 	CMD_RENAME_PLAN,
 
 	CMD_DESYNC_CHECK,                 ///< Force desync checks to be run
@@ -450,6 +480,7 @@ enum DoCommandFlag {
 	DC_NO_MODIFY_TOWN_RATING = 0x400, ///< do not change town rating
 	DC_FORCE_CLEAR_TILE      = 0x800, ///< do not only remove the object on the tile, but also clear any water left on it
 	DC_ALLOW_REMOVE_WATER    = 0x1000,///< always allow removing water
+	DC_TOWN                  = 0x2000,///< town operation
 };
 DECLARE_ENUM_AS_BIT_SET(DoCommandFlag)
 
@@ -481,18 +512,20 @@ enum FlaggedCommands {
  * This enumeration defines flags for the _command_proc_table.
  */
 enum CommandFlags {
-	CMD_SERVER    = 0x001, ///< the command can only be initiated by the server
-	CMD_SPECTATOR = 0x002, ///< the command may be initiated by a spectator
-	CMD_OFFLINE   = 0x004, ///< the command cannot be executed in a multiplayer game; single-player only
-	CMD_AUTO      = 0x008, ///< set the DC_AUTO flag on this command
-	CMD_ALL_TILES = 0x010, ///< allow this command also on MP_VOID tiles
-	CMD_NO_TEST   = 0x020, ///< the command's output may differ between test and execute due to town rating changes etc.
-	CMD_NO_WATER  = 0x040, ///< set the DC_NO_WATER flag on this command
-	CMD_CLIENT_ID = 0x080, ///< set p2 with the ClientID of the sending client.
-	CMD_DEITY     = 0x100, ///< the command may be executed by COMPANY_DEITY
-	CMD_STR_CTRL  = 0x200, ///< the command's string may contain control strings
-	CMD_NO_EST    = 0x400, ///< the command is never estimated.
-	CMD_PROCEX    = 0x800, ///< the command proc function has extended parameters
+	CMD_SERVER    =  0x001, ///< the command can only be initiated by the server
+	CMD_SPECTATOR =  0x002, ///< the command may be initiated by a spectator
+	CMD_OFFLINE   =  0x004, ///< the command cannot be executed in a multiplayer game; single-player only
+	CMD_AUTO      =  0x008, ///< set the DC_AUTO flag on this command
+	CMD_ALL_TILES =  0x010, ///< allow this command also on MP_VOID tiles
+	CMD_NO_TEST   =  0x020, ///< the command's output may differ between test and execute due to town rating changes etc.
+	CMD_NO_WATER  =  0x040, ///< set the DC_NO_WATER flag on this command
+	CMD_CLIENT_ID =  0x080, ///< set p2 with the ClientID of the sending client.
+	CMD_DEITY     =  0x100, ///< the command may be executed by COMPANY_DEITY
+	CMD_STR_CTRL  =  0x200, ///< the command's string may contain control strings
+	CMD_NO_EST    =  0x400, ///< the command is never estimated.
+	CMD_PROCEX    =  0x800, ///< the command proc function has extended parameters
+	CMD_SERVER_NS = 0x1000, ///< the command can only be initiated by the server (this is not executed in spectator mode)
+	CMD_LOG_AUX   = 0x2000, ///< the command should be logged in the auxiliary log instead of the main log
 };
 DECLARE_ENUM_AS_BIT_SET(CommandFlags)
 
@@ -538,7 +571,7 @@ enum CommandPauseLevel {
  * @return The CommandCost of the command, which can be succeeded or failed.
  */
 typedef CommandCost CommandProc(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text);
-typedef CommandCost CommandProcEx(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text, uint32 binary_length);
+typedef CommandCost CommandProcEx(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, uint64 p3, const char *text, uint32 binary_length);
 
 /**
  * Define a command with the flags which belongs to it.
@@ -560,9 +593,9 @@ struct Command {
 	Command(CommandProcEx *procex, const char *name, CommandFlags flags, CommandType type)
 			: procex(procex), name(name), flags(flags | CMD_PROCEX), type(type) {}
 
-	inline CommandCost Execute(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text, uint32 binary_length) const {
+	inline CommandCost Execute(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, uint64 p3, const char *text, uint32 binary_length) const {
 		if (this->flags & CMD_PROCEX) {
-			return this->procex(tile, flags, p1, p2, text, binary_length);
+			return this->procex(tile, flags, p1, p2, p3, text, binary_length);
 		} else {
 			return this->proc(tile, flags, p1, p2, text);
 		}
@@ -579,10 +612,11 @@ struct Command {
  * @param result The result of the executed command
  * @param tile The tile of the command action
  * @param p1 Additional data of the command
- * @param p1 Additional data of the command
+ * @param p2 Additional data of the command
+ * @param p3 Additional data of the command
  * @see CommandProc
  */
-typedef void CommandCallback(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint32 cmd);
+typedef void CommandCallback(const CommandCost &result, TileIndex tile, uint32 p1, uint32 p2, uint64 p3, uint32 cmd);
 
 #define MAX_CMD_TEXT_LENGTH 32000
 
@@ -594,9 +628,15 @@ struct CommandContainer {
 	uint32 p1;                       ///< parameter p1.
 	uint32 p2;                       ///< parameter p2.
 	uint32 cmd;                      ///< command being executed.
+	uint64 p3;                       ///< parameter p3. (here for alignment)
 	CommandCallback *callback;       ///< any callback function executed upon successful completion of the command.
 	uint32 binary_length;            ///< in case text contains binary data, this describes its length.
 	std::string text;                ///< possible text sent for name changes etc.
 };
+
+inline CommandContainer NewCommandContainerBasic(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd, CommandCallback *callback = nullptr)
+{
+	return { tile, p1, p2, cmd, 0, callback, 0, {} };
+}
 
 #endif /* COMMAND_TYPE_H */

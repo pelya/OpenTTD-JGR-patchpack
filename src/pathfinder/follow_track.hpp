@@ -92,7 +92,7 @@ struct CFollowTrackT
 	inline static TransportType TT() { return Ttr_type_; }
 	inline static bool IsWaterTT() { return TT() == TRANSPORT_WATER; }
 	inline static bool IsRailTT() { return TT() == TRANSPORT_RAIL; }
-	inline bool IsTram() { return IsRoadTT() && RoadTypeIsTram(RoadVehicle::From(m_veh)->roadtype); }
+	inline bool IsTram() const { return IsRoadTT() && RoadTypeIsTram(RoadVehicle::From(m_veh)->roadtype); }
 	inline static bool IsRoadTT() { return TT() == TRANSPORT_ROAD; }
 	inline static bool Allow90degTurns() { return T90deg_turns_allowed_; }
 	inline static bool DoTrackMasking() { return Tmask_reserved_tracks; }
@@ -159,7 +159,7 @@ struct CFollowTrackT
 
 			return false;
 		}
-		if (m_tiles_skipped == 0 && ((!IsRailTT() && !Allow90degTurns()) || (IsRailTT() && Rail90DegTurnDisallowedTilesFromDiagDir(m_old_tile, m_new_tile, m_exitdir), !Allow90degTurns()))) {
+		if (m_tiles_skipped == 0 && ((!IsRailTT() && !Allow90degTurns()) || (IsRailTT() && Rail90DegTurnDisallowedTilesFromDiagDir(m_old_tile, m_new_tile, m_exitdir, !Allow90degTurns())))) {
 			m_new_td_bits &= (TrackdirBits)~(int)TrackdirCrossesTrackdirs(m_old_td);
 			if (m_new_td_bits == TRACKDIR_BIT_NONE) {
 				m_err = EC_90DEG;

@@ -53,7 +53,7 @@ public:
 	typedef std::vector<StationSupplyInfo> StationSupplyList;
 	typedef std::vector<LinkInfo> LinkList;
 
-	static const uint8 LINK_COLOURS[];
+	static const uint8 LINK_COLOURS[][12];
 
 	/**
 	 * Create a link graph overlay for the specified window.
@@ -63,12 +63,13 @@ public:
 	 * @param company_mask Bitmask of companies to be shown.
 	 * @param scale Desired thickness of lines and size of station dots.
 	 */
-	LinkGraphOverlay(const Window *w, uint wid, CargoTypes cargo_mask, uint32 company_mask, uint scale) :
+	LinkGraphOverlay(Window *w, uint wid, CargoTypes cargo_mask, uint32 company_mask, uint scale) :
 			window(w), widget_id(wid), cargo_mask(cargo_mask), company_mask(company_mask), scale(scale)
 	{}
 
 	void RebuildCache(bool incremental = false);
 	bool CacheStillValid() const;
+	void MarkStationViewportLinksDirty(const Station *st);
 	void Draw(const DrawPixelInfo *dpi);
 	void SetCargoMask(CargoTypes cargo_mask);
 	void SetCompanyMask(uint32 company_mask);
@@ -83,7 +84,7 @@ public:
 	uint32 GetCompanyMask() { return this->company_mask; }
 
 protected:
-	const Window *window;              ///< Window to be drawn into.
+	Window *window;                    ///< Window to be drawn into.
 	const uint widget_id;              ///< ID of Widget in Window to be drawn to.
 	CargoTypes cargo_mask;             ///< Bitmask of cargos to be displayed.
 	uint32 company_mask;               ///< Bitmask of companies to be displayed.

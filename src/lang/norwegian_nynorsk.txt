@@ -397,7 +397,7 @@ STR_FILE_MENU_EXIT                                              :Avslutt OpenTTD
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Verdskart
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Ekstra tilleggsvindauge
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Ekstra tilleggsvindauge
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Symbolforklaring for vareflyt
 STR_MAP_MENU_SIGN_LIST                                          :Skiltliste
 
@@ -871,7 +871,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}Bystyret i {TOWN} signerer kontrakt med {STRING} om eitt års eksklusive transportrettar!!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Tilleggsvindauge {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Tilleggsvindauge {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Kopier til tilleggsvindauge
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Kopier stad i hovedvisinga til dette tilleggsvindauga
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Kopier frå tilleggsvindauge
@@ -1452,7 +1452,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Fullt
 
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Avisa vert trykt i fargar i: {STRING}
 STR_CONFIG_SETTING_STARTING_YEAR                                :Start spelet i år {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Jamn økonomi (fleire, mindre endringar): {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Tillet kjøp av aksjar i andre firma: {STRING}
 STR_CONFIG_SETTING_DRAG_SIGNALS_DENSITY                         :Ved trekking, plasser signal kvar: {STRING}
 STR_CONFIG_SETTING_DRAG_SIGNALS_DENSITY_VALUE                   :{COMMA} ruter{P 0 "" s}
@@ -1676,17 +1675,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}Denne ny
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Avslutt
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Er du sikker på at du vil avslutte OpenTTD og gå attende til {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Ja
 STR_QUIT_NO                                                     :{BLACK}Nei
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Avslutt spel
@@ -2590,7 +2580,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Feltet eigast a
 STR_ABOUT_OPENTTD                                               :{WHITE}Om OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Opphaveleg opphavsbeskytta av {COPYRIGHT} 1995 Chris Sawyer, Alle rettigheiter reservert
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD versjon {REV}. Oversett til nynorsk av Thor Morten Skogrand med fleire.
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 OpenTTD-teamet
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} OpenTTD-teamet
 
 # Framerate display window
 ############ Leave those lines in this order!!

@@ -140,8 +140,6 @@ void IncreaseBuildingCount(Town *t, HouseID house_id)
 {
 	HouseClassID class_id = HouseSpec::Get(house_id)->class_id;
 
-	if (!_loaded_newgrf_features.has_newhouses) return;
-
 	t->cache.building_counts.id_count[house_id]++;
 	_building_counts.id_count[house_id]++;
 
@@ -160,8 +158,6 @@ void IncreaseBuildingCount(Town *t, HouseID house_id)
 void DecreaseBuildingCount(Town *t, HouseID house_id)
 {
 	HouseClassID class_id = HouseSpec::Get(house_id)->class_id;
-
-	if (!_loaded_newgrf_features.has_newhouses) return;
 
 	if (t->cache.building_counts.id_count[house_id] > 0) t->cache.building_counts.id_count[house_id]--;
 	if (_building_counts.id_count[house_id] > 0) _building_counts.id_count[house_id]--;
@@ -326,7 +322,7 @@ static uint32 GetDistanceFromNearbyHouse(uint8 parameter, TileIndex tile, HouseI
 /**
  * @note Used by the resolver to get values for feature 07 deterministic spritegroups.
  */
-/* virtual */ uint32 HouseScopeResolver::GetVariable(byte variable, uint32 parameter, bool *available) const
+/* virtual */ uint32 HouseScopeResolver::GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const
 {
 	switch (variable) {
 		/* Construction stage. */
@@ -442,7 +438,7 @@ static uint32 GetDistanceFromNearbyHouse(uint8 parameter, TileIndex tile, HouseI
 
 	DEBUG(grf, 1, "Unhandled house variable 0x%X", variable);
 
-	*available = false;
+	extra->available = false;
 	return UINT_MAX;
 }
 
@@ -450,7 +446,7 @@ static uint32 GetDistanceFromNearbyHouse(uint8 parameter, TileIndex tile, HouseI
 /**
  * @note Used by the resolver to get values for feature 07 deterministic spritegroups.
  */
-/* virtual */ uint32 FakeHouseScopeResolver::GetVariable(byte variable, uint32 parameter, bool *available) const
+/* virtual */ uint32 FakeHouseScopeResolver::GetVariable(byte variable, uint32 parameter, GetVariableExtra *extra) const
 {
 	switch (variable) {
 		/* Construction stage. */
@@ -504,16 +500,21 @@ static uint32 GetDistanceFromNearbyHouse(uint8 parameter, TileIndex tile, HouseI
 
 	DEBUG(grf, 1, "Unhandled house variable 0x%X", variable);
 
-	*available = false;
+	extra->available = false;
 	return UINT_MAX;
 }
 
 uint16 GetHouseCallback(CallbackID callback, uint32 param1, uint32 param2, HouseID house_id, Town *town, TileIndex tile,
 		bool not_yet_constructed, uint8 initial_random_bits, CargoTypes watched_cargo_triggers)
 {
-	HouseResolverObject object(house_id, tile, town, callback, param1, param2,
-			not_yet_constructed, initial_random_bits, watched_cargo_triggers);
-	return object.ResolveCallback();
+	if (tile != INVALID_TILE) {
+		HouseResolverObject object(house_id, tile, town, callback, param1, param2,
+				not_yet_constructed, initial_random_bits, watched_cargo_triggers);
+		return object.ResolveCallback();
+	} else {
+		FakeHouseResolverObject object(house_id, callback, param1, param2);
+		return object.ResolveCallback();
+	}
 }
 
 /**
@@ -661,6 +662,14 @@ void AnimateNewHouseConstruction(TileIndex tile)
 	}
 }
 
+uint8 GetNewHouseTileAnimationSpeed(TileIndex tile)
+{
+	const HouseSpec *hs = HouseSpec::Get(GetHouseType(tile));
+	if (hs == nullptr) return 0;
+
+	return HouseAnimationBase::GetAnimationSpeed(hs);
+}
+
 /**
  * Check if GRF allows a given house to be constructed (callback 17)
  * @param house_id house type
@@ -744,14 +753,12 @@ bool NewHouseTileLoop(TileIndex tile)
 		uint16 callback_res = GetHouseCallback(CBID_HOUSE_DESTRUCTION, 0, 0, GetHouseType(tile), t, tile);
 		if (callback_res != CALLBACK_FAILED && Convert8bitBooleanCallback(hs->grf_prop.grffile, CBID_HOUSE_DESTRUCTION, callback_res)) {
 			ClearTownHouse(t, tile);
-			extern void RemoveNearbyStations(Town *t);
-			RemoveNearbyStations(t);
 			return false;
 		}
 	}
 
 	SetHouseProcessingTime(tile, hs->processing_time);
-	MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+	MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 	return true;
 }
 
@@ -791,7 +798,7 @@ static void DoTriggerHouse(TileIndex tile, HouseTrigger trigger, byte base_rando
 		case HOUSE_TRIGGER_TILE_LOOP_TOP:
 			if (!first) {
 				/* The top tile is marked dirty by the usual TileLoop */
-				MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
+				MarkTileDirtyByTile(tile, VMDF_NOT_MAP_MODE);
 				break;
 			}
 			/* Random value of first tile already set. */

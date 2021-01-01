@@ -403,7 +403,7 @@ STR_FILE_MENU_EXIT                                              :Saír
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Mapa do mundo
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Xanela extra
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Xanela extra
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Lenda de tomar carga
 STR_MAP_MENU_SIGN_LIST                                          :Lista de rótulos
 
@@ -884,7 +884,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}As autoridades locáis de {TOWN} asinan un contrato con {STRING} por un ano de dereitos de transporte exclusivos!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Vista {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Vista {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Cambiar xanela
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Copia-la sitaución da vista principal a esta vista
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Cambia a vista principal
@@ -1546,8 +1546,6 @@ STR_CONFIG_SETTING_NEWS_MESSAGES_FULL                           :Completo
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR                           :Data de aparición das novas en cor: {STRING}
 STR_CONFIG_SETTING_COLOURED_NEWS_YEAR_HELPTEXT                  :Ano no que os avisos dos xornais son impresos en cor. Antes deste ano, emprégase monocromo branco e negro
 STR_CONFIG_SETTING_STARTING_YEAR                                :Data de comezo: {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Habilita-la economía "estable" (máis cambios, pero máis pequenos): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Cando se activa, as producións industriais cambian máis frecuentemente, e a pasos máis curtos
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Permiti-la compra de accións de outras compañías: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Cando se activa, permite comprar ou vender accións da compañía. As accións só estarán dispoñíbeis para compañías que acaden certa idade
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Idade mínima da compañía para compraventa de accións: {STRING}
@@ -1800,17 +1798,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}A ista t
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Saír
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Estás seguro de que queres saír e voltar a {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Si
 STR_QUIT_NO                                                     :{BLACK}Non
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Saír da partida
@@ -2725,7 +2714,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Terreo propieda
 STR_ABOUT_OPENTTD                                               :{WHITE}Acerca de OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Copyright orixinal {COPYRIGHT} 1995 Chris Sawyer, Tódolos dereitos reservados
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD versión {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-2019 O equipo de OpenTTD
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT}2002-{STRING} O equipo de OpenTTD
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Frame rate
@@ -4465,7 +4454,6 @@ STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}Non se p
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}Non se pode converter o tipo de tranvía aquí...
 STR_ERROR_NO_SUITABLE_ROAD                                      :{WHITE}Estrada inválida
 STR_ERROR_NO_SUITABLE_TRAMWAY                                   :{WHITE}Vía de tranvía inadecuada
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... estrada incompatíbel
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :{WHITE}... tranvía incompatible
 
 # Waterway construction errors

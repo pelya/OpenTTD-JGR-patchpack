@@ -100,6 +100,8 @@ static const CmdStruct _cmd_structs[] = {
 	{"DATE_WALLCLOCK_LONG",       EmitSingleChar, SCC_DATE_WALLCLOCK_LONG,          1, -1, C_NONE},
 	{"DATE_WALLCLOCK_ISO",        EmitSingleChar, SCC_DATE_WALLCLOCK_ISO,           1, -1, C_NONE},
 
+	{"TIME_HHMM",         EmitSingleChar, SCC_TIME_HHMM,          1, -1, C_NONE},
+
 	{"STRING",            EmitSingleChar, SCC_STRING,             1, -1, C_CASE | C_GENDER},
 	{"RAW_STRING",        EmitSingleChar, SCC_RAW_STRING_POINTER, 1, -1, C_NONE | C_GENDER},
 
@@ -127,6 +129,7 @@ static const CmdStruct _cmd_structs[] = {
 	{"COMPANY_NUM",       EmitSingleChar, SCC_COMPANY_NUM,        1, -1, C_NONE},
 	{"PRESIDENT_NAME",    EmitSingleChar, SCC_PRESIDENT_NAME,     1, -1, C_NONE | C_GENDER},
 	{"TRSLOT",            EmitSingleChar, SCC_TR_SLOT_NAME,       1, -1, C_NONE | C_GENDER},
+	{"TRCOUNTER",         EmitSingleChar, SCC_TR_COUNTER_NAME,    1, -1, C_NONE | C_GENDER},
 
 	{"",                  EmitSingleChar, '\n',                   0, -1, C_DONTCOUNT},
 	{"{",                 EmitSingleChar, '{',                    0, -1, C_DONTCOUNT},

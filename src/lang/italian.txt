@@ -404,7 +404,7 @@ STR_FILE_MENU_EXIT                                              :Esci
 
 # map menu
 STR_MAP_MENU_MAP_OF_WORLD                                       :Mappa del mondo
-STR_MAP_MENU_EXTRA_VIEW_PORT                                    :Mini visuale extra
+STR_MAP_MENU_EXTRA_VIEWPORT                                     :Mini visuale extra
 STR_MAP_MENU_LINGRAPH_LEGEND                                    :Legenda rotte commerciali
 STR_MAP_MENU_SIGN_LIST                                          :Elenco cartelli
 
@@ -886,7 +886,7 @@ STR_NEWS_EXCLUSIVE_RIGHTS_TITLE                                 :{BIG_FONT}{BLAC
 STR_NEWS_EXCLUSIVE_RIGHTS_DESCRIPTION                           :{BIG_FONT}{BLACK}L'autorità locale di {TOWN} firma un accordo con la {STRING} per un anno di diritti di trasporto esclusivi!
 
 # Extra view window
-STR_EXTRA_VIEW_PORT_TITLE                                       :{WHITE}Mini visuale {COMMA}
+STR_EXTRA_VIEWPORT_TITLE                                        :{WHITE}Mini visuale {COMMA}
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN                                :{BLACK}Cambia mini visuale
 STR_EXTRA_VIEW_MOVE_VIEW_TO_MAIN_TT                             :{BLACK}Copia la posizione della visuale principale in questa mini visuale
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}Cambia vis. principale
@@ -937,6 +937,7 @@ STR_GAME_OPTIONS_CURRENCY_MXN                                   :Peso messicano 
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :Nuovo dollaro taiwanese (NTD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Renminbi cinese (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Dollaro di Hong Kong (HKD)
+STR_GAME_OPTIONS_CURRENCY_INR                                   :Rupia indiana (INR)
 ############ end of currency region
 
 STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Automezzi
@@ -1576,8 +1577,6 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :Punteggi a fine
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :Anno in cui il gioco finisce per poter calcolare i punteggi. Alla fine di ques'tanno il punteggio della compagnia viene registrato e viene mostrata la schermata con i punteggi più alti, ma il giocatore può continuare a giocare anche dopo.{}Se quest'anno precede quello di inizio, la schermata dei punteggi non verrà mai mostrata.
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :Mai
-STR_CONFIG_SETTING_SMOOTH_ECONOMY                               :Abilita economia fluida (cambiamenti piccoli e frequenti): {STRING}
-STR_CONFIG_SETTING_SMOOTH_ECONOMY_HELPTEXT                      :Se abilitata, la produzione industriale cambia più spesso e a passi più piccoli. Questa impostazione non ha in genere effetto per i tipi di industria aggiunti da un NewGRF
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Permetti l'acquisto di azioni di altre compagnie: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Se abilitata, consente l'acquisto e la vendita di azioni delle compagnie. Le azioni sono disponibili solo per le compagnie che hanno raggiunto una certa età minima
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Età minima della compagnia per lo scambio delle sue azioni: {STRING}
@@ -1830,17 +1829,8 @@ STR_INTRO_TRANSLATION                                           :{BLACK}A questa
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Esci
-STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Si è sicuri di voler uscire da OpenTTD e tornare a {STRING}?
 STR_QUIT_YES                                                    :{BLACK}Sì
 STR_QUIT_NO                                                     :{BLACK}No
-
-# Supported OSes
-STR_OSNAME_WINDOWS                                              :Windows
-STR_OSNAME_UNIX                                                 :Unix
-STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_OS2                                                  :OS/2
-STR_OSNAME_SUNOS                                                :SunOS
 
 # Abandon game
 STR_ABANDON_GAME_CAPTION                                        :{WHITE}Abbandona partita
@@ -2763,7 +2753,7 @@ STR_LAI_OBJECT_DESCRIPTION_COMPANY_OWNED_LAND                   :Terreno possedu
 STR_ABOUT_OPENTTD                                               :{WHITE}Informazioni su OpenTTD
 STR_ABOUT_ORIGINAL_COPYRIGHT                                    :{BLACK}Copyright originale {COPYRIGHT} 1995 Chris Sawyer, Tutti i diritti riservati
 STR_ABOUT_VERSION                                               :{BLACK}OpenTTD versione {REV}
-STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-2019 Il team OpenTTD
+STR_ABOUT_COPYRIGHT_OPENTTD                                     :{BLACK}OpenTTD {COPYRIGHT} 2002-{STRING} Il team OpenTTD
 
 # Framerate display window
 STR_FRAMERATE_CAPTION                                           :{WHITE}Frame rate
@@ -4514,7 +4504,6 @@ STR_ERROR_CAN_T_CONVERT_ROAD                                    :{WHITE}Impossib
 STR_ERROR_CAN_T_CONVERT_TRAMWAY                                 :{WHITE}Impossibile convertire il tipo di tram qui...
 STR_ERROR_NO_SUITABLE_ROAD                                      :{WHITE}Nessuna strada adatta
 STR_ERROR_NO_SUITABLE_TRAMWAY                                   :{WHITE}Nessuna tranvia adatta
-STR_ERROR_INCOMPATIBLE_ROAD                                     :{WHITE}... strada non compatibile
 STR_ERROR_INCOMPATIBLE_TRAMWAY                                  :{WHITE}... tranvia non compatibile
 
 # Waterway construction errors

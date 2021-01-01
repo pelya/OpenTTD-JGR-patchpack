@@ -27,6 +27,7 @@
 #include "tunnelbridge_map.h"
 #include "viewport_type.h"
 #include "guitimer_func.h"
+#include "rev.h"
 
 #include "widgets/misc_widget.h"
 
@@ -129,24 +130,34 @@ public:
 #else
 #	define LANDINFOD_LEVEL 1
 #endif
-		DEBUG(misc, LANDINFOD_LEVEL, "TILE: %#x (%i,%i)", tile, TileX(tile), TileY(tile));
-		if(IsTunnelTile(tile)) {
-			DEBUG(misc, LANDINFOD_LEVEL, "tunnel pool size: %u", (uint)Tunnel::GetPoolSize());
-			DEBUG(misc, LANDINFOD_LEVEL, "index: %#x"          , Tunnel::GetByTile(tile)->index);
-			DEBUG(misc, LANDINFOD_LEVEL, "north tile: %#x"     , Tunnel::GetByTile(tile)->tile_n);
-			DEBUG(misc, LANDINFOD_LEVEL, "south tile: %#x"     , Tunnel::GetByTile(tile)->tile_s);
-			DEBUG(misc, LANDINFOD_LEVEL, "is chunnel: %u"      , Tunnel::GetByTile(tile)->is_chunnel);
+		if (_debug_misc_level >= LANDINFOD_LEVEL) {
+			DEBUG(misc, LANDINFOD_LEVEL, "TILE: %#x (%i,%i)", tile, TileX(tile), TileY(tile));
+			if (IsTunnelTile(tile)) {
+				DEBUG(misc, LANDINFOD_LEVEL, "tunnel pool size: %u", (uint)Tunnel::GetPoolSize());
+				DEBUG(misc, LANDINFOD_LEVEL, "index: %#x"          , Tunnel::GetByTile(tile)->index);
+				DEBUG(misc, LANDINFOD_LEVEL, "north tile: %#x"     , Tunnel::GetByTile(tile)->tile_n);
+				DEBUG(misc, LANDINFOD_LEVEL, "south tile: %#x"     , Tunnel::GetByTile(tile)->tile_s);
+				DEBUG(misc, LANDINFOD_LEVEL, "is chunnel: %u"      , Tunnel::GetByTile(tile)->is_chunnel);
+			}
+			if (IsBridgeTile(tile)) {
+				const BridgeSpec *b = GetBridgeSpec(GetBridgeType(tile));
+				DEBUG(misc, LANDINFOD_LEVEL, "bridge: flags: %X, ctrl_flags: %X", b->flags, b->ctrl_flags);
+			}
+			if (IsBridgeAbove(tile)) {
+				BridgePieceDebugInfo info = GetBridgePieceDebugInfo(tile);
+				DEBUG(misc, LANDINFOD_LEVEL, "bridge above: piece: %u, pillars: %X, pillar index: %u", info.piece, info.pillar_flags, info.pillar_index);
+			}
+			DEBUG(misc, LANDINFOD_LEVEL, "type   = %#x", _m[tile].type);
+			DEBUG(misc, LANDINFOD_LEVEL, "height = %#x", _m[tile].height);
+			DEBUG(misc, LANDINFOD_LEVEL, "m1     = %#x", _m[tile].m1);
+			DEBUG(misc, LANDINFOD_LEVEL, "m2     = %#x", _m[tile].m2);
+			DEBUG(misc, LANDINFOD_LEVEL, "m3     = %#x", _m[tile].m3);
+			DEBUG(misc, LANDINFOD_LEVEL, "m4     = %#x", _m[tile].m4);
+			DEBUG(misc, LANDINFOD_LEVEL, "m5     = %#x", _m[tile].m5);
+			DEBUG(misc, LANDINFOD_LEVEL, "m6     = %#x", _me[tile].m6);
+			DEBUG(misc, LANDINFOD_LEVEL, "m7     = %#x", _me[tile].m7);
+			DEBUG(misc, LANDINFOD_LEVEL, "m8     = %#x", _me[tile].m8);
 		}
-		DEBUG(misc, LANDINFOD_LEVEL, "type   = %#x", _m[tile].type);
-		DEBUG(misc, LANDINFOD_LEVEL, "height = %#x", _m[tile].height);
-		DEBUG(misc, LANDINFOD_LEVEL, "m1     = %#x", _m[tile].m1);
-		DEBUG(misc, LANDINFOD_LEVEL, "m2     = %#x", _m[tile].m2);
-		DEBUG(misc, LANDINFOD_LEVEL, "m3     = %#x", _m[tile].m3);
-		DEBUG(misc, LANDINFOD_LEVEL, "m4     = %#x", _m[tile].m4);
-		DEBUG(misc, LANDINFOD_LEVEL, "m5     = %#x", _m[tile].m5);
-		DEBUG(misc, LANDINFOD_LEVEL, "m6     = %#x", _me[tile].m6);
-		DEBUG(misc, LANDINFOD_LEVEL, "m7     = %#x", _me[tile].m7);
-		DEBUG(misc, LANDINFOD_LEVEL, "m8     = %#x", _me[tile].m8);
 #undef LANDINFOD_LEVEL
 	}
 
@@ -433,7 +444,7 @@ static const NWidgetPart _nested_about_widgets[] = {
 		NWidget(WWT_LABEL, COLOUR_GREY, WID_A_WEBSITE), SetDataTip(STR_BLACK_RAW_STRING, STR_NULL),
 		NWidget(WWT_LABEL, COLOUR_GREY, WID_A_WEBSITE1), SetDataTip(STR_BLACK_RAW_STRING, STR_NULL),
 		NWidget(WWT_LABEL, COLOUR_GREY, WID_A_WEBSITE2), SetDataTip(STR_BLACK_RAW_STRING, STR_NULL),
-		NWidget(WWT_LABEL, COLOUR_GREY), SetDataTip(STR_ABOUT_COPYRIGHT_OPENTTD, STR_NULL),
+		NWidget(WWT_LABEL, COLOUR_GREY, WID_A_COPYRIGHT), SetDataTip(STR_ABOUT_COPYRIGHT_OPENTTD, STR_NULL),
 	EndContainer(),
 };
 
@@ -535,6 +546,7 @@ struct AboutWindow : public Window {
 		if (widget == WID_A_WEBSITE) SetDParamStr(0, "Main project website: http://www.openttd.org");
 		if (widget == WID_A_WEBSITE1) SetDParamStr(0, "Patchpack thread: https://www.tt-forums.net/viewtopic.php?f=33&t=73469");
 		if (widget == WID_A_WEBSITE2) SetDParamStr(0, "Patchpack Github: https://github.com/JGRennison/OpenTTD-patches");
+		if (widget == WID_A_COPYRIGHT) SetDParamStr(0, _openttd_revision_year);
 	}
 
 	void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
@@ -615,6 +627,8 @@ void ShowEstimatedCostOrIncome(Money cost, int x, int y)
  */
 void ShowCostOrIncomeAnimation(int x, int y, int z, Money cost)
 {
+	if (!HasBit(_extra_display_opt, XDO_SHOW_MONEY_TEXT_EFFECTS)) return;
+
 	Point pt = RemapCoords(x, y, z);
 	StringID msg = STR_INCOME_FLOAT_COST;
 
@@ -636,6 +650,8 @@ void ShowCostOrIncomeAnimation(int x, int y, int z, Money cost)
  */
 void ShowFeederIncomeAnimation(int x, int y, int z, Money transfer, Money income)
 {
+	if (!HasBit(_extra_display_opt, XDO_SHOW_MONEY_TEXT_EFFECTS)) return;
+
 	Point pt = RemapCoords(x, y, z);
 
 	SetDParam(0, transfer);
