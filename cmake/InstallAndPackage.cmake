@@ -17,6 +17,7 @@ install(TARGETS openttd
         RUNTIME
             DESTINATION ${BINARY_DESTINATION_DIR}
             COMPONENT Runtime
+        LIBRARY DESTINATION ${BINARY_DESTINATION_DIR}
         )
 
 install(DIRECTORY
