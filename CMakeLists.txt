@@ -366,6 +366,7 @@ add_custom_target(find_version
                 -DCPACK_BINARY_DIR=${CMAKE_BINARY_DIR}
                 -DCONFIGURE_DEFINES="${CFG_DEFS}"
                 $<$<PLATFORM_ID:Windows>:-DWIN32=TRUE>
+                $<$<BOOL:ANDROID>:-DANDROID=TRUE>
                 -P "${CMAKE_SOURCE_DIR}/cmake/scripts/FindVersion.cmake"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         BYPRODUCTS ${GENERATED_SOURCE_FILES}
