@@ -2452,10 +2452,12 @@ void CheckForMissingGlyphs(bool base_font, MissingGlyphSearcher *searcher)
 			 * future, so for safety we just Utf8 Encode it into the string,
 			 * which takes exactly three characters, so it replaces the "XXX"
 			 * with the colour marker. */
+#ifndef __ANDROID__
 			static char *err_str = stredup("XXXThe current font is missing some of the characters used in the texts for this language. Using system fallback font instead.");
 			Utf8Encode(err_str, SCC_YELLOW);
 			SetDParamStr(0, err_str);
 			ShowErrorMessage(STR_JUST_RAW_STRING, INVALID_STRING_ID, WL_WARNING);
+#endif
 		}
 
 		if (bad_font && base_font) {
