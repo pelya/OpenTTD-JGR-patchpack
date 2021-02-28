@@ -6,4 +6,3 @@ docs/gamedocs/*
 docs/source/*
 /out
 *.tmp
-.vscode/
