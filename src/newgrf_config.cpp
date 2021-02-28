@@ -89,7 +89,6 @@ GRFConfig::~GRFConfig()
 		free(this->filename);
 		delete this->error;
 	}
-	free(this->full_filename);
 
 	for (uint i = 0; i < this->param_info.size(); i++) delete this->param_info[i];
 }
@@ -271,7 +270,7 @@ void GRFParameterInfo::SetValue(struct GRFConfig *config, uint32 value)
 	} else {
 		SB(config->param[this->param_nr], this->first_bit, this->num_bit, value);
 	}
-	config->num_params = max<uint>(config->num_params, this->param_nr + 1);
+	config->num_params = std::max<uint>(config->num_params, this->param_nr + 1);
 	SetWindowDirty(WC_GAME_OPTIONS, WN_GAME_OPTIONS_NEWGRF_STATE);
 }
 
@@ -415,7 +414,7 @@ static bool CalcGRFMD5Sum(GRFConfig *config, Subdirectory subdir)
 	if (f == nullptr) return false;
 
 	long start = ftell(f);
-	size = min(size, GRFGetSizeOfDataSection(f));
+	size = std::min(size, GRFGetSizeOfDataSection(f));
 
 	if (start < 0 || fseek(f, start, SEEK_SET) < 0) {
 		FioFCloseFile(f);
@@ -683,7 +682,7 @@ public:
 #endif
 	}
 
-	bool AddFile(const char *filename, size_t basepath_length, const char *tar_filename) override;
+	bool AddFile(const std::string &filename, size_t basepath_length, const std::string &tar_filename) override;
 
 	/** Do the scan for GRFs. */
 	static uint DoScan()
@@ -731,9 +730,9 @@ public:
 	}
 };
 
-bool GRFFileScanner::AddFile(const char *filename, size_t basepath_length, const char *tar_filename)
+bool GRFFileScanner::AddFile(const std::string &filename, size_t basepath_length, const std::string &tar_filename)
 {
-	GRFConfig *c = new GRFConfig(filename + basepath_length);
+	GRFConfig *c = new GRFConfig(filename.c_str() + basepath_length);
 
 	bool added = FillGRFDetails(c, false);
 	if (added) {

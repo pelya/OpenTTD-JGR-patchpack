@@ -46,6 +46,7 @@ enum OrderType : byte {
 	OT_IMPLICIT      = 8,
 	OT_WAITING       = 9,
 	OT_LOADING_ADVANCE = 10,
+	OT_RELEASE_SLOT  = 11,
 	OT_END
 };
 
@@ -146,6 +147,7 @@ enum OrderConditionVariable {
 	OCV_CARGO_LOAD_PERCENTAGE, ///< Skip based on the amount of load of a specific cargo
 	OCV_CARGO_WAITING_AMOUNT,  ///< Skip based on the amount of a specific cargo waiting at next station
 	OCV_COUNTER_VALUE,      ///< Skip based on counter value
+	OCV_TIME_DATE,          ///< Skip based on current time/date
 	OCV_END
 };
 
@@ -183,6 +185,7 @@ enum ModifyOrderFlags {
 	MOF_WAYPOINT_FLAGS,  ///< Change the waypoint flags
 	MOF_CARGO_TYPE_UNLOAD, ///< Passes an OrderUnloadType and a CargoID.
 	MOF_CARGO_TYPE_LOAD,   ///< Passes an OrderLoadType and a CargoID.
+	MOF_SLOT,            ///< Change the slot value
 	MOF_END
 };
 template <> struct EnumPropsT<ModifyOrderFlags> : MakeEnumPropsT<ModifyOrderFlags, byte, MOF_NON_STOP, MOF_END, MOF_END, 4> {};

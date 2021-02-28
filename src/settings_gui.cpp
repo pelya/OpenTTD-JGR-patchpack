@@ -374,7 +374,7 @@ struct GameOptionsWindow : Window {
 				/* Find the biggest description for the default size. */
 				for (int i = 0; i < BaseGraphics::GetNumSets(); i++) {
 					SetDParamStr(0, BaseGraphics::GetSet(i)->GetDescription(GetCurrentLanguageIsoCode()));
-					size->height = max(size->height, (uint)GetStringHeight(STR_BLACK_RAW_STRING, size->width));
+					size->height = std::max(size->height, (uint)GetStringHeight(STR_BLACK_RAW_STRING, size->width));
 				}
 				break;
 
@@ -393,7 +393,7 @@ struct GameOptionsWindow : Window {
 				/* Find the biggest description for the default size. */
 				for (int i = 0; i < BaseSounds::GetNumSets(); i++) {
 					SetDParamStr(0, BaseSounds::GetSet(i)->GetDescription(GetCurrentLanguageIsoCode()));
-					size->height = max(size->height, (uint)GetStringHeight(STR_BLACK_RAW_STRING, size->width));
+					size->height = std::max(size->height, (uint)GetStringHeight(STR_BLACK_RAW_STRING, size->width));
 				}
 				break;
 
@@ -401,7 +401,7 @@ struct GameOptionsWindow : Window {
 				/* Find the biggest description for the default size. */
 				for (int i = 0; i < BaseMusic::GetNumSets(); i++) {
 					SetDParamStr(0, BaseMusic::GetSet(i)->GetDescription(GetCurrentLanguageIsoCode()));
-					size->height = max(size->height, (uint)GetStringHeight(STR_BLACK_RAW_STRING, size->width));
+					size->height = std::max(size->height, (uint)GetStringHeight(STR_BLACK_RAW_STRING, size->width));
 				}
 				break;
 
@@ -1355,7 +1355,7 @@ uint SettingsContainer::GetMaxHelpHeight(int maxw)
 {
 	uint biggest = 0;
 	for (EntryVector::const_iterator it = this->entries.begin(); it != this->entries.end(); ++it) {
-		biggest = max(biggest, (*it)->GetMaxHelpHeight(maxw));
+		biggest = std::max(biggest, (*it)->GetMaxHelpHeight(maxw));
 	}
 	return biggest;
 }
@@ -1656,7 +1656,6 @@ static SettingsContainer &GetSettingsTree()
 				construction->Add(new SettingEntry("gui.quick_goto"));
 				construction->Add(new SettingEntry("gui.default_rail_type"));
 				construction->Add(new SettingEntry("gui.default_road_type"));
-				construction->Add(new SettingEntry("gui.disable_unsuitable_building"));
 			}
 
 			SettingsPage *departureboards = interface->Add(new SettingsPage(STR_CONFIG_SETTING_INTERFACE_DEPARTUREBOARDS));
@@ -1737,6 +1736,7 @@ static SettingsContainer &GetSettingsTree()
 			interface->Add(new SettingEntry("gui.adv_sig_bridge_tun_modes"));
 			interface->Add(new SettingEntry("gui.show_depot_sell_gui"));
 			interface->Add(new SettingEntry("gui.open_vehicle_gui_clone_share"));
+			interface->Add(new SettingEntry("gui.vehicle_names"));
 		}
 
 		SettingsPage *advisors = main->Add(new SettingsPage(STR_CONFIG_SETTING_ADVISORS));
@@ -1771,6 +1771,7 @@ static SettingsContainer &GetSettingsTree()
 			company->Add(new SettingEntry("gui.default_signal_type"));
 			company->Add(new SettingEntry("gui.cycle_signal_types"));
 			company->Add(new SettingEntry("gui.drag_signals_fixed_distance"));
+			company->Add(new SettingEntry("gui.auto_remove_signals"));
 			company->Add(new SettingEntry("gui.new_nonstop"));
 			company->Add(new SettingEntry("gui.stop_location"));
 			company->Add(new SettingEntry("gui.starting_colour"));
@@ -1799,6 +1800,7 @@ static SettingsContainer &GetSettingsTree()
 		SettingsPage *accounting = main->Add(new SettingsPage(STR_CONFIG_SETTING_ACCOUNTING));
 		{
 			accounting->Add(new SettingEntry("economy.inflation"));
+			accounting->Add(new SettingEntry("economy.inflation_fixed_dates"));
 			accounting->Add(new SettingEntry("economy.day_length_factor"));
 			accounting->Add(new SettingEntry("difficulty.initial_interest"));
 			accounting->Add(new SettingEntry("difficulty.max_loan"));
@@ -1814,6 +1816,7 @@ static SettingsContainer &GetSettingsTree()
 			SettingsPage *physics = vehicles->Add(new SettingsPage(STR_CONFIG_SETTING_VEHICLES_PHYSICS));
 			{
 				physics->Add(new SettingEntry("vehicle.train_acceleration_model"));
+				physics->Add(new SettingEntry("vehicle.train_braking_model"));
 				physics->Add(new SettingEntry("vehicle.train_slope_steepness"));
 				physics->Add(new SettingEntry("vehicle.wagon_speed_limits"));
 				physics->Add(new SettingEntry("vehicle.freight_trains"));
@@ -2041,7 +2044,7 @@ static const StringID _game_settings_restrict_dropdown[] = {
 	STR_CONFIG_SETTING_RESTRICT_CHANGED_AGAINST_DEFAULT,          // RM_CHANGED_AGAINST_DEFAULT
 	STR_CONFIG_SETTING_RESTRICT_CHANGED_AGAINST_NEW,              // RM_CHANGED_AGAINST_NEW
 };
-assert_compile(lengthof(_game_settings_restrict_dropdown) == RM_END);
+static_assert(lengthof(_game_settings_restrict_dropdown) == RM_END);
 
 /** Warnings about hidden search results. */
 enum WarnHiddenResult {
@@ -2114,7 +2117,7 @@ struct GameSettingsWindow : Window {
 	{
 		switch (widget) {
 			case WID_GS_OPTIONSPANEL:
-				resize->height = SETTING_HEIGHT = max(max<int>(_circle_size.height, SETTING_BUTTON_HEIGHT), FONT_HEIGHT_NORMAL) + 1;
+				resize->height = SETTING_HEIGHT = std::max({(int)_circle_size.height, SETTING_BUTTON_HEIGHT, FONT_HEIGHT_NORMAL}) + 1;
 				resize->width  = 1;
 
 				size->height = 5 * resize->height + SETTINGTREE_TOP_OFFSET + SETTINGTREE_BOTTOM_OFFSET;
@@ -2128,16 +2131,16 @@ struct GameSettingsWindow : Window {
 				};
 				for (uint i = 0; i < lengthof(setting_types); i++) {
 					SetDParam(0, setting_types[i]);
-					size->width = max(size->width, GetStringBoundingBox(STR_CONFIG_SETTING_TYPE).width);
+					size->width = std::max(size->width, GetStringBoundingBox(STR_CONFIG_SETTING_TYPE).width);
 				}
 				size->height = 2 * FONT_HEIGHT_NORMAL + WD_PAR_VSEP_NORMAL +
-						max(size->height, GetSettingsTree().GetMaxHelpHeight(size->width));
+						std::max(size->height, GetSettingsTree().GetMaxHelpHeight(size->width));
 				break;
 			}
 
 			case WID_GS_RESTRICT_CATEGORY:
 			case WID_GS_RESTRICT_TYPE:
-				size->width = max(GetStringBoundingBox(STR_CONFIG_SETTING_RESTRICT_CATEGORY).width, GetStringBoundingBox(STR_CONFIG_SETTING_RESTRICT_TYPE).width);
+				size->width = std::max(GetStringBoundingBox(STR_CONFIG_SETTING_RESTRICT_CATEGORY).width, GetStringBoundingBox(STR_CONFIG_SETTING_RESTRICT_TYPE).width);
 				break;
 
 			default:
@@ -2911,7 +2914,7 @@ struct CustomCurrencyWindow : Window {
 			case WID_CC_YEAR: { // Year to switch to euro
 				int val = atoi(str);
 
-				_custom_currency.to_euro = (val < 2000 ? CF_NOEURO : min(val, MAX_YEAR));
+				_custom_currency.to_euro = (val < 2000 ? CF_NOEURO : std::min(val, MAX_YEAR));
 				break;
 			}
 		}

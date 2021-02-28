@@ -71,7 +71,7 @@ static TileIndex GetReferenceTile(NewsReferenceType reftype, uint32 ref)
 {
 	switch (reftype) {
 		case NR_TILE:     return (TileIndex)ref;
-		case NR_STATION:  return Station::Get((StationID)ref)->xy;
+		case NR_STATION:  return BaseStation::Get((StationID)ref)->xy;
 		case NR_INDUSTRY: return Industry::Get((IndustryID)ref)->location.tile + TileDiffXY(1, 1);
 		case NR_TOWN:     return Town::Get((TownID)ref)->xy;
 		default:          return INVALID_TILE;
@@ -244,7 +244,7 @@ static NewsTypeData _news_type_data[] = {
 	NewsTypeData("news_display.general",           60, SND_BEGIN       ),  ///< NT_GENERAL
 };
 
-assert_compile(lengthof(_news_type_data) == NT_END);
+static_assert(lengthof(_news_type_data) == NT_END);
 
 /**
  * Return the news display option.
@@ -538,7 +538,7 @@ struct NewsWindow : Window {
 		int count = this->timer.CountElapsed(delta_ms);
 		if (count > 0) {
 			/* Scroll up newsmessages from the bottom */
-			int newtop = max(this->top - 2 * count, _screen.height - this->height - this->status_height - this->chat_height);
+			int newtop = std::max(this->top - 2 * count, _screen.height - this->height - this->status_height - this->chat_height);
 			this->SetWindowTop(newtop);
 		}
 
@@ -556,8 +556,8 @@ private:
 	{
 		if (this->top == newtop) return;
 
-		int mintop = min(newtop, this->top);
-		int maxtop = max(newtop, this->top);
+		int mintop = std::min(newtop, this->top);
+		int maxtop = std::max(newtop, this->top);
 		if (this->viewport != nullptr) this->viewport->top += newtop - this->top;
 		this->top = newtop;
 
@@ -1147,7 +1147,7 @@ struct MessageHistoryWindow : Window {
 			this->date_width = GetStringBoundingBox(STR_SHORT_DATE).width;
 
 			size->height = 4 * resize->height + this->top_spacing + this->bottom_spacing; // At least 4 lines are visible.
-			size->width = max(200u, size->width); // At least 200 pixels wide.
+			size->width = std::max(200u, size->width); // At least 200 pixels wide.
 		}
 	}
 

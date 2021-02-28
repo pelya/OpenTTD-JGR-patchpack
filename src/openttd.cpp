@@ -88,6 +88,11 @@
 
 #include "safeguards.h"
 
+#ifdef __EMSCRIPTEN__
+#	include <emscripten.h>
+#	include <emscripten/html5.h>
+#endif
+
 void CallLandscapeTick();
 void IncreaseDate();
 void MusicLoop();
@@ -96,7 +101,7 @@ void CallWindowGameTickEvent();
 bool HandleBootstrap();
 
 extern void ShowOSErrorBox(const char *buf, bool system);
-extern char *_config_file;
+extern std::string _config_file;
 
 bool _save_config = false;
 
@@ -124,6 +129,15 @@ void CDECL usererror(const char *s, ...)
 	ShowOSErrorBox(buf, false);
 	if (VideoDriver::GetInstance() != nullptr) VideoDriver::GetInstance()->Stop();
 
+#ifdef __EMSCRIPTEN__
+	emscripten_exit_pointerlock();
+	/* In effect, the game ends here. As emscripten_set_main_loop() caused
+	 * the stack to be unwound, the code after MainLoop() in
+	 * openttd_main() is never executed. */
+	EM_ASM(if (window["openttd_syncfs"]) openttd_syncfs());
+	EM_ASM(if (window["openttd_abort"]) openttd_abort());
+#endif
+
 	exit(1);
 }
 
@@ -135,7 +149,7 @@ void CDECL usererror(const char *s, ...)
 void CDECL error(const char *s, ...)
 {
 	va_list va;
-	char buf[512];
+	char buf[2048];
 
 	va_start(va, s);
 	vseprintf(buf, lastof(buf), s, va);
@@ -383,8 +397,8 @@ static void ParseResolution(Dimension *res, const char *s)
 		return;
 	}
 
-	res->width  = max(strtoul(s, nullptr, 0), 64UL);
-	res->height = max(strtoul(t + 1, nullptr, 0), 64UL);
+	res->width  = std::max(strtoul(s, nullptr, 0), 64UL);
+	res->height = std::max(strtoul(t + 1, nullptr, 0), 64UL);
 }
 
 
@@ -408,8 +422,6 @@ static void ShutdownGame()
 
 	/* Uninitialize variables that are allocated dynamically */
 	GamelogReset();
-
-	free(_config_file);
 
 	LinkGraphSchedule::Clear();
 	ClearTraceRestrictMapping();
@@ -548,7 +560,7 @@ struct AfterNewGRFScan : NewGRFScanCallback {
 	{
 		/* Visual C++ 2015 fails compiling this line (AfterNewGRFScan::generation_seed undefined symbol)
 		 * if it's placed outside a member function, directly in the struct body. */
-		assert_compile(sizeof(generation_seed) == sizeof(_settings_game.game_creation.generation_seed));
+		static_assert(sizeof(generation_seed) == sizeof(_settings_game.game_creation.generation_seed));
 	}
 
 	virtual void OnNewGRFsScanned()
@@ -694,7 +706,6 @@ int openttd_main(int argc, char *argv[])
 
 	_game_mode = GM_MENU;
 	_switch_mode = SM_MENU;
-	_config_file = nullptr;
 
 	GetOptData mgo(argc - 1, argv + 1, _options);
 	int ret = 0;
@@ -757,9 +768,9 @@ int openttd_main(int argc, char *argv[])
 				_file_to_saveload.SetMode(SLO_LOAD, is_scenario ? FT_SCENARIO : FT_SAVEGAME, DFT_GAME_FILE);
 
 				/* if the file doesn't exist or it is not a valid savegame, let the saveload code show an error */
-				const char *t = strrchr(_file_to_saveload.name, '.');
-				if (t != nullptr) {
-					FiosType ft = FiosGetSavegameListCallback(SLO_LOAD, _file_to_saveload.name, t, nullptr, nullptr);
+				auto t = _file_to_saveload.name.find_last_of('.');
+				if (t != std::string::npos) {
+					FiosType ft = FiosGetSavegameListCallback(SLO_LOAD, _file_to_saveload.name, _file_to_saveload.name.substr(t).c_str(), nullptr, nullptr);
 					if (ft != FIOS_TYPE_INVALID) _file_to_saveload.SetMode(ft);
 				}
 
@@ -808,7 +819,7 @@ int openttd_main(int argc, char *argv[])
 			return ret;
 		}
 		case 'G': scanner->generation_seed = strtoul(mgo.opt, nullptr, 10); break;
-		case 'c': free(_config_file); _config_file = stredup(mgo.opt); break;
+		case 'c': _config_file = mgo.opt; break;
 		case 'x': scanner->save_config = false; break;
 		case 'J': _quit_after_days = Clamp(atoi(mgo.opt), 0, INT_MAX); break;
 		case 'Z': {
@@ -852,14 +863,12 @@ int openttd_main(int argc, char *argv[])
 
 	if (resolution.width != 0) _cur_resolution = resolution;
 
-	/*
-	 * The width and height must be at least 1 pixel and width times
-	 * height times bytes per pixel must still fit within a 32 bits
-	 * integer, even for 32 bpp video modes. This way all internal
-	 * drawing routines work correctly.
-	 */
-	_cur_resolution.width  = ClampU(_cur_resolution.width,  1, UINT16_MAX / 2);
-	_cur_resolution.height = ClampU(_cur_resolution.height, 1, UINT16_MAX / 2);
+	/* Limit width times height times bytes per pixel to fit a 32 bit
+	 * integer, This way all internal drawing routines work correctly.
+	 * A resolution that has one component as 0 is treated as a marker to
+	 * auto-detect a good window size. */
+	_cur_resolution.width  = std::min(_cur_resolution.width, UINT16_MAX / 2u);
+	_cur_resolution.height = std::min(_cur_resolution.height, UINT16_MAX / 2u);
 
 	/* Assume the cursor starts within the game as not all video drivers
 	 * get an event that the cursor is within the window when it is opened.
@@ -1100,6 +1109,10 @@ static void FixConfigMapSize()
 static void MakeNewGame(bool from_heightmap, bool reset_settings)
 {
 	_game_mode = GM_NORMAL;
+	if (!from_heightmap) {
+		/* "reload" command needs to know what mode we were in. */
+		_file_to_saveload.SetMode(SLO_INVALID, FT_INVALID, DFT_INVALID);
+	}
 
 	ResetGRFConfig(true);
 
@@ -1119,6 +1132,8 @@ static void MakeNewEditorWorldDone()
 static void MakeNewEditorWorld()
 {
 	_game_mode = GM_EDITOR;
+	/* "reload" command needs to know what mode we were in. */
+	_file_to_saveload.SetMode(SLO_INVALID, FT_INVALID, DFT_INVALID);
 
 	ResetGRFConfig(true);
 
@@ -1137,7 +1152,7 @@ static void MakeNewEditorWorld()
  * @param subdir default directory to look for filename, set to 0 if not needed
  * @param lf Load filter to use, if nullptr: use filename + subdir.
  */
-bool SafeLoad(const char *filename, SaveLoadOperation fop, DetailedFileType dft, GameMode newgm, Subdirectory subdir, struct LoadFilter *lf = nullptr)
+bool SafeLoad(const std::string &filename, SaveLoadOperation fop, DetailedFileType dft, GameMode newgm, Subdirectory subdir, struct LoadFilter *lf = nullptr)
 {
 	assert(fop == SLO_LOAD);
 	assert(dft == DFT_GAME_FILE || (lf == nullptr && dft == DFT_OLD_GAME_FILE));
@@ -1217,9 +1232,9 @@ void SwitchToMode(SwitchMode new_mode)
 			MakeNewEditorWorld();
 			break;
 
-		case SM_RESTARTGAME: // Restart --> Current settings preserved
+		case SM_RELOADGAME: // Reload with what-ever started the game
 			if (_file_to_saveload.abstract_ftype == FT_SAVEGAME || _file_to_saveload.abstract_ftype == FT_SCENARIO) {
-				/* Restart current savegame/scenario */
+				/* Reload current savegame/scenario */
 				_switch_mode = _game_mode == GM_EDITOR ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
 				SwitchToMode(_switch_mode);
 				break;
@@ -1229,10 +1244,11 @@ void SwitchToMode(SwitchMode new_mode)
 				SwitchToMode(_switch_mode);
 				break;
 			}
-			/* No break here, to enter the next case:
-			 * Restart --> 'Random game' with current settings */
-			FALLTHROUGH;
 
+			MakeNewGame(false, new_mode == SM_NEWGAME);
+			break;
+
+		case SM_RESTARTGAME: // Restart --> 'Random game' with current settings
 		case SM_NEWGAME: // New Game --> 'Random game'
 			if (_network_server) {
 				seprintf(_network_game_info.map_name, lastof(_network_game_info.map_name), "Random Map");
@@ -1307,7 +1323,7 @@ void SwitchToMode(SwitchMode new_mode)
 			break;
 
 		case SM_SAVE_GAME: // Save game.
-			/* Make network saved games on pause compatible to singleplayer */
+			/* Make network saved games on pause compatible to singleplayer mode */
 			if (SaveOrLoad(_file_to_saveload.name, SLO_SAVE, DFT_GAME_FILE, NO_DIRECTORY) != SL_OK) {
 				SetDParamStr(0, GetSaveLoadErrorString());
 				ShowErrorMessage(STR_JUST_RAW_STRING, INVALID_STRING_ID, WL_ERROR);
@@ -1317,7 +1333,7 @@ void SwitchToMode(SwitchMode new_mode)
 			break;
 
 		case SM_SAVE_HEIGHTMAP: // Save heightmap.
-			MakeHeightmapScreenshot(_file_to_saveload.name);
+			MakeHeightmapScreenshot(_file_to_saveload.name.c_str());
 			DeleteWindowById(WC_SAVELOAD, 0);
 			break;
 
@@ -1632,10 +1648,13 @@ void CheckCaches(bool force_check, std::function<void(const char *)> log)
 						print_gv_cache_diff("train", gro_cache[length], Train::From(u)->gcache);
 					}
 					if (memcmp(&tra_cache[length], &Train::From(u)->tcache, sizeof(TrainCache)) != 0) {
-						CCLOGV("train cache mismatch: %c%c%c%c%c",
+						CCLOGV("train cache mismatch: %c%c%c%c%c%c%c%c",
 								tra_cache[length].cached_override != Train::From(u)->tcache.cached_override ? 'o' : '-',
 								tra_cache[length].cached_tilt != Train::From(u)->tcache.cached_tilt ? 't' : '-',
 								tra_cache[length].cached_num_engines != Train::From(u)->tcache.cached_num_engines ? 'e' : '-',
+								tra_cache[length].cached_veh_weight != Train::From(u)->tcache.cached_veh_weight ? 'w' : '-',
+								tra_cache[length].cached_uncapped_decel != Train::From(u)->tcache.cached_uncapped_decel ? 'D' : '-',
+								tra_cache[length].cached_deceleration != Train::From(u)->tcache.cached_deceleration ? 'd' : '-',
 								tra_cache[length].user_def_data != Train::From(u)->tcache.user_def_data ? 'u' : '-',
 								tra_cache[length].cached_max_curve_speed != Train::From(u)->tcache.cached_max_curve_speed ? 'c' : '-');
 					}
@@ -1776,7 +1795,6 @@ CommandCost CmdDesyncCheck(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 void StateGameLoop()
 {
 	if (!_networking || _network_server) {
-		extern void StateGameLoop_LinkGraphPauseControl();
 		StateGameLoop_LinkGraphPauseControl();
 	}
 
@@ -1858,6 +1876,7 @@ void StateGameLoop()
 		cur_company.Restore();
 
 		for (Company *c : Company::Iterate()) {
+			DEBUG_UPDATESTATECHECKSUM("Company: %u, Money: " OTTD_PRINTF64, c->index, (int64)c->money);
 			UpdateStateChecksum(c->money);
 		}
 	}

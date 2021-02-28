@@ -67,7 +67,8 @@ static const NIVariable _niv_vehicles[] = {
 	NIV(0x4D, "position in articulated vehicle"),
 	NIV(0x60, "count vehicle id occurrences"),
 	// 0x61 not useful, since it requires register 0x10F
-	NIV(0x62, "Curvature/position difference to other vehicle"),
+	NIV(0x62, "curvature/position difference to other vehicle"),
+	NIV(0x63, "tile compatibility wrt. track-type"),
 	NIV_END()
 };
 
@@ -109,7 +110,8 @@ class NIHVehicle : public NIHelper {
 			seprintf(buffer, lastof(buffer), "  VirtXYTile: %X (%u x %u)", vtile, TileX(vtile), TileY(vtile));
 			print(buffer);
 		}
-		seprintf(buffer, lastof(buffer), "  Position: %X, %X, %X", v->x_pos, v->y_pos, v->z_pos);
+		b = buffer + seprintf(buffer, lastof(buffer), "  Position: %X, %X, %X", v->x_pos, v->y_pos, v->z_pos);
+		if (v->type == VEH_TRAIN) seprintf(b, lastof(buffer), ", tile margin: %d", GetTileMarginInFrontOfTrain(Train::From(v)));
 		print(buffer);
 
 		if (v->IsPrimaryVehicle()) {
@@ -149,9 +151,68 @@ class NIHVehicle : public NIHelper {
 		}
 		if (v->type == VEH_TRAIN) {
 			const Train *t = Train::From(v);
-			seprintf(buffer, lastof(buffer), "  Wait counter: %u, rev distance: %u, TBSN: %u, speed restriction: %u, railtype: %u, compatible_railtypes: 0x" OTTD_PRINTFHEX64,
-					t->wait_counter, t->reverse_distance, t->tunnel_bridge_signal_num, t->speed_restriction, t->railtype, t->compatible_railtypes);
+			seprintf(buffer, lastof(buffer), "  T cache: tilt: %u, engines: %u, decel: %u, uncapped decel: %u",
+					t->tcache.cached_tilt, t->tcache.cached_num_engines, t->tcache.cached_deceleration, t->tcache.cached_uncapped_decel);
 			print(buffer);
+			seprintf(buffer, lastof(buffer), "  T cache: veh weight: %u, user data: %u, curve speed: %u",
+					t->tcache.cached_veh_weight, t->tcache.user_def_data, t->tcache.cached_max_curve_speed);
+			print(buffer);
+			seprintf(buffer, lastof(buffer), "  Wait counter: %u, rev distance: %u, TBSN: %u, speed restriction: %u",
+					t->wait_counter, t->reverse_distance, t->tunnel_bridge_signal_num, t->speed_restriction);
+			print(buffer);
+			seprintf(buffer, lastof(buffer), "  Railtype: %u, compatible_railtypes: 0x" OTTD_PRINTFHEX64,
+					t->railtype, t->compatible_railtypes);
+			print(buffer);
+			if (t->lookahead != nullptr) {
+				print ("  Look ahead:");
+				const TrainReservationLookAhead &l = *t->lookahead;
+				seprintf(buffer, lastof(buffer), "    Position: current: %d, end: %d, remaining: %d", l.current_position, l.reservation_end_position, l.reservation_end_position - l.current_position);
+				print(buffer);
+				seprintf(buffer, lastof(buffer), "    Reservation ends at %X (%u x %u), trackdir: %02X, z: %d",
+						l.reservation_end_tile, TileX(l.reservation_end_tile), TileY(l.reservation_end_tile), l.reservation_end_trackdir, l.reservation_end_z);
+				print(buffer);
+				b = buffer + seprintf(buffer, lastof(buffer), "    TB reserved tiles: %d, flags:", l.tunnel_bridge_reserved_tiles);
+				if (HasBit(l.flags, TRLF_TB_EXIT_FREE)) b += seprintf(b, lastof(buffer), "x");
+				if (HasBit(l.flags, TRLF_DEPOT_END)) b += seprintf(b, lastof(buffer), "d");
+				if (HasBit(l.flags, TRLF_APPLY_ADVISORY)) b += seprintf(b, lastof(buffer), "a");
+				if (HasBit(l.flags, TRLF_CHUNNEL)) b += seprintf(b, lastof(buffer), "c");
+				print(buffer);
+
+				seprintf(buffer, lastof(buffer), "    Items: %u", (uint)l.items.size());
+				print(buffer);
+				for (const TrainReservationLookAheadItem &item : l.items) {
+					b = buffer + seprintf(buffer, lastof(buffer), "      Start: %d (dist: %d), end: %d (dist: %d), z: %d, ",
+							item.start, item.start - l.current_position, item.end, item.end - l.current_position, item.z_pos);
+					switch (item.type) {
+						case TRLIT_STATION:
+							b += seprintf(b, lastof(buffer), "station: %u, %s", item.data_id, BaseStation::IsValidID(item.data_id) ? BaseStation::Get(item.data_id)->GetCachedName() : "[invalid]");
+							break;
+						case TRLIT_REVERSE:
+							b += seprintf(b, lastof(buffer), "reverse");
+							break;
+						case TRLIT_TRACK_SPEED:
+							b += seprintf(b, lastof(buffer), "track speed: %u", item.data_id);
+							break;
+						case TRLIT_SPEED_RESTRICTION:
+							b += seprintf(b, lastof(buffer), "speed restriction: %u", item.data_id);
+							break;
+						case TRLIT_SIGNAL:
+							b += seprintf(b, lastof(buffer), "signal: target speed: %u", item.data_id);
+							break;
+						case TRLIT_CURVE_SPEED:
+							b += seprintf(b, lastof(buffer), "curve speed: %u", item.data_id);
+							break;
+					}
+					print(buffer);
+				}
+
+				seprintf(buffer, lastof(buffer), "    Curves: %u", (uint)l.curves.size());
+				print(buffer);
+				for (const TrainReservationLookAheadCurve &curve : l.curves) {
+					seprintf(buffer, lastof(buffer), "      Pos: %d (dist: %d), dir diff: %d", curve.position, curve.position - l.current_position, curve.dir_diff);
+					print(buffer);
+				}
+			}
 		}
 		if (v->type == VEH_ROAD) {
 			const RoadVehicle *rv = RoadVehicle::From(v);
@@ -177,6 +238,10 @@ class NIHVehicle : public NIHelper {
 					a->pos, a->previous_pos, a->state, a->flags);
 			print(buffer);
 		}
+
+		seprintf(buffer, lastof(buffer), "  Cached sprite bounds: (%d, %d) to (%d, %d)",
+				v->sprite_seq_bounds.left, v->sprite_seq_bounds.top, v->sprite_seq_bounds.right, v->sprite_seq_bounds.bottom);
+		print(buffer);
 
 		if (HasBit(v->vehicle_flags, VF_SEPARATION_ACTIVE)) {
 			std::vector<TimetableProgress> progress_array = PopulateSeparationState(v);
@@ -362,6 +427,8 @@ class NIHHouse : public NIHelper {
 		print(buffer);
 		seprintf(buffer, lastof(buffer), "  remove_rating_decrease: %u", hs->remove_rating_decrease);
 		print(buffer);
+		seprintf(buffer, lastof(buffer), "  population: %u, mail_generation: %u", hs->population, hs->mail_generation);
+		print(buffer);
 		seprintf(buffer, lastof(buffer), "  animation: frames: %u, status: %u, speed: %u, triggers: 0x%X", hs->animation.frames, hs->animation.status, hs->animation.speed, hs->animation.triggers);
 		print(buffer);
 	}
@@ -515,6 +582,15 @@ static const NIVariable _niv_industries[] = {
 	NIV(0x66, "get square of Euclidean distance of closes town"),
 	NIV(0x67, "count of industry and distance of closest instance"),
 	NIV(0x68, "count of industry and distance of closest instance with layout filter"),
+	NIV(0x69, "produced cargo waiting"),
+	NIV(0x6A, "cargo produced this month"),
+	NIV(0x6B, "cargo transported this month"),
+	NIV(0x6C, "cargo produced last month"),
+	NIV(0x6D, "cargo transported last month"),
+	NIV(0x6E, "date since cargo was delivered"),
+	NIV(0x6F, "waiting input cargo"),
+	NIV(0x70, "production rate"),
+	NIV(0x71, "percentage of cargo transported last month"),
 	NIV_END()
 };
 
@@ -1065,4 +1141,4 @@ static const NIFeature * const _nifeatures[] = {
 	&_nif_town,         // GSF_FAKE_TOWNS
 	&_nif_station_struct,  // GSF_FAKE_STATION_STRUCT
 };
-assert_compile(lengthof(_nifeatures) == GSF_FAKE_END);
+static_assert(lengthof(_nifeatures) == GSF_FAKE_END);

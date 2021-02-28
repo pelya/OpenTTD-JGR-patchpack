@@ -95,15 +95,15 @@ STR_CARGO_PLURAL_SUGAR.z                                        :цукор
 STR_CARGO_PLURAL_TOYS                                           :іграшки
 STR_CARGO_PLURAL_TOYS.r                                         :іграшок
 STR_CARGO_PLURAL_TOYS.z                                         :іграшки
-STR_CARGO_PLURAL_CANDY                                          :солодощі
-STR_CARGO_PLURAL_CANDY.r                                        :солодощів
-STR_CARGO_PLURAL_CANDY.z                                        :солодощі
+STR_CARGO_PLURAL_SWEETS                                         :солодощі
+STR_CARGO_PLURAL_SWEETS.r                                       :солодощів
+STR_CARGO_PLURAL_SWEETS.z                                       :солодощі
 STR_CARGO_PLURAL_COLA                                           :кола
 STR_CARGO_PLURAL_COLA.r                                         :коли
 STR_CARGO_PLURAL_COLA.z                                         :колу
-STR_CARGO_PLURAL_COTTON_CANDY                                   :солодка вата
-STR_CARGO_PLURAL_COTTON_CANDY.r                                 :солодкої вати
-STR_CARGO_PLURAL_COTTON_CANDY.z                                 :солодку вату
+STR_CARGO_PLURAL_CANDYFLOSS                                     :солодка вата
+STR_CARGO_PLURAL_CANDYFLOSS.r                                   :солодкої вати
+STR_CARGO_PLURAL_CANDYFLOSS.z                                   :солодку вату
 STR_CARGO_PLURAL_BUBBLES                                        :бульбашки
 STR_CARGO_PLURAL_BUBBLES.r                                      :бульбашок
 STR_CARGO_PLURAL_BUBBLES.z                                      :бульбашки
@@ -191,15 +191,15 @@ STR_CARGO_SINGULAR_SUGAR.z                                      :цукор
 STR_CARGO_SINGULAR_TOY                                          :іграшки
 STR_CARGO_SINGULAR_TOY.r                                        :іграшок
 STR_CARGO_SINGULAR_TOY.z                                        :іграшки
-STR_CARGO_SINGULAR_CANDY                                        :цукерки
-STR_CARGO_SINGULAR_CANDY.r                                      :цукерок
-STR_CARGO_SINGULAR_CANDY.z                                      :цукерки
+STR_CARGO_SINGULAR_SWEETS                                       :цукерки
+STR_CARGO_SINGULAR_SWEETS.r                                     :цукерок
+STR_CARGO_SINGULAR_SWEETS.z                                     :цукерки
 STR_CARGO_SINGULAR_COLA                                         :кола
 STR_CARGO_SINGULAR_COLA.r                                       :коли
 STR_CARGO_SINGULAR_COLA.z                                       :колу
-STR_CARGO_SINGULAR_COTTON_CANDY                                 :солодка вата
-STR_CARGO_SINGULAR_COTTON_CANDY.r                               :солодкої вати
-STR_CARGO_SINGULAR_COTTON_CANDY.z                               :солодку вату
+STR_CARGO_SINGULAR_CANDYFLOSS                                   :солодка вата
+STR_CARGO_SINGULAR_CANDYFLOSS.r                                 :солодкої вати
+STR_CARGO_SINGULAR_CANDYFLOSS.z                                 :солодку вату
 STR_CARGO_SINGULAR_BUBBLE                                       :бульбашки
 STR_CARGO_SINGULAR_BUBBLE.r                                     :бульбашок
 STR_CARGO_SINGULAR_BUBBLE.z                                     :бульбашки
@@ -358,7 +358,6 @@ STR_TOOLTIP_SORT_ORDER                                          :{BLACK}Обер
 STR_TOOLTIP_SORT_CRITERIA                                       :{BLACK}Оберіть критерій сортування
 STR_TOOLTIP_FILTER_CRITERIA                                     :{BLACK}Оберіть критерій фільтру
 STR_BUTTON_SORT_BY                                              :{BLACK}Сортувати
-STR_BUTTON_LOCATION                                             :{BLACK}Показати
 STR_BUTTON_RENAME                                               :{BLACK}Назва
 STR_BUTTON_CATCHMENT                                            :{BLACK}Покриття
 STR_TOOLTIP_CATCHMENT                                           :{BLACK}Вкл./викл. відображення області покриття
@@ -439,6 +438,8 @@ STR_SORT_BY_CARGO_CAPACITY                                      :за містк
 STR_SORT_BY_RANGE                                               :за дальністю
 STR_SORT_BY_POPULATION                                          :за населенням
 STR_SORT_BY_RATING                                              :за рейтингом
+
+# Group by options for vehicle list
 
 # Tooltips for the main toolbar
 STR_TOOLBAR_TOOLTIP_PAUSE_GAME                                  :{BLACK}Пауза
@@ -1732,9 +1733,6 @@ STR_CONFIG_SETTING_TOWN_CARGOGENMODE_BITCOUNT                   :лінійна 
 
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT                         :Поява дерев під час гри: {STRING}
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_HELPTEXT                :Налаштування випадкової появи дерев на карті в процесі гри. Ця настройка також впливає на відповідні підприємства, такі як лісопилки.
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NONE                    :Відсутня {RED}(зупиняє лісопилки)
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_RAINFOREST              :Тільки у тропіках
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_ALL                     :Скрізь
 
 STR_CONFIG_SETTING_TOOLBAR_POS                                  :Позиція головного меню: {STRING}
 STR_CONFIG_SETTING_TOOLBAR_POS_HELPTEXT                         :Горизонтальна позиція основної панелі інструментів.
@@ -1944,7 +1942,6 @@ STR_ABANDON_SCENARIO_QUERY                                      :{YELLOW}Ви д
 # Cheat window
 STR_CHEATS                                                      :{WHITE}Гратиму нечесно
 STR_CHEATS_TOOLTIP                                              :{BLACK}Галка показує, що Ви стали грати нечесно
-STR_CHEATS_WARNING                                              :{BLACK}Попередження! Ви збираєтесь обманути своїх конкурентів. Пам'ятайте, що подібне безчестя буде запам'ятовано назавжди
 STR_CHEAT_MONEY                                                 :{LTBLUE}Збільшити кошти на {CURRENCY_LONG}
 STR_CHEAT_CHANGE_COMPANY                                        :{LTBLUE}Грає як компанія: {ORANGE}{COMMA}
 STR_CHEAT_EXTRA_DYNAMITE                                        :{LTBLUE}Супербульдозер (руйнує все): {ORANGE}{STRING}
@@ -2056,10 +2053,6 @@ STR_FACE_TIE_EARRING_TOOLTIP                                    :{BLACK}Змін
 
 # Network server list
 STR_NETWORK_SERVER_LIST_CAPTION                                 :{WHITE}Мережева гра
-STR_NETWORK_SERVER_LIST_ADVERTISED                              :{BLACK}Інтернет
-STR_NETWORK_SERVER_LIST_ADVERTISED_TOOLTIP                      :{BLACK}Вибір між рекламованою (інтернет) і не рекламованою (локальна мережа, LAN) грою
-STR_NETWORK_SERVER_LIST_ADVERTISED_NO                           :Ні
-STR_NETWORK_SERVER_LIST_ADVERTISED_YES                          :Так
 STR_NETWORK_SERVER_LIST_PLAYER_NAME                             :{BLACK}Ім'я гравця:
 STR_NETWORK_SERVER_LIST_ENTER_NAME_TOOLTIP                      :{BLACK}Ім'я, за яким тебе розпізнаватимуть інші гравці
 
@@ -2100,8 +2093,6 @@ STR_NETWORK_SERVER_LIST_JOIN_GAME                               :{BLACK}Приє
 STR_NETWORK_SERVER_LIST_REFRESH                                 :{BLACK}Оновити сервер
 STR_NETWORK_SERVER_LIST_REFRESH_TOOLTIP                         :{BLACK}Оновити інформацію про сервер
 
-STR_NETWORK_SERVER_LIST_FIND_SERVER                             :{BLACK}Знайти сервер
-STR_NETWORK_SERVER_LIST_FIND_SERVER_TOOLTIP                     :{BLACK}Пошук мережі для сервера
 STR_NETWORK_SERVER_LIST_ADD_SERVER                              :{BLACK}Додати сервер
 STR_NETWORK_SERVER_LIST_ADD_SERVER_TOOLTIP                      :{BLACK}Додає сервер до списку, який завжди буде перевірятись на поточні ігри
 STR_NETWORK_SERVER_LIST_START_SERVER                            :{BLACK}Створити сервер
@@ -2118,6 +2109,8 @@ STR_NETWORK_START_SERVER_NEW_GAME_NAME_TOOLTIP                  :{BLACK}Назв
 STR_NETWORK_START_SERVER_SET_PASSWORD                           :{BLACK}Встановити пароль
 STR_NETWORK_START_SERVER_PASSWORD_TOOLTIP                       :{BLACK}Захистіть вашу гру паролем, якщо не бажаєте загального доступу
 
+STR_NETWORK_START_SERVER_ADVERTISED_LABEL                       :{BLACK}Інтернет
+STR_NETWORK_START_SERVER_ADVERTISED_TOOLTIP                     :{BLACK}Вибір між рекламованою (інтернет) і не рекламованою (локальна мережа, LAN) грою
 STR_NETWORK_START_SERVER_UNADVERTISED                           :Ні
 STR_NETWORK_START_SERVER_ADVERTISED                             :Так
 STR_NETWORK_START_SERVER_CLIENTS_SELECT                         :{BLACK}{NUM} клієнт{P "" а ів}
@@ -2339,8 +2332,6 @@ STR_NETWORK_MESSAGE_CLIENT_COMPANY_SPECTATE                     :*** {STRING} с
 STR_NETWORK_MESSAGE_CLIENT_COMPANY_NEW                          :*** {STRING} заснував нову компанію (№{2:NUM})
 STR_NETWORK_MESSAGE_CLIENT_LEFT                                 :*** {STRING} покинув гру ({2:STRING})
 STR_NETWORK_MESSAGE_NAME_CHANGE                                 :*** {STRING} змінив(-ла) своє ім'я на {STRING}
-STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} дав Вашій компанії {2:CURRENCY_LONG}
-STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Ви дали {1:STRING} {2:CURRENCY_LONG}
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}Сервер закрив сеанс
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}Перезавантаження сервера...{}Зачекайте...
 STR_NETWORK_MESSAGE_KICKED                                      :*** {STRING} відключено. Причина: ({STRING})
@@ -2461,6 +2452,8 @@ STR_JOIN_STATION_CREATE_SPLITTED_STATION                        :{YELLOW}Поб�
 
 STR_JOIN_WAYPOINT_CAPTION                                       :{WHITE}З'єднати точку маршруту
 STR_JOIN_WAYPOINT_CREATE_SPLITTED_WAYPOINT                      :{YELLOW}Створити окрему точку маршруту
+
+# Generic toolbar
 
 # Rail construction toolbar
 STR_RAIL_TOOLBAR_RAILROAD_CONSTRUCTION_CAPTION                  :Будівництво залізниці
@@ -2649,7 +2642,7 @@ STR_OBJECT_BUILD_SIZE                                           :{BLACK}Розм
 STR_OBJECT_CLASS_LTHS                                           :Маяки
 STR_OBJECT_CLASS_TRNS                                           :Ретранслятори
 
-# Tree planting window (last two for SE only)
+# Tree planting window (last eight for SE only)
 STR_PLANT_TREE_CAPTION                                          :{WHITE}Дерева
 STR_PLANT_TREE_TOOLTIP                                          :{BLACK}Оберіть тип дерева для посадки. Клітинки, які вже містять дерева, доповнюються новими деревами різного типу незалежно від обраного.
 STR_TREES_RANDOM_TYPE                                           :{BLACK}Дерева випадкового типу
@@ -3857,10 +3850,6 @@ STR_REPLACE_REMOVE_WAGON_HELP                                   :{BLACK}Дозв
 # Vehicle view
 STR_VEHICLE_VIEW_CAPTION                                        :{WHITE}{VEHICLE}
 
-STR_VEHICLE_VIEW_TRAIN_LOCATION_TOOLTIP                         :{BLACK}Показати поїзд у центрі екрану. Ctrl+клац мишою спричинить слідкування за ним у головному вікні
-STR_VEHICLE_VIEW_ROAD_VEHICLE_LOCATION_TOOLTIP                  :{BLACK}Показати автомобіль у центрі екрану. Ctrl+клац мишою спричинить слідкування за ним у головному вікні
-STR_VEHICLE_VIEW_SHIP_LOCATION_TOOLTIP                          :{BLACK}Показати корабель у центрі екрану. Ctrl+клац мишою спричинить слідкування за ним у головному вікні
-STR_VEHICLE_VIEW_AIRCRAFT_LOCATION_TOOLTIP                      :{BLACK}Показати літак у центрі екрану. Ctrl+клац мишою спричинить слідкування за ним у головному вікні
 
 STR_VEHICLE_VIEW_TRAIN_SEND_TO_DEPOT_TOOLTIP                    :{BLACK}Направити поїзд у депо
 STR_VEHICLE_VIEW_ROAD_VEHICLE_SEND_TO_DEPOT_TOOLTIP             :{BLACK}Направити авто в депо
@@ -3892,10 +3881,7 @@ STR_VEHICLE_VIEW_ROAD_VEHICLE_SHOW_DETAILS_TOOLTIP              :{BLACK}Пока
 STR_VEHICLE_VIEW_SHIP_SHOW_DETAILS_TOOLTIP                      :{BLACK}Показати корабель детально
 STR_VEHICLE_VIEW_AIRCRAFT_SHOW_DETAILS_TOOLTIP                  :{BLACK}Показати літак детально
 
-STR_VEHICLE_VIEW_TRAIN_STATE_START_STOP_TOOLTIP                 :{BLACK}Поточна дія поїзда - натисніть для руху/зупинки поїзда. Утримуйте Ctrl, щоб показати пункт призначення
-STR_VEHICLE_VIEW_ROAD_VEHICLE_STATE_START_STOP_TOOLTIP          :{BLACK}Поточна дія автомобіля - натисніть для руху/зупинки автомобіля. Утримуйте Ctrl, щоб показати пункт призначення
-STR_VEHICLE_VIEW_SHIP_STATE_START_STOP_TOOLTIP                  :{BLACK}Поточна дія корабля - натисніть для руху/зупинки корабля. Утримуйте Ctrl, щоб показати пункт призначення
-STR_VEHICLE_VIEW_AIRCRAFT_STATE_START_STOP_TOOLTIP              :{BLACK}Поточна дія літака - натисніть для руху/зупинки літака. Утримуйте Ctrl, щоб показати пункт призначення
+
 
 # Messages in the start stop button in the vehicle view
 STR_VEHICLE_STATUS_LOADING_UNLOADING                            :{LTBLUE}Вантаження
@@ -4772,6 +4758,11 @@ STR_BASEMUSIC_WIN_DESCRIPTION                                   :Оригіна�
 STR_BASEMUSIC_DOS_DESCRIPTION                                   :Оригінальна музика Transport Tycoon Deluxe(DOS)
 STR_BASEMUSIC_TTO_DESCRIPTION                                   :Оригінальна музика Transport Tycoon Deluxe(DOS)
 STR_BASEMUSIC_NONE_DESCRIPTION                                  :Порожній набір музики.
+
+STR_TRADITIONAL_TRAIN_NAME                                      :Поїзд №{COMMA}
+STR_TRADITIONAL_ROAD_VEHICLE_NAME                               :Автотранспорт №{COMMA}
+STR_TRADITIONAL_SHIP_NAME                                       :Судно №{COMMA}
+STR_TRADITIONAL_AIRCRAFT_NAME                                   :Борт №{COMMA}
 
 ##id 0x2000
 # Town building names

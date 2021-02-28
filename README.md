@@ -1,4 +1,4 @@
-## JGR's Patchpack version 0.39.2
+## JGR's Patchpack version 0.40.2
 
 This is a collection of patches applied to [OpenTTD](http://www.openttd.org/)
 
@@ -221,6 +221,11 @@ See the [wiki](https://github.com/JGRennison/OpenTTD-patches/wiki) for guides on
   * Road vehicles may now start and finish overtaking on bridges and in tunnels.  
   See the [wiki](https://github.com/JGRennison/OpenTTD-patches/wiki/One-way-roads) for full details.
 
+* Realistic train braking (added in v0.40.0)  
+  In this mode, trains have a stopping distance and will reserve ahead accordingly, trains cannot stop instantly.  
+  This mode has many implications for signalling and track layout design, and is therefore an advanced feature which may not be suitable for beginners.  
+  In particular pre-signals and two-way signals are not permitted, and PBS is used for all signalling.
+
 * Save/load and savegame format changes  
   * Various changes to improve handling of savegames which use features not in trunk.  
   * Savegames from this patchpack are not loadable in trunk.  
@@ -271,7 +276,7 @@ See the [wiki](https://github.com/JGRennison/OpenTTD-patches/wiki) for guides on
   * Add support for allowing/disallowing supply to a station, per cargo, by ctrl-clicking the station cargo rating. (added in v0.34.0).  
   * Open train vehicle details window on total cargo tab if shift pressed. (added in v0.34.0).  
   * Ctrl-click up/down in NewGRF window to move to top or bottom. (added in v0.34.2).  
-  * Additional conditional order types/modes. (added in v0.24.0, v0.33.1, v0.34.3, v0.37.0).  
+  * Additional conditional order types/modes. (added in v0.24.0, v0.33.1, v0.34.3, v0.37.0, v0.40.2).  
   * Improve road vehicle pathfinding when multiple vehicles are simultaneously heading to a station with multiple bay/stop entrances. (added in v0.35.0).  
   * Add setting to scale station cargo capacity and rating tolerance by size. (added in v0.35.0).  
   * Add setting to disable vehicle expiry after a given year. (added in v0.35.0).  
@@ -285,6 +290,9 @@ See the [wiki](https://github.com/JGRennison/OpenTTD-patches/wiki) for guides on
   * Increase per-vehicle order limit from 254 to 64k. (added in v0.38.0).  
   * Add features to reverse the order of an order list, and to append the reverse of an order list. (added in v0.39.0).  
   * Add console commands for conditional execution from game date. (added in v0.39.2).  
+  * Add client setting for vehicle naming scheme. (added in v0.40.0).  
+  * Add setting to control dates over which inflation is applied. (added in v0.40.0).  
+  * Add "indifferent" mode to the town council attitude to area restructuring setting. (added in v0.40.2).  
   * Various minor fixes, see changelog.  
   * [NewGRF specification additions](docs/newgrf-additions.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/newgrf-additions.html)).
   * [NML specification additions](docs/newgrf-additions-nml.html) ([online copy](https://htmlpreview.github.io/?https://github.com/JGRennison/OpenTTD-patches/blob/jgrpp/docs/newgrf-additions-nml.html)).

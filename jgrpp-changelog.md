@@ -2,6 +2,67 @@
 
 * * *
 
+### v0.40.2 (2021-02-17)
+* Fix upgrading road bridge with opposite road/tram type producing broken bridge ramps where required road/tram pieces are missing.
+* Fix crash if AI attempts to set order flags of invalid vehicle's order and the no non-stop orders setting is enabled.
+* Fix case where reservations could become detached from trains when a restricted signal returns inconsistent reserve through results in the realistic braking model.
+* Fix trains slowing down too much when stopping at stations in the original braking model.
+* Fix train speed not being set to 0 for timetabled wait at waypoint orders.
+* Fix departure boards not handling unconditional order jumps.
+* Fix viewport order lines not handling unconditional jump orders.
+* Fix autorenew failure advice due to bad refit being shown to all companies.
+* Add conditional order for current time/date.
+* Add release slot train order.
+* Add "indifferent" mode to the town council attitude to area restructuring setting.
+* Show warning icon in order window if there are timetable warnings.
+* If realistic braking can't be enabled, show an extra viewport on the signal preventing enabling.
+* Routing restrictions:
+  * Add PBS end signal conditional for use with realistic braking.
+  * Add reserved tiles ahead conditional for use with realistic braking.
+  * Change PBS entry signal conditional to be in the advanced category in the UI.
+* Fix building on Apple MacOS 10.12.
+
+### v0.40.1 (2021-02-05)
+* Fix crash when removing signals from bridge or tunnel.
+* Fix left mouse button scrolling in viewport map mode.
+* Fix clicking trains in slots window, when a slot is selected.
+* Fix timetable crash which could occur when all rail tiles are removed from the station of a train order.
+* Realistic braking:
+  * Fix crash when downgrading road bridge when realistic braking enabled.
+  * Fix crash when removing tunnel which is not currently reserved when realistic braking enabled.
+  * Fix crash which could occur when a track edit command causes the reservation of a stationary train to be freed.
+  * Fix maglevs having braking parameters calculated incorrectly, and braking excessively slowly.
+  * Fix signal dragging placing the final signal too early when obstructed by a train reservation.
+  * Fix curve speed limit prediction being too pessimistic in some circumstances.
+  * Give monorail and maglev higher limits for realistic braking deceleration.
+* Fix players being charged to cycle tunnel/bridge signal type with CTRL, when it should be free.
+
+### v0.40.0 (2021-02-02)
+* Fix crash in auto-separation when all orders removed.
+* Fix crash when removing rail depot or road when debug window open on tile.
+* Signals on bridges/tunnels:
+  * Fix handling of bridge signals when reversing inside.
+  * Fix reversing behind waypoint/signal when front is inside a bridge/tunnel.
+  * Fix bridges not being redrawn after all signals reset when cleared.
+  * Fix reservation not being cleared from far end of signalled tunnel when removing.
+  * Fix handling of entrance availability when reversing inside bidrectionally signalled bridges/tunnels.
+  * Fix train crash which could occur when reversing trains on both sides of a bidirectional bridge/tunnel entrance tile.
+  * Set tunnel/bridge PBS exit to red when leaving.
+* Template-based train replacement:
+  * Add support for flipping engine/wagon directions.
+  * No longer use idle vehicles in depots by default.
+  * Use idle vehicles in depot no longer uses vehicles which have orders/shared orders, or are in a group.
+  * Fix vehicle window not being closed when acquiring idle vehicle for replacement.
+* Fix false positive desync warning messages for vehicle cached weight/length.
+* Add feature: realistic train braking.
+* Add setting for dates over which inflation is applied.
+* Add client setting for vehicle naming scheme.
+* Reduce clipping and graphical issues with NewGRF vehicle sets where the sprite bounds vary with overall curvature.
+* Show if train breakdown is due to collision with road vehicle, even if improved breakdowns is disabled.
+* Print warning instead of asserting for invalid NewGRF string IDs.
+* Add Korean translations by TELK.
+* Bump trunk base from commit b7851e51adf0fb0d39ed34a579cf6fe68d8949be to commit 069fb5425302edc93a77ca54b3665a7102747f5a.
+
 ### v0.39.2 (2020-12-29)
 * Fix crash which could occur when loading older scenarios or savegames which do not already have a company.
 * Fix crash which could occur when using the restart command after opening the save/load window.

@@ -443,7 +443,6 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		STR_TRACE_RESTRICT_VARIABLE_CARGO,
 		STR_TRACE_RESTRICT_VARIABLE_LOAD_PERCENT,
 		STR_TRACE_RESTRICT_VARIABLE_ENTRY_DIRECTION,
-		STR_TRACE_RESTRICT_VARIABLE_PBS_ENTRY_SIGNAL,
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_GROUP,
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_OWNER,
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_STATUS,
@@ -452,11 +451,14 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_MAX_TE,
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_POWER_WEIGHT_RATIO,
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_MAX_TE_WEIGHT_RATIO,
+		STR_TRACE_RESTRICT_VARIABLE_PBS_ENTRY_SIGNAL,
+		STR_TRACE_RESTRICT_VARIABLE_PBS_RES_END_SIGNAL,
 		STR_TRACE_RESTRICT_VARIABLE_TRAIN_SLOT,
 		STR_TRACE_RESTRICT_VARIABLE_SLOT_OCCUPANCY,
 		STR_TRACE_RESTRICT_VARIABLE_SLOT_OCCUPANCY_REMAINING,
 		STR_TRACE_RESTRICT_VARIABLE_COUNTER_VALUE,
 		STR_TRACE_RESTRICT_VARIABLE_TIME_DATE_VALUE,
+		STR_TRACE_RESTRICT_VARIABLE_RESERVED_TILES_AHEAD,
 		STR_TRACE_RESTRICT_VARIABLE_UNDEFINED,
 		INVALID_STRING_ID,
 	};
@@ -469,7 +471,6 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		TRIT_COND_CARGO,
 		TRIT_COND_LOAD_PERCENT,
 		TRIT_COND_ENTRY_DIRECTION,
-		TRIT_COND_PBS_ENTRY_SIGNAL,
 		TRIT_COND_TRAIN_GROUP,
 		TRIT_COND_TRAIN_OWNER,
 		TRIT_COND_TRAIN_STATUS,
@@ -478,11 +479,14 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		TRIT_COND_PHYS_PROP | (TRPPCAF_MAX_TE << 16),
 		TRIT_COND_PHYS_RATIO | (TRPPRCAF_POWER_WEIGHT << 16),
 		TRIT_COND_PHYS_RATIO | (TRPPRCAF_MAX_TE_WEIGHT << 16),
+		TRIT_COND_PBS_ENTRY_SIGNAL | (TRPESAF_VEH_POS << 16),
+		TRIT_COND_PBS_ENTRY_SIGNAL | (TRPESAF_RES_END << 16),
 		TRIT_COND_TRAIN_IN_SLOT,
 		TRIT_COND_SLOT_OCCUPANCY | (TRSOCAF_OCCUPANTS << 16),
 		TRIT_COND_SLOT_OCCUPANCY | (TRSOCAF_REMAINING << 16),
 		TRIT_COND_COUNTER_VALUE,
 		TRIT_COND_TIME_DATE_VALUE,
+		TRIT_COND_RESERVED_TILES,
 		TRIT_COND_UNDEFINED,
 	};
 	static const TraceRestrictDropDownListSet set_cond = {
@@ -494,9 +498,10 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		if (_settings_client.gui.show_adv_tracerestrict_features) {
 			*hide_mask = 0;
 		} else {
-			*hide_mask = is_conditional ? 0x3E0000 : 0x2F0;
+			*hide_mask = is_conditional ? 0xFF0000 : 0x2F0;
 		}
-		if (is_conditional && !_settings_game.game_time.time_in_minutes) *hide_mask |= 0x200000;
+		if (is_conditional && !_settings_game.game_time.time_in_minutes) *hide_mask |= 0x400000;
+		if (is_conditional && _settings_game.vehicle.train_braking_model != TBM_REALISTIC) *hide_mask |= 0x820000;
 	}
 	return is_conditional ? &set_cond : &set_action;
 }
@@ -1090,10 +1095,21 @@ static void DrawInstructionString(const TraceRestrictProgram *prog, TraceRestric
 					} else {
 						instruction_string = STR_TRACE_RESTRICT_CONDITIONAL_TILE_INDEX;
 						SetDParam(0, _program_cond_type[GetTraceRestrictCondFlags(item)]);
-						SetDParam(1, STR_TRACE_RESTRICT_VARIABLE_PBS_ENTRY_SIGNAL_LONG);
 						SetDParam(2, GetDropDownStringByValue(GetCondOpDropDownListSet(properties), GetTraceRestrictCondOp(item)));
 						SetDParam(3, TileX(tile));
 						SetDParam(4, TileY(tile));
+					}
+					switch (static_cast<TraceRestrictPBSEntrySignalAuxField>(GetTraceRestrictAuxField(item))) {
+						case TRPESAF_VEH_POS:
+							SetDParam(1, STR_TRACE_RESTRICT_VARIABLE_PBS_ENTRY_SIGNAL_LONG);
+							break;
+
+						case TRPESAF_RES_END:
+							SetDParam(1, _settings_game.vehicle.train_braking_model == TBM_REALISTIC ? STR_TRACE_RESTRICT_VARIABLE_PBS_RES_END_SIGNAL_LONG : STR_TRACE_RESTRICT_VARIABLE_PBS_RES_END_SIGNAL_LONG_WARN);
+							break;
+
+						default:
+							NOT_REACHED();
 					}
 					break;
 				}
@@ -1125,7 +1141,7 @@ static void DrawInstructionString(const TraceRestrictProgram *prog, TraceRestric
 					} else {
 						instruction_string = STR_TRACE_RESTRICT_CONDITIONAL_OWNER;
 						SetDParam(0, _program_cond_type[GetTraceRestrictCondFlags(item)]);
-						SetDParam(1, GetTypeString(GetTraceRestrictType(item)));
+						SetDParam(1, GetTypeString(item));
 						SetDParam(2, GetDropDownStringByValue(GetCondOpDropDownListSet(properties), GetTraceRestrictCondOp(item)));
 						SetDParam(3, cid);
 						SetDParam(4, cid);
@@ -2124,6 +2140,10 @@ public:
 				resize->height = FONT_HEIGHT_NORMAL;
 				size->height = 6 * resize->height + WD_FRAMERECT_TOP + WD_FRAMERECT_BOTTOM;
 				break;
+
+			case TR_WIDGET_GOTO_SIGNAL:
+				size->width = std::max<uint>(12, NWidgetScrollbar::GetVerticalDimension().width);
+				break;
 		}
 	}
 
@@ -2972,7 +2992,7 @@ static const NWidgetPart _nested_program_widgets[] = {
 														SetDataTip(STR_EMPTY, STR_NULL), SetResize(1, 0),
 			EndContainer(),
 		EndContainer(),
-		NWidget(WWT_PUSHIMGBTN, COLOUR_GREY, TR_WIDGET_GOTO_SIGNAL), SetMinimalSize(12, 12), SetDataTip(SPR_ARROW_RIGHT, STR_TRACE_RESTRICT_GOTO_SIGNAL_TOOLTIP),
+		NWidget(WWT_PUSHIMGBTN, COLOUR_GREY, TR_WIDGET_GOTO_SIGNAL), SetMinimalSize(12, 12), SetDataTip(SPR_GOTO_LOCATION, STR_TRACE_RESTRICT_GOTO_SIGNAL_TOOLTIP),
 	EndContainer(),
 
 	/* Second button row. */
@@ -3143,13 +3163,13 @@ private:
 	uint ComputeSlotInfoSize()
 	{
 		this->column_size[VGC_NAME] = GetStringBoundingBox(STR_GROUP_ALL_TRAINS);
-		this->column_size[VGC_NAME].width = max(170u, this->column_size[VGC_NAME].width);
+		this->column_size[VGC_NAME].width = std::max(170u, this->column_size[VGC_NAME].width);
 		this->tiny_step_height = this->column_size[VGC_NAME].height;
 
 		SetDParamMaxValue(0, 9999, 3, FS_SMALL);
 		SetDParamMaxValue(1, 9999, 3, FS_SMALL);
 		this->column_size[VGC_NUMBER] = GetStringBoundingBox(STR_TRACE_RESTRICT_SLOT_MAX_OCCUPANCY);
-		this->tiny_step_height = max(this->tiny_step_height, this->column_size[VGC_NUMBER].height);
+		this->tiny_step_height = std::max(this->tiny_step_height, this->column_size[VGC_NUMBER].height);
 
 		this->tiny_step_height += WD_MATRIX_TOP;
 
@@ -3222,7 +3242,8 @@ public:
 
 		this->vscroll = this->GetScrollbar(WID_TRSL_LIST_VEHICLE_SCROLLBAR);
 		this->slot_sb = this->GetScrollbar(WID_TRSL_LIST_SLOTS_SCROLLBAR);
-		this->sorting = &_sorting.train;
+		this->sorting = &_sorting[GB_NONE].train;
+		this->grouping = GB_NONE;
 
 		this->vli.index = ALL_TRAINS_TRACE_RESTRICT_SLOT_ID;
 		this->slot_sel = INVALID_TRACE_RESTRICT_SLOT_ID;
@@ -3230,9 +3251,9 @@ public:
 		this->slot_set_max_occupancy = false;
 		this->slot_over = INVALID_TRACE_RESTRICT_SLOT_ID;
 
-		this->vehicles.SetListing(*this->sorting);
-		this->vehicles.ForceRebuild();
-		this->vehicles.NeedResort();
+		this->vehgroups.SetListing(*this->sorting);
+		this->vehgroups.ForceRebuild();
+		this->vehgroups.NeedResort();
 
 		this->BuildVehicleList();
 		this->SortVehicleList();
@@ -3247,7 +3268,7 @@ public:
 
 	~TraceRestrictSlotWindow()
 	{
-		*this->sorting = this->vehicles.GetListing();
+		*this->sorting = this->vehgroups.GetListing();
 	}
 
 	virtual void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
@@ -3262,9 +3283,9 @@ public:
 
 				/* ... minus the buttons at the bottom ... */
 				uint max_icon_height = GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_CREATE_SLOT)->widget_data).height;
-				max_icon_height = max(max_icon_height, GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_DELETE_SLOT)->widget_data).height);
-				max_icon_height = max(max_icon_height, GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_RENAME_SLOT)->widget_data).height);
-				max_icon_height = max(max_icon_height, GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_SET_SLOT_MAX_OCCUPANCY)->widget_data).height);
+				max_icon_height = std::max(max_icon_height, GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_DELETE_SLOT)->widget_data).height);
+				max_icon_height = std::max(max_icon_height, GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_RENAME_SLOT)->widget_data).height);
+				max_icon_height = std::max(max_icon_height, GetSpriteSize(this->GetWidget<NWidgetCore>(WID_TRSL_SET_SLOT_MAX_OCCUPANCY)->widget_data).height);
 
 				/* Get a multiple of tiny_step_height of that amount */
 				size->height = Ceil(size->height - max_icon_height, tiny_step_height);
@@ -3301,10 +3322,10 @@ public:
 	{
 		if (data == 0) {
 			/* This needs to be done in command-scope to enforce rebuilding before resorting invalid data */
-			this->vehicles.ForceRebuild();
+			this->vehgroups.ForceRebuild();
 			this->slots.ForceRebuild();
 		} else {
-			this->vehicles.ForceResort();
+			this->vehgroups.ForceResort();
 			this->slots.ForceResort();
 		}
 
@@ -3343,7 +3364,7 @@ public:
 		this->BuildSlotList(this->owner);
 
 		this->slot_sb->SetCount(this->slots.size());
-		this->vscroll->SetCount(this->vehicles.size());
+		this->vscroll->SetCount(this->vehgroups.size());
 
 		/* Disable the slot specific function when we select all vehicles */
 		this->SetWidgetsDisabledState(this->vli.index == ALL_TRAINS_TRACE_RESTRICT_SLOT_ID || _local_company != this->vli.company,
@@ -3363,7 +3384,7 @@ public:
 				WIDGET_LIST_END);
 
 		/* Set text of sort by dropdown */
-		this->GetWidget<NWidgetCore>(WID_TRSL_SORT_BY_DROPDOWN)->widget_data = this->vehicle_sorter_names[this->vehicles.SortType()];
+		this->GetWidget<NWidgetCore>(WID_TRSL_SORT_BY_DROPDOWN)->widget_data = this->vehicle_group_none_sorter_names[this->vehgroups.SortType()];
 
 		this->GetWidget<NWidgetCore>(WID_TRSL_FILTER_BY_CARGO)->widget_data = this->cargo_filter_texts[this->cargo_filter_criteria];
 
@@ -3379,7 +3400,7 @@ public:
 
 			case WID_TRSL_LIST_SLOTS: {
 				int y1 = r.top + WD_FRAMERECT_TOP;
-				int max = min(this->slot_sb->GetPosition() + this->slot_sb->GetCapacity(), this->slots.size());
+				int max = std::min<int>(this->slot_sb->GetPosition() + this->slot_sb->GetCapacity(), this->slots.size());
 				for (int i = this->slot_sb->GetPosition(); i < max; ++i) {
 					const TraceRestrictSlot *slot = this->slots[i];
 
@@ -3393,7 +3414,7 @@ public:
 			}
 
 			case WID_TRSL_SORT_BY_ORDER:
-				this->DrawSortButtonState(WID_TRSL_SORT_BY_ORDER, this->vehicles.IsDescSortOrder() ? SBS_DOWN : SBS_UP);
+				this->DrawSortButtonState(WID_TRSL_SORT_BY_ORDER, this->vehgroups.IsDescSortOrder() ? SBS_DOWN : SBS_UP);
 				break;
 
 			case WID_TRSL_LIST_VEHICLE:
@@ -3415,12 +3436,12 @@ public:
 	{
 		switch (widget) {
 			case WID_TRSL_SORT_BY_ORDER: // Flip sorting method ascending/descending
-				this->vehicles.ToggleSortOrder();
+				this->vehgroups.ToggleSortOrder();
 				this->SetDirty();
 				break;
 
 			case WID_TRSL_SORT_BY_DROPDOWN: // Select sorting criteria dropdown menu
-				ShowDropDownMenu(this, this->vehicle_sorter_names, this->vehicles.SortType(),  WID_TRSL_SORT_BY_DROPDOWN, 0, 0);
+				ShowDropDownMenu(this, this->vehicle_group_none_sorter_names, this->vehgroups.SortType(),  WID_TRSL_SORT_BY_DROPDOWN, 0, 0);
 				return;
 
 			case WID_TRSL_FILTER_BY_CARGO: // Cargo filter dropdown
@@ -3431,7 +3452,7 @@ public:
 				if (this->vli.index != ALL_TRAINS_TRACE_RESTRICT_SLOT_ID) {
 					this->vli.index = ALL_TRAINS_TRACE_RESTRICT_SLOT_ID;
 					this->slot_sel = INVALID_TRACE_RESTRICT_SLOT_ID;
-					this->vehicles.ForceRebuild();
+					this->vehgroups.ForceRebuild();
 					this->SetDirty();
 				}
 				break;
@@ -3442,16 +3463,16 @@ public:
 
 				this->slot_sel = this->vli.index = this->slots[id_s]->index;
 
-				this->vehicles.ForceRebuild();
+				this->vehgroups.ForceRebuild();
 				this->SetDirty();
 				break;
 			}
 
 			case WID_TRSL_LIST_VEHICLE: { // Matrix Vehicle
 				uint id_v = this->vscroll->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_VEHICLE);
-				if (id_v >= this->vehicles.size()) return; // click out of list bound
+				if (id_v >= this->vehgroups.size()) return; // click out of list bound
 
-				const Vehicle *v = this->vehicles[id_v];
+				const Vehicle *v = this->vehgroups[id_v].GetSingleVehicle();
 				if (VehicleClicked(v)) break;
 
 				this->vehicle_sel = v->index;
@@ -3523,9 +3544,9 @@ public:
 				this->SetDirty();
 
 				uint id_v = this->vscroll->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_VEHICLE);
-				if (id_v >= this->vehicles.size()) return; // click out of list bound
+				if (id_v >= this->vehgroups.size()) return; // click out of list bound
 
-				const Vehicle *v = this->vehicles[id_v];
+				const Vehicle *v = this->vehgroups[id_v].GetSingleVehicle();
 				if (!VehicleClicked(v) && vindex == v->index) {
 					ShowVehicleViewWindow(v);
 				}
@@ -3565,7 +3586,7 @@ public:
 	{
 		switch (widget) {
 			case WID_TRSL_SORT_BY_DROPDOWN:
-				this->vehicles.SetSortType(index);
+				this->vehgroups.SetSortType(index);
 				break;
 
 			case WID_TRSL_FILTER_BY_CARGO: // Select a cargo filter criteria
@@ -3580,7 +3601,7 @@ public:
 
 	virtual void OnGameTick() override
 	{
-		if (this->slots.NeedResort() || this->vehicles.NeedResort()) {
+		if (this->slots.NeedResort() || this->vehgroups.NeedResort()) {
 			this->SetDirty();
 		}
 	}
@@ -3844,9 +3865,9 @@ public:
 	{
 		switch (widget) {
 			case WID_TRCL_LIST_COUNTERS: {
-				size->width = max<uint>(size->width, this->ComputeInfoSize());
+				size->width = std::max<uint>(size->width, this->ComputeInfoSize());
 				resize->height = this->tiny_step_height;
-				size->height = max<uint>(size->height, 8 * resize->height);
+				size->height = std::max<uint>(size->height, 8 * resize->height);
 				break;
 			}
 		}
@@ -3910,7 +3931,7 @@ public:
 		switch (widget) {
 			case WID_TRCL_LIST_COUNTERS: {
 				int y1 = r.top + WD_FRAMERECT_TOP;
-				int max = min(this->sb->GetPosition() + this->sb->GetCapacity(), this->ctrs.size());
+				int max = std::min<int>(this->sb->GetPosition() + this->sb->GetCapacity(), this->ctrs.size());
 				for (int i = this->sb->GetPosition(); i < max; ++i) {
 					const TraceRestrictCounter *ctr = this->ctrs[i];
 

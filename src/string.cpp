@@ -62,7 +62,7 @@ int CDECL vseprintf(char *str, const char *last, const char *format, va_list ap)
 {
 	ptrdiff_t diff = last - str;
 	if (diff < 0) return 0;
-	return min((int)diff, vsnprintf(str, diff + 1, format, ap));
+	return std::min(static_cast<int>(diff), vsnprintf(str, diff + 1, format, ap));
 }
 
 /**
@@ -464,6 +464,17 @@ bool strtolower(char *str)
 	return changed;
 }
 
+bool strtolower(std::string &str, std::string::size_type offs)
+{
+	bool changed = false;
+	for (auto ch = str.begin() + offs; ch != str.end(); ++ch) {
+		auto new_ch = static_cast<char>(tolower(static_cast<unsigned char>(*ch)));
+		changed |= new_ch != *ch;
+		*ch = new_ch;
+	}
+	return changed;
+}
+
 /**
  * Only allow certain keys. You can define the filter to be used. This makes
  *  sure no invalid keys can get into an editbox, like BELL.
@@ -760,7 +771,7 @@ int strnatcmp(const char *s1, const char *s2, bool ignore_garbage_at_front)
 	}
 
 #ifdef WITH_ICU_I18N
-	if (_current_collator != nullptr) {
+	if (_current_collator) {
 		UErrorCode status = U_ZERO_ERROR;
 		int result = _current_collator->compareUTF8(s1, s2, status);
 		if (U_SUCCESS(status)) return result;

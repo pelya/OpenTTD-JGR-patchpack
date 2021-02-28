@@ -73,12 +73,12 @@ STR_CARGO_PLURAL_SUGAR                                          :Cukor
 STR_CARGO_PLURAL_SUGAR.g                                        :cukru
 STR_CARGO_PLURAL_TOYS                                           :Hračky
 STR_CARGO_PLURAL_TOYS.g                                         :hračiek
-STR_CARGO_PLURAL_CANDY                                          :Cukríky
-STR_CARGO_PLURAL_CANDY.g                                        :cukríkov
+STR_CARGO_PLURAL_SWEETS                                         :Cukríky
+STR_CARGO_PLURAL_SWEETS.g                                       :cukríkov
 STR_CARGO_PLURAL_COLA                                           :Kofola
 STR_CARGO_PLURAL_COLA.g                                         :kofoly
-STR_CARGO_PLURAL_COTTON_CANDY                                   :Cukrová vata
-STR_CARGO_PLURAL_COTTON_CANDY.g                                 :cukrovej vaty
+STR_CARGO_PLURAL_CANDYFLOSS                                     :Cukrová vata
+STR_CARGO_PLURAL_CANDYFLOSS.g                                   :cukrovej vaty
 STR_CARGO_PLURAL_BUBBLES                                        :Bublinky
 STR_CARGO_PLURAL_BUBBLES.g                                      :bubliniek
 STR_CARGO_PLURAL_TOFFEE                                         :Karamelky
@@ -138,12 +138,12 @@ STR_CARGO_SINGULAR_SUGAR                                        :Cukor
 STR_CARGO_SINGULAR_SUGAR.g                                      :cukru
 STR_CARGO_SINGULAR_TOY                                          :Hračka
 STR_CARGO_SINGULAR_TOY.g                                        :hračky
-STR_CARGO_SINGULAR_CANDY                                        :Cukrík
-STR_CARGO_SINGULAR_CANDY.g                                      :cukríka
+STR_CARGO_SINGULAR_SWEETS                                       :Cukrík
+STR_CARGO_SINGULAR_SWEETS.g                                     :cukríka
 STR_CARGO_SINGULAR_COLA                                         :Kofola
 STR_CARGO_SINGULAR_COLA.g                                       :kofoly
-STR_CARGO_SINGULAR_COTTON_CANDY                                 :Cukrová vata
-STR_CARGO_SINGULAR_COTTON_CANDY.g                               :cukrovej vaty
+STR_CARGO_SINGULAR_CANDYFLOSS                                   :Cukrová vata
+STR_CARGO_SINGULAR_CANDYFLOSS.g                                 :cukrovej vaty
 STR_CARGO_SINGULAR_BUBBLE                                       :Bublinka
 STR_CARGO_SINGULAR_BUBBLE.g                                     :bublinky
 STR_CARGO_SINGULAR_TOFFEE                                       :Karamel
@@ -298,7 +298,6 @@ STR_TOOLTIP_SORT_ORDER                                          :{BLACK}Spôsob 
 STR_TOOLTIP_SORT_CRITERIA                                       :{BLACK}Zvoľ kritérium triedenia
 STR_TOOLTIP_FILTER_CRITERIA                                     :{BLACK}Vybrať kritériá filtrovania
 STR_BUTTON_SORT_BY                                              :{BLACK}Usporiadať
-STR_BUTTON_LOCATION                                             :{BLACK}Poloha
 STR_BUTTON_RENAME                                               :{BLACK}Premenovať
 STR_BUTTON_CATCHMENT                                            :{BLACK}Pokrytie
 STR_TOOLTIP_CATCHMENT                                           :{BLACK}Prepnúť zobrazenie oblasti pokrytia
@@ -379,6 +378,15 @@ STR_SORT_BY_CARGO_CAPACITY                                      :Kapacita nákla
 STR_SORT_BY_RANGE                                               :Rozsah
 STR_SORT_BY_POPULATION                                          :Populácia
 STR_SORT_BY_RATING                                              :Hodnotenie
+STR_SORT_BY_NUM_VEHICLES                                        :Počet vozidiel
+STR_SORT_BY_TOTAL_PROFIT_LAST_YEAR                              :Celkový profit v minulom roku
+STR_SORT_BY_TOTAL_PROFIT_THIS_YEAR                              :Celkový profit v tomto roku
+STR_SORT_BY_AVERAGE_PROFIT_LAST_YEAR                            :Priemerný profit v minulom roku
+STR_SORT_BY_AVERAGE_PROFIT_THIS_YEAR                            :Priemerný profit v tomto roku
+
+# Group by options for vehicle list
+STR_GROUP_BY_NONE                                               :Žiadne
+STR_GROUP_BY_SHARED_ORDERS                                      :Zdieľané príkazy
 
 # Tooltips for the main toolbar
 STR_TOOLBAR_TOOLTIP_PAUSE_GAME                                  :{BLACK}Pozastaviť hru
@@ -808,6 +816,7 @@ STR_SMALLMAP_LEGENDA_DOCK                                       :{TINY_FONT}{BLA
 STR_SMALLMAP_LEGENDA_ROUGH_LAND                                 :{TINY_FONT}{BLACK}Nerovný terén
 STR_SMALLMAP_LEGENDA_GRASS_LAND                                 :{TINY_FONT}{BLACK}Trávnatý terén
 STR_SMALLMAP_LEGENDA_BARE_LAND                                  :{TINY_FONT}{BLACK}Holý terén
+STR_SMALLMAP_LEGENDA_RAINFOREST                                 :{TINY_FONT}{BLACK}Dážďový prales
 STR_SMALLMAP_LEGENDA_FIELDS                                     :{TINY_FONT}{BLACK}Polia
 STR_SMALLMAP_LEGENDA_TREES                                      :{TINY_FONT}{BLACK}Stromy
 STR_SMALLMAP_LEGENDA_ROCKS                                      :{TINY_FONT}{BLACK}Skaly
@@ -839,6 +848,7 @@ STR_SMALLMAP_TOOLTIP_ENABLE_ALL_CARGOS                          :{BLACK}Zobrazi�
 STR_STATUSBAR_TOOLTIP_SHOW_LAST_NEWS                            :{BLACK}Zobraziť poslednú správu alebo novinku
 STR_STATUSBAR_COMPANY_NAME                                      :{SILVER}- -  {COMPANY}  - -
 STR_STATUSBAR_PAUSED                                            :{YELLOW}*  *  POZASTAVENÉ  *  *
+STR_STATUSBAR_PAUSED_LINK_GRAPH                                 :{ORANGE}*  *  POZASTAVENÉ (čaká sa na aktualizovanie spojovacieho grafu) *  *
 STR_STATUSBAR_AUTOSAVE                                          :{RED}AUTOULOŽENIE
 STR_STATUSBAR_SAVING_GAME                                       :{RED}*  *  HRA SA UKLADÁ  *  *
 
@@ -1214,9 +1224,9 @@ STR_CONFIG_SETTING_OFF                                          :Nie
 STR_CONFIG_SETTING_ON                                           :Áno
 STR_CONFIG_SETTING_DISABLED                                     :zakázané
 
-STR_CONFIG_SETTING_COMPANIES_OFF                                :Vypnutý
-STR_CONFIG_SETTING_COMPANIES_OWN                                :vlastná spoločnosť
-STR_CONFIG_SETTING_COMPANIES_ALL                                :všetky spoločnosti
+STR_CONFIG_SETTING_COMPANIES_OFF                                :Vypnuté
+STR_CONFIG_SETTING_COMPANIES_OWN                                :Vlastná spoločnosť
+STR_CONFIG_SETTING_COMPANIES_ALL                                :Všetky spoločnosti
 
 STR_CONFIG_SETTING_NONE                                         :Žiadne
 STR_CONFIG_SETTING_ORIGINAL                                     :Pôvodné
@@ -1310,7 +1320,7 @@ STR_CONFIG_SETTING_STOP_LOCATION_NEAR_END                       :na začiatku
 STR_CONFIG_SETTING_STOP_LOCATION_MIDDLE                         :v strede
 STR_CONFIG_SETTING_STOP_LOCATION_FAR_END                        :na konci
 STR_CONFIG_SETTING_AUTOSCROLL                                   :Posúvať pohľad, keď je kurzor myši na okraji okna: {STRING}
-STR_CONFIG_SETTING_AUTOSCROLL_HELPTEXT                          :Ak je povolené, zobrazenia sa budú meniť keď je myš pri okraji okna
+STR_CONFIG_SETTING_AUTOSCROLL_HELPTEXT                          :Ak je zapnuté, pohľady sa budú posúvať, keď je myš pri okraji okna
 STR_CONFIG_SETTING_AUTOSCROLL_DISABLED                          :Vypnuté
 STR_CONFIG_SETTING_AUTOSCROLL_MAIN_VIEWPORT_FULLSCREEN          :Hlavný pohľad, iba na celú obrazovku
 STR_CONFIG_SETTING_AUTOSCROLL_MAIN_VIEWPORT                     :Hlavný podľad
@@ -1371,19 +1381,19 @@ STR_CONFIG_SETTING_AUTORENEW_MONEY_HELPTEXT                     :Minimálna suma
 STR_CONFIG_SETTING_ERRMSG_DURATION                              :Trvanie zobrazenia chybovej hlášky: {STRING}
 STR_CONFIG_SETTING_ERRMSG_DURATION_HELPTEXT                     :Trvanie zobrazenia chybovej hlášky v červenom okne. Uvedomte si že niektoré "kritické" správy nezmiznú po uplynutí času, ale musia byť zatvorené ručne.
 STR_CONFIG_SETTING_ERRMSG_DURATION_VALUE                        :{COMMA} sek{P unda undy únd}
-STR_CONFIG_SETTING_HOVER_DELAY                                  :Ukáž nápovedu: {STRING}
-STR_CONFIG_SETTING_HOVER_DELAY_HELPTEXT                         :Oneskorenie pred tým ako bude zobrazená nápoveda po ukázaní myšou. Nápoveda môže byť eventuálne nastavené aj na PRAVÉ tlačítko myši.
-STR_CONFIG_SETTING_HOVER_DELAY_VALUE                            :Zobrazenie na {COMMA} sekúnd
-STR_CONFIG_SETTING_HOVER_DELAY_DISABLED                         :Klik pravým tlačítkom
+STR_CONFIG_SETTING_HOVER_DELAY                                  :Ukázať nápovedu: {STRING}
+STR_CONFIG_SETTING_HOVER_DELAY_HELPTEXT                         :Oneskorenie pred zobrazením nápovedy po prejdení prvku rozhrania myšou. Nápoveda môže byť eventuálne nastavené aj na kliknutie pravým tlačidlom myši pri hodnote 0.
+STR_CONFIG_SETTING_HOVER_DELAY_VALUE                            :Zobrazenie po {COMMA} milisekundách
+STR_CONFIG_SETTING_HOVER_DELAY_DISABLED                         :Klik pravým tlačidlom
 STR_CONFIG_SETTING_POPULATION_IN_LABEL                          :Zobraziť počet obyvateľov mesta v jeho názve: {STRING}
-STR_CONFIG_SETTING_POPULATION_IN_LABEL_HELPTEXT                 :Zobrazí populáciu mesta v jeho názve.
+STR_CONFIG_SETTING_POPULATION_IN_LABEL_HELPTEXT                 :Zobrazí populáciu mesta na mape v jeho názve
 STR_CONFIG_SETTING_GRAPH_LINE_THICKNESS                         :Hrúbka čiar v grafe: {STRING}
 STR_CONFIG_SETTING_GRAPH_LINE_THICKNESS_HELPTEXT                :Hrúbka čiar v grafe. Tenké čiary sú presnejšie, hrubšie zasa lepšie viditeľné
 STR_CONFIG_SETTING_SHOW_NEWGRF_NAME                             :Zobraziť názov NewGRF v okne vozidiel: {STRING}
 STR_CONFIG_SETTING_SHOW_NEWGRF_NAME_HELPTEXT                    :Pridá riadok do zoznamu vozidiel, ktorý ukazuje z akého NewGRF vozidlo pochádza.
 
 STR_CONFIG_SETTING_LANDSCAPE                                    :Krajina: {STRING}
-STR_CONFIG_SETTING_LANDSCAPE_HELPTEXT                           :Krajiny definuje základný herný scenár s rôznymi tovarmi a veľkosťami miest. NewGRF a Herný Skript umožňujú ich lepšiu kontrolu
+STR_CONFIG_SETTING_LANDSCAPE_HELPTEXT                           :Krajiny definujú základný herný scenár s rôznymi druhmi nákladu a požiadavkami na rast miest. NewGRF a herné skripty umožňujú ich lepšiu kontrolu
 STR_CONFIG_SETTING_LAND_GENERATOR                               :Generátor uzemia: {STRING}
 STR_CONFIG_SETTING_LAND_GENERATOR_HELPTEXT                      :Pôvodný generátor závisí na základnej grafickej sade a skladá pevné tvary krajiny. TerraGenesis je generátor postavený na Perlinovom šume s jemnejšími možnosťami nastavenia
 STR_CONFIG_SETTING_LAND_GENERATOR_ORIGINAL                      :Pôvodný
@@ -1440,21 +1450,21 @@ STR_CONFIG_SETTING_SCROLLMODE_LMB                               :Pohyb mapy s ľ
 STR_CONFIG_SETTING_SMOOTH_SCROLLING                             :Plynulé posúvanie pohľadu: {STRING}
 STR_CONFIG_SETTING_SMOOTH_SCROLLING_HELPTEXT                    :Nastaví ako bude reagovať posúvanie na špecifickú pozíciu po kliknutí na minimapu, alebo po zadaní príkazu na presun na zadaný objekt. Ak je zapnuté, pohľad sa presúva plynulo. Ak je vypnuté, pohľad skočí priamo na zadané miesto/objekt.
 STR_CONFIG_SETTING_MEASURE_TOOLTIP                              :Zobraziť údaje o rozmeroch pri výstavbe: {STRING}
-STR_CONFIG_SETTING_MEASURE_TOOLTIP_HELPTEXT                     :Zobrazí vzdialenosť v dieloch a prevýšenie pri konštrukcii ťahaním.
-STR_CONFIG_SETTING_LIVERIES                                     :Zobraziť farby vozidiel spoločnosti: {STRING}
-STR_CONFIG_SETTING_LIVERIES_HELPTEXT                            :Kontrola použitia vozidla-typ špecifických livrej vozidiel (v rozpore so špecificikami podniku)
-STR_CONFIG_SETTING_LIVERIES_NONE                                :žiadne
-STR_CONFIG_SETTING_LIVERIES_OWN                                 :vlastná spoločnosť
-STR_CONFIG_SETTING_LIVERIES_ALL                                 :všetky spoločnosti
+STR_CONFIG_SETTING_MEASURE_TOOLTIP_HELPTEXT                     :Zobrazí vzdialenosť v políčkach a prevýšenie pri konštrukcii ťahaním
+STR_CONFIG_SETTING_LIVERIES                                     :Zobraziť špecifické farby vozidiel: {STRING}
+STR_CONFIG_SETTING_LIVERIES_HELPTEXT                            :Ovláda použitie špecifickej farby pre typy vozidiel (na rozdiel od používania farieb daných spoločnosťou)
+STR_CONFIG_SETTING_LIVERIES_NONE                                :Žiadne
+STR_CONFIG_SETTING_LIVERIES_OWN                                 :Vlastná spoločnosť
+STR_CONFIG_SETTING_LIVERIES_ALL                                 :Všetky spoločnosti
 STR_CONFIG_SETTING_PREFER_TEAMCHAT                              :Preferovať tímový chat s klávesou <ENTER>: {STRING}
 STR_CONFIG_SETTING_PREFER_TEAMCHAT_HELPTEXT                     :Prepni systém odosielania správ medzi interným a verejným chatom. <ENTER> respektíve <CTRL+ENTER>
 STR_CONFIG_SETTING_SCROLLWHEEL_SCROLLING                        :Funkcia rolovacieho kolieska myši: {STRING}
-STR_CONFIG_SETTING_SCROLLWHEEL_SCROLLING_HELPTEXT               :Povolí posúvanie pomocou 2 dimenzionálnych kolečiek myši.
-STR_CONFIG_SETTING_SCROLLWHEEL_ZOOM                             :zvacšit mapu
+STR_CONFIG_SETTING_SCROLLWHEEL_SCROLLING_HELPTEXT               :Povolí posúvanie pomocou dvoj-dimenzionálnych kolečiek myši
+STR_CONFIG_SETTING_SCROLLWHEEL_ZOOM                             :Priblížovať mapu
 STR_CONFIG_SETTING_SCROLLWHEEL_SCROLL                           :Posúvať pohľad
 STR_CONFIG_SETTING_SCROLLWHEEL_OFF                              :Vypnuté
 STR_CONFIG_SETTING_SCROLLWHEEL_MULTIPLIER                       :Rýchlosť posúvania pohľadu: {STRING}
-STR_CONFIG_SETTING_SCROLLWHEEL_MULTIPLIER_HELPTEXT              :Nastav citlivosť posúvania koliečkom myši.
+STR_CONFIG_SETTING_SCROLLWHEEL_MULTIPLIER_HELPTEXT              :Nastavte citlivosť posúvania kolieskom myši
 STR_CONFIG_SETTING_OSK_ACTIVATION                               :Klávesnica na obrazovke: {STRING}
 STR_CONFIG_SETTING_OSK_ACTIVATION_HELPTEXT                      :Vyberte spôsob, ktorým chcete otvárať klávesnicu na obrazovke, ktorou môžete vpisovať hodnoty do textových polí ukazovacím zariadením. Mienené pre malé zariadenia bez klávesnice
 STR_CONFIG_SETTING_OSK_ACTIVATION_DISABLED                      :Vypnuté
@@ -1503,12 +1513,14 @@ STR_CONFIG_SETTING_DEFAULT_RAIL_TYPE_HELPTEXT                   :Typ železnice 
 STR_CONFIG_SETTING_DEFAULT_RAIL_TYPE_FIRST                      :prvé dostupné
 STR_CONFIG_SETTING_DEFAULT_RAIL_TYPE_LAST                       :posledné dostupné
 STR_CONFIG_SETTING_DEFAULT_RAIL_TYPE_MOST_USED                  :najpoužívanejšie
-STR_CONFIG_SETTING_SHOW_TRACK_RESERVATION                       :Zobraziť rezervovácia pre trate: {STRING}
-STR_CONFIG_SETTING_SHOW_TRACK_RESERVATION_HELPTEXT              :Dajte obsadenej trati inú farbu na pomoc pri problémoch s vlakmi odmietajúcimi vstúpiť na časť danej trate
+STR_CONFIG_SETTING_SHOW_TRACK_RESERVATION                       :Zobraziť rezerváciu pre trate: {STRING}
+STR_CONFIG_SETTING_SHOW_TRACK_RESERVATION_HELPTEXT              :Dá obsadenej trati inú farbu na pomoc pri problémoch s vlakmi odmietajúcimi vstúpiť do úseku danej trate
 STR_CONFIG_SETTING_PERSISTENT_BUILDINGTOOLS                     :Zachovať stavebné nástroje aktívne aj po použití: {STRING}
 STR_CONFIG_SETTING_PERSISTENT_BUILDINGTOOLS_HELPTEXT            :Zachovaj okno s nástrojmi na stavbu mostov/tunelov otvorené aj po použití
 STR_CONFIG_SETTING_EXPENSES_LAYOUT                              :Zoskupiť výdavky v okne financií spoločnosti: {STRING}
 STR_CONFIG_SETTING_EXPENSES_LAYOUT_HELPTEXT                     :Definujte rozloženie okna s financiami.
+STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS                          :Automaticky odstraňovať návestidlá pri výstavbe železnice: {STRING}
+STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS_HELPTEXT                 :Automaticky odstraňovať návestidla pri výstavbe železnice, ak návestidlá blokujú výstavbu. To však môže niekedy smerovať k zrážke vlakov.
 
 STR_CONFIG_SETTING_SOUND_TICKER                                 :Oznamovač správ: {STRING}
 STR_CONFIG_SETTING_SOUND_TICKER_HELPTEXT                        :Prehrať zvuk pri zhrnutých správach
@@ -1622,6 +1634,11 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :Rok ukončenia 
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :Rok v ktorom končí hra pre zaznamenanie skóre. Na konci tohto roku sa nahrá skóre spoločnosti a zobrazí sa tabuľka s najvyšším skóre, avšak hráči môžu v hre naďalej pokračovať.{}Ak je tento rok pred začiatkom hry, tabuľka sa nikdy nezobrazí.
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :Nikdy
+STR_CONFIG_SETTING_ECONOMY_TYPE                                 :Typ ekonomiky: {STRING}
+STR_CONFIG_SETTING_ECONOMY_TYPE_HELPTEXT                        :Plynulá ekonomika robí zmeny v produkcii častejšie a v menších krokoch. Zamrznutá ekonomika neumožňuje zmeny v produkcii, ani zatváranie priemyslu. Toto nastavenie nemusí ovplyvňovať priemysel z NewGRF.
+STR_CONFIG_SETTING_ECONOMY_TYPE_ORIGINAL                        :Originálna
+STR_CONFIG_SETTING_ECONOMY_TYPE_SMOOTH                          :Plynulá
+STR_CONFIG_SETTING_ECONOMY_TYPE_FROZEN                          :Zamrznutá
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Povoliť kupovanie podielov v ostatných spoločnostiach: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Ak je zapnuté, povolí sa nákup a predaj podielov spoločností. Podiely budú prístupné len pre spoločnosti od urcitého veku.
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Minimálny vek spoločnosti na obchodovanie s podielmi: {STRING}
@@ -1672,10 +1689,11 @@ STR_CONFIG_SETTING_TOWN_CARGOGENMODE_ORIGINAL                   :Kvadratické
 STR_CONFIG_SETTING_TOWN_CARGOGENMODE_BITCOUNT                   :Lineárne
 
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT                         :Umiestnenie stromov počas hry: {STRING}
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_HELPTEXT                :Riadi náhodný výskyt stromov počas hry. Toto môže ovplyvniť priemysel úzko spojený s rastom stromov ako napríklad Píla.
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NONE                    :žiadne {RED}(znefunkční pílu)
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_RAINFOREST              :Len v dažďových pralesoch
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_ALL                     :všade
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_HELPTEXT                :Riadi náhodný výskyt stromov počas hry. Toto môže ovplyvniť priemysel závislý na raste stromov, ako napríklad píly v subtropickej krajine
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NO_SPREAD               :Rastú, ale nešíria sa {RED}(znefunkční pílu)
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_SPREAD_RAINFOREST       :Rastú, ale šíria sa iba v pralese
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_SPREAD_ALL              :Rastú a šíria sa všade
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NO_GROWTH_NO_SPREAD     :Nerastú, nešíria sa {RED}(znefunkční pílu)
 
 STR_CONFIG_SETTING_TOOLBAR_POS                                  :Pozícia hlavného menu: {STRING}
 STR_CONFIG_SETTING_TOOLBAR_POS_HELPTEXT                         :Horizontálna poloha hlavného ovládacieho panela na vrchu obrazovky
@@ -1684,11 +1702,11 @@ STR_CONFIG_SETTING_STATUSBAR_POS_HELPTEXT                       :Horizontálna p
 STR_CONFIG_SETTING_SNAP_RADIUS                                  :Rádius uchytenia okna: {STRING}
 STR_CONFIG_SETTING_SNAP_RADIUS_HELPTEXT                         :Vzdialenosť medzi oknami pred tým ako je okno pripojené automaticky k vedľajšiemu oknu
 STR_CONFIG_SETTING_SNAP_RADIUS_VALUE                            :{COMMA} pixel{P "" y ov}
-STR_CONFIG_SETTING_SNAP_RADIUS_DISABLED                         :vypnuté
+STR_CONFIG_SETTING_SNAP_RADIUS_DISABLED                         :Vypnuté
 STR_CONFIG_SETTING_SOFT_LIMIT                                   :Maximálný počet nepriľnavých okien: {STRING}
-STR_CONFIG_SETTING_SOFT_LIMIT_HELPTEXT                          :Počet otvorených neprilepených okien pred tým ako sa najstrašie okno automatický zatvorí
+STR_CONFIG_SETTING_SOFT_LIMIT_HELPTEXT                          :Počet otvorených nepriľnavých okien pred tým ako sa najstrašie okno automatický zatvorí, aby vytvorilo priestor pre ďalšie okná
 STR_CONFIG_SETTING_SOFT_LIMIT_VALUE                             :{COMMA}
-STR_CONFIG_SETTING_SOFT_LIMIT_DISABLED                          :vypnuté
+STR_CONFIG_SETTING_SOFT_LIMIT_DISABLED                          :Vypnuté
 STR_CONFIG_SETTING_ZOOM_MIN                                     :Maximálna úroveň priblíženia: {STRING}
 STR_CONFIG_SETTING_ZOOM_MIN_HELPTEXT                            :Maximálna úroveň priblíženia pohľadu. Vyššie úrovne priblíženia zvyšujú požiadavky na pamäť
 STR_CONFIG_SETTING_ZOOM_MAX                                     :Maximálna úroveň oddialenia: {STRING}
@@ -1707,10 +1725,10 @@ STR_CONFIG_SETTING_TOWN_GROWTH_NORMAL                           :normálny
 STR_CONFIG_SETTING_TOWN_GROWTH_FAST                             :rýchly
 STR_CONFIG_SETTING_TOWN_GROWTH_VERY_FAST                        :Veľmi rýchly
 STR_CONFIG_SETTING_LARGER_TOWNS                                 :Podiel miest ktoré sa stanú veľkomestami: {STRING}
-STR_CONFIG_SETTING_LARGER_TOWNS_HELPTEXT                        :Množstvo miest ktoré sa stanú veľkomestami, teda tie ktoré začali väčšie a rastú rýchlejšie.
+STR_CONFIG_SETTING_LARGER_TOWNS_HELPTEXT                        :Množstvo miest, ktoré sa stanú veľkomestami, teda tie ktoré začali väčšie a rastú rýchlejšie.
 STR_CONFIG_SETTING_LARGER_TOWNS_VALUE                           :1 z {COMMA}
 STR_CONFIG_SETTING_LARGER_TOWNS_DISABLED                        :žiadne
-STR_CONFIG_SETTING_CITY_SIZE_MULTIPLIER                         :Násobok pociatocnej velkosti mesta: {STRING}
+STR_CONFIG_SETTING_CITY_SIZE_MULTIPLIER                         :Násobok počiatočnej veľkosti mesta: {STRING}
 STR_CONFIG_SETTING_CITY_SIZE_MULTIPLIER_HELPTEXT                :Priemerná veľkosť veľkomiest v porovnaní k mestám na začiatku hry.
 
 STR_CONFIG_SETTING_LINKGRAPH_INTERVAL                           :Aktualizovať distribučný graf každ{P 0:2 "ý" "é" "ých"} {STRING} {P 0:2 "deň" "dni" "dní"}
@@ -1742,7 +1760,7 @@ STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_HELPTEXT         :Vždy, keď sa 
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_IMPERIAL         :Imperiálne (mph)
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_METRIC           :Metrické (km/h)
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_SI               :SI (m/s)
-STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_GAMEUNITS        :Jednotky hry (políčka/deň)
+STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_GAMEUNITS        :Jednotky v hre (políčka/deň)
 
 STR_CONFIG_SETTING_LOCALISATION_UNITS_POWER                     :Jednotky výkonu vozidiel: {STRING}
 STR_CONFIG_SETTING_LOCALISATION_UNITS_POWER_HELPTEXT            :Vždy, keď sa zobrazí výkon vozidla v užívateľskom rozhraní, zobrazí sa vo vybraných jednotkách
@@ -1887,7 +1905,7 @@ STR_ABANDON_SCENARIO_QUERY                                      :{YELLOW}Ste si 
 # Cheat window
 STR_CHEATS                                                      :{WHITE}Cheaty
 STR_CHEATS_TOOLTIP                                              :{BLACK}Zaškrtávacie pole indikuje opakované použite cheatu
-STR_CHEATS_WARNING                                              :{BLACK}Varovanie! Chceš oklamať svojich protihráčov. Pamätajte že táto hanba bude zapísaná naveky
+STR_CHEATS_NOTE                                                 :{BLACK}Poznámka: použitie akéhokoľvek z týchto nastavení bude zaznamenané v uloženej hre
 STR_CHEAT_MONEY                                                 :{LTBLUE}Zvýšiť hotovosť o {CURRENCY_LONG}
 STR_CHEAT_CHANGE_COMPANY                                        :{LTBLUE}Hrať za spoločnosť: {ORANGE}{COMMA}
 STR_CHEAT_EXTRA_DYNAMITE                                        :{LTBLUE}Magický buldozér (odstráni priemysel a nehnuteľnosti): {ORANGE}{STRING}
@@ -1999,10 +2017,6 @@ STR_FACE_TIE_EARRING_TOOLTIP                                    :{BLACK}Zmeniť 
 
 # Network server list
 STR_NETWORK_SERVER_LIST_CAPTION                                 :{WHITE}Hra pre viac hráčov
-STR_NETWORK_SERVER_LIST_ADVERTISED                              :{BLACK}Zverejnené
-STR_NETWORK_SERVER_LIST_ADVERTISED_TOOLTIP                      :{BLACK}Vyberte medzi zverejnenou (internet) alebo nezverejnenou (lokálna sieť, LAN) hrou
-STR_NETWORK_SERVER_LIST_ADVERTISED_NO                           :Nie
-STR_NETWORK_SERVER_LIST_ADVERTISED_YES                          :Áno
 STR_NETWORK_SERVER_LIST_PLAYER_NAME                             :{BLACK}Meno hráča:
 STR_NETWORK_SERVER_LIST_ENTER_NAME_TOOLTIP                      :{BLACK}Toto je meno podla ktoreho vas ostatny identifikuju
 
@@ -2043,8 +2057,10 @@ STR_NETWORK_SERVER_LIST_JOIN_GAME                               :{BLACK}Pripojit
 STR_NETWORK_SERVER_LIST_REFRESH                                 :{BLACK}Obnoviť server
 STR_NETWORK_SERVER_LIST_REFRESH_TOOLTIP                         :{BLACK}Obnovit info o serveri
 
-STR_NETWORK_SERVER_LIST_FIND_SERVER                             :{BLACK}Nájsť server
-STR_NETWORK_SERVER_LIST_FIND_SERVER_TOOLTIP                     :{BLACK}Hladať server po sieti
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_INTERNET                  :{BLACK}Prehľadať internet
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_INTERNET_TOOLTIP          :{BLACK}Prehľadať verejné servery na internete
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_LAN                       :{BLACK}Prehľadať LAN
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_LAN_TOOLTIP               :{BLACK}Prehľadať servery na lokálnej sieti
 STR_NETWORK_SERVER_LIST_ADD_SERVER                              :{BLACK}Pridať server
 STR_NETWORK_SERVER_LIST_ADD_SERVER_TOOLTIP                      :{BLACK}Pridá server do zoznamu, v ktorom sa vždy budú hľadať prebiehajúce hry
 STR_NETWORK_SERVER_LIST_START_SERVER                            :{BLACK}Spustiť server
@@ -2061,6 +2077,8 @@ STR_NETWORK_START_SERVER_NEW_GAME_NAME_TOOLTIP                  :{BLACK}Názov h
 STR_NETWORK_START_SERVER_SET_PASSWORD                           :{BLACK}Nastaviť heslo
 STR_NETWORK_START_SERVER_PASSWORD_TOOLTIP                       :{BLACK}Zabezpeč hru heslom, ak nechceš povoliť verejný prístup
 
+STR_NETWORK_START_SERVER_ADVERTISED_LABEL                       :{BLACK}Zverejnené
+STR_NETWORK_START_SERVER_ADVERTISED_TOOLTIP                     :{BLACK}Vyberte medzi zverejnenou (internet) alebo nezverejnenou (lokálna sieť, LAN) hrou
 STR_NETWORK_START_SERVER_UNADVERTISED                           :Nie
 STR_NETWORK_START_SERVER_ADVERTISED                             :Áno
 STR_NETWORK_START_SERVER_CLIENTS_SELECT                         :{BLACK}{NUM} klient{P "" i ov}
@@ -2121,7 +2139,7 @@ STR_NETWORK_LANG_LATVIAN                                        :Litovsky
 STR_NETWORK_GAME_LOBBY_CAPTION                                  :{WHITE}Sieťová hra - čakáreň
 
 STR_NETWORK_GAME_LOBBY_PREPARE_TO_JOIN                          :{BLACK}Pripravuje sa k vstupu: {ORANGE}{STRING}
-STR_NETWORK_GAME_LOBBY_COMPANY_LIST_TOOLTIP                     :{BLACK}Aktualny zoznam spolocnosti v tejto hre. Bud mozes do jednej vstupit, alebo zalozit novu spolocnost.
+STR_NETWORK_GAME_LOBBY_COMPANY_LIST_TOOLTIP                     :{BLACK}Aktuálny zoznam spoločností v tejto hre. Buď môžeš do jednej vstúpiť, alebo založiť novú spoločnosť.
 
 STR_NETWORK_GAME_LOBBY_COMPANY_INFO                             :{SILVER}INFO O SPOLOCNOSTI
 STR_NETWORK_GAME_LOBBY_COMPANY_NAME                             :{SILVER}Názov spoločnosti: {WHITE}{STRING}
@@ -2219,7 +2237,7 @@ STR_NETWORK_ERROR_LOSTCONNECTION                                :{WHITE}Sieť - 
 STR_NETWORK_ERROR_SAVEGAMEERROR                                 :{WHITE}Nedokážem nahrať hru zo servera
 STR_NETWORK_ERROR_SERVER_START                                  :{WHITE}Server nemôžem spustiť
 STR_NETWORK_ERROR_CLIENT_START                                  :{WHITE}Nemozem sa pripojit.
-STR_NETWORK_ERROR_TIMEOUT                                       :{WHITE}Vypršal časový limit pre spojenie #{NUM}
+STR_NETWORK_ERROR_TIMEOUT                                       :{WHITE}Vypršal časový limit pre spojenie č. {NUM}
 STR_NETWORK_ERROR_SERVER_ERROR                                  :{WHITE}Chyba vznikla v protokole a spojenie je zatvorene.
 STR_NETWORK_ERROR_WRONG_REVISION                                :{WHITE}Revizia hry u tohto klienta nezodpoveda revizii hry na serveri.
 STR_NETWORK_ERROR_WRONG_PASSWORD                                :{WHITE}Nespravne heslo.
@@ -2267,23 +2285,24 @@ STR_NETWORK_SERVER_MESSAGE_GAME_PAUSED                          :Hra pozastaven�
 STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_1                  :Hra stále pozastavená ({STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_2                  :Hra stále pozastavená ({STRING}, {STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_3                  :Hra stále pozastavená ({STRING}, {STRING}, {STRING})
-STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_4                  :Hra je pozastavená ({STRING}, {STRING}, {STRING}, {STRING})
+STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_4                  :Hra stále pozastavená ({STRING}, {STRING}, {STRING}, {STRING})
+STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_5                  :Hra stále pozastavená ({STRING}, {STRING}, {STRING}, {STRING}, {STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_UNPAUSED                        :Hra pokračuje ({STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_NOT_ENOUGH_PLAYERS       :počet hráčov
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_CONNECTING_CLIENTS       :pripájanie klientov
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_MANUAL                   :manuálne
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_GAME_SCRIPT              :herný skript
+STR_NETWORK_SERVER_MESSAGE_GAME_REASON_LINK_GRAPH               :čaká sa na aktualizovanie spojovacieho grafu
 ############ End of leave-in-this-order
 STR_NETWORK_MESSAGE_CLIENT_LEAVING                              :odchádza
 STR_NETWORK_MESSAGE_CLIENT_JOINED                               :*** {STRING} vstúpil do hry
-STR_NETWORK_MESSAGE_CLIENT_JOINED_ID                            :*** {STRING} vstúpil do hry (Client #{2:NUM})
-STR_NETWORK_MESSAGE_CLIENT_COMPANY_JOIN                         :*** {STRING} sa pripojil do spoločnosti #{2:NUM}
+STR_NETWORK_MESSAGE_CLIENT_JOINED_ID                            :*** {STRING} vstúpil do hry (klient č. {2:NUM})
+STR_NETWORK_MESSAGE_CLIENT_COMPANY_JOIN                         :*** {STRING} sa pripojil do spoločnosti č. {2:NUM}
 STR_NETWORK_MESSAGE_CLIENT_COMPANY_SPECTATE                     :*** {STRING} sa pripojil k pozorovateľom
-STR_NETWORK_MESSAGE_CLIENT_COMPANY_NEW                          :*** {STRING} založil novú spoločnosť (#{2:NUM})
+STR_NETWORK_MESSAGE_CLIENT_COMPANY_NEW                          :*** {STRING} založil novú spoločnosť (č. {2:NUM})
 STR_NETWORK_MESSAGE_CLIENT_LEFT                                 :*** {STRING} opustil hru ({2:STRING})
 STR_NETWORK_MESSAGE_NAME_CHANGE                                 :*** {STRING} zmenil/-a svoje meno na {STRING}
-STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} dal ti spoločnosť {2:CURRENCY_LONG}
-STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Dal si {1:STRING} {2:CURRENCY_LONG}
+STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} dal {2:CURRENCY_LONG} spoločnosti {1:STRING}
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}Server ukoncil relaciu
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}Server sa reštartuje...{}Čakajte prosím...
 STR_NETWORK_MESSAGE_KICKED                                      :*** Hráč {STRING} bol vyhodený. Dôvod: ({STRING})
@@ -2402,6 +2421,9 @@ STR_JOIN_STATION_CREATE_SPLITTED_STATION                        :{YELLOW}Postavi
 STR_JOIN_WAYPOINT_CAPTION                                       :{WHITE}Spojiť smerový bod
 STR_JOIN_WAYPOINT_CREATE_SPLITTED_WAYPOINT                      :{YELLOW}Postaviť smerový bod oddelene
 
+# Generic toolbar
+STR_TOOLBAR_DISABLED_NO_VEHICLE_AVAILABLE                       :{BLACK}Vypnuté, pretože v súčasnosti nie sú dostuné žiadne vozidlá pre tento typ infraštruktúry
+
 # Rail construction toolbar
 STR_RAIL_TOOLBAR_RAILROAD_CONSTRUCTION_CAPTION                  :Výstavba železnice
 STR_RAIL_TOOLBAR_ELRAIL_CONSTRUCTION_CAPTION                    :Výstavba elektrifikovanej železnice
@@ -2430,7 +2452,7 @@ STR_BUILD_DEPOT_TRAIN_ORIENTATION_TOOLTIP                       :{BLACK}Vybrať 
 
 # Rail waypoint construction window
 STR_WAYPOINT_CAPTION                                            :{WHITE}Smerový bod
-STR_WAYPOINT_GRAPHICS_TOOLTIP                                   :{BLACK}Vyber typ kontrolneho bodu
+STR_WAYPOINT_GRAPHICS_TOOLTIP                                   :{BLACK}Vyber typ kontrolného bodu
 
 # Rail station construction window
 STR_STATION_BUILD_RAIL_CAPTION                                  :{WHITE}Výber železničnej stanice
@@ -2589,13 +2611,19 @@ STR_OBJECT_BUILD_SIZE                                           :{BLACK}Rozmery:
 STR_OBJECT_CLASS_LTHS                                           :Majáky
 STR_OBJECT_CLASS_TRNS                                           :Vysielače
 
-# Tree planting window (last two for SE only)
+# Tree planting window (last eight for SE only)
 STR_PLANT_TREE_CAPTION                                          :{WHITE}Stromy
 STR_PLANT_TREE_TOOLTIP                                          :{BLACK}Vybrať druh stromu na sadenie. Ak sa už strom na políčku nachádza, pridá sa viac stromov zmiešaných druhov nezávisle od vybraného druhu
 STR_TREES_RANDOM_TYPE                                           :{BLACK}Náhodný druh stromov
 STR_TREES_RANDOM_TYPE_TOOLTIP                                   :{BLACK}Umiestniť stromy náhodného druhu. Shift zobrazí odhadovanú cenu
 STR_TREES_RANDOM_TREES_BUTTON                                   :{BLACK}Náhodné stromy
 STR_TREES_RANDOM_TREES_TOOLTIP                                  :{BLACK}Zasadiť stromy náhodne po celej krajine
+STR_TREES_MODE_NORMAL_BUTTON                                    :{BLACK}Normálne
+STR_TREES_MODE_NORMAL_TOOLTIP                                   :{BLACK}Sadiť stromy po jednom, ťahaním po krajine.
+STR_TREES_MODE_FOREST_SM_BUTTON                                 :{BLACK}Porast
+STR_TREES_MODE_FOREST_SM_TOOLTIP                                :{BLACK}Sadiť malé porasty ťahaním po krajine.
+STR_TREES_MODE_FOREST_LG_BUTTON                                 :{BLACK}Les
+STR_TREES_MODE_FOREST_LG_TOOLTIP                                :{BLACK}Sadiť veľké lesy ťahaním po krajine.
 
 # Land generation window (SE)
 STR_TERRAFORM_TOOLBAR_LAND_GENERATION_CAPTION                   :{WHITE}Generovanie územia
@@ -2672,6 +2700,7 @@ STR_INDUSTRY_CARGOES_SELECT_INDUSTRY_TOOLTIP                    :{BLACK}Vyber pr
 
 # Land area window
 STR_LAND_AREA_INFORMATION_CAPTION                               :{WHITE}Informácie o pozemku
+STR_LAND_AREA_INFORMATION_LOCATION_TOOLTIP                      :{BLACK}Vycentrovať pohľad na pozíciu políčka. Ctrl+klik otvorí nové okno s pohľadom na políčko
 STR_LAND_AREA_INFORMATION_COST_TO_CLEAR_N_A                     :{BLACK}Náklady na odstránenie: {LTBLUE}N/A
 STR_LAND_AREA_INFORMATION_COST_TO_CLEAR                         :{BLACK}Náklady na odstránenie: {RED}{CURRENCY_LONG}
 STR_LAND_AREA_INFORMATION_REVENUE_WHEN_CLEARED                  :{BLACK}Zisk pri odstránení: {LTBLUE}{CURRENCY_LONG}
@@ -2767,21 +2796,21 @@ STR_LAI_WATER_DESCRIPTION_SHIP_DEPOT                            :Lodenica
 STR_LAI_TUNNEL_DESCRIPTION_RAILROAD                             :Železničný tunel
 STR_LAI_TUNNEL_DESCRIPTION_ROAD                                 :Cestný tunel
 
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_SUSPENSION_STEEL                :Ocelovy zavesny zeleznicny most
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_GIRDER_STEEL                    :Ocelovy pilierovy zeleznicny most
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_CANTILEVER_STEEL                :Ocelovy visuty zeleznicny most
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_SUSPENSION_CONCRETE             :Vystuzeny zavesny betonovy zeleznicny most
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_WOODEN                          :Dreveny zeleznicny most
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_CONCRETE                        :Betonovy zeleznicny most
-STR_LAI_BRIDGE_DESCRIPTION_RAIL_TUBULAR_STEEL                   :Kryty zeleznicny most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_SUSPENSION_STEEL                :Oceľový závesný železničný most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_GIRDER_STEEL                    :Oceľový pilierový železničný most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_CANTILEVER_STEEL                :Oceľový visutý železničný most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_SUSPENSION_CONCRETE             :Vystužený závesný betónový železničný most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_WOODEN                          :Drevený železničný most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_CONCRETE                        :Betónový železničný most
+STR_LAI_BRIDGE_DESCRIPTION_RAIL_TUBULAR_STEEL                   :Krytý železničný most
 
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_SUSPENSION_STEEL                :Ocelovy zavesny cestny most
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_GIRDER_STEEL                    :Ocelovy pilierovy cestny most
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_CANTILEVER_STEEL                :Ocelovy visuty cestny most
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_SUSPENSION_CONCRETE             :Vystuzeny zavesny betonovy cestny most
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_WOODEN                          :Dreveny cestny most
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_CONCRETE                        :Betonovy cestny most
-STR_LAI_BRIDGE_DESCRIPTION_ROAD_TUBULAR_STEEL                   :Kryty cestny most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_SUSPENSION_STEEL                :Oceľový závesný cestný most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_GIRDER_STEEL                    :Oceľovy pilierový cestný most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_CANTILEVER_STEEL                :Oceľový visutý cestný most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_SUSPENSION_CONCRETE             :Vystužený závesný betónový cestný most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_WOODEN                          :Drevený cestný most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_CONCRETE                        :Betónový cestný most
+STR_LAI_BRIDGE_DESCRIPTION_ROAD_TUBULAR_STEEL                   :Krytý cestný most
 
 STR_LAI_BRIDGE_DESCRIPTION_AQUEDUCT                             :Akvadukt
 
@@ -2921,12 +2950,12 @@ STR_MAPGEN_BORDER_MANUAL                                        :{BLACK}Manuáln
 
 STR_MAPGEN_HEIGHTMAP_ROTATION                                   :{BLACK}Orientácia výškovej mapy:
 STR_MAPGEN_HEIGHTMAP_NAME                                       :{BLACK}Názov výškovej mapy:
-STR_MAPGEN_HEIGHTMAP_SIZE_LABEL                                 :{BLACK}Velkost:
+STR_MAPGEN_HEIGHTMAP_SIZE_LABEL                                 :{BLACK}Veľkosť:
 STR_MAPGEN_HEIGHTMAP_SIZE                                       :{ORANGE}{NUM} x {NUM}
 
 STR_MAPGEN_MAX_HEIGHTLEVEL_QUERY_CAPT                           :{WHITE}Zmeniť maximálnu výšku mapy
 STR_MAPGEN_SNOW_LINE_QUERY_CAPT                                 :{WHITE}Zmeniť výšku hranice snehu
-STR_MAPGEN_START_DATE_QUERY_CAPT                                :{WHITE}Zmenit rok zaciatku hry
+STR_MAPGEN_START_DATE_QUERY_CAPT                                :{WHITE}Zmeniť rok začiatku hry
 
 # SE Map generation
 STR_SE_MAPGEN_CAPTION                                           :{WHITE}Typ scenara
@@ -3142,8 +3171,9 @@ STR_SIGN_LIST_MATCH_CASE_TOOLTIP                                :{BLACK}Brať/ne
 
 # Sign window
 STR_EDIT_SIGN_CAPTION                                           :{WHITE}Upraviť text popisu
-STR_EDIT_SIGN_NEXT_SIGN_TOOLTIP                                 :{BLACK}Prejst na dalsiu znacku
-STR_EDIT_SIGN_PREVIOUS_SIGN_TOOLTIP                             :{BLACK}Prejsť na predchádzajúcu značku
+STR_EDIT_SIGN_LOCATION_TOOLTIP                                  :{BLACK}Vycentrovať pohľad na pozíciu popisu. Ctrl+klik otvorí nové okno s pohľadom na popis
+STR_EDIT_SIGN_NEXT_SIGN_TOOLTIP                                 :{BLACK}Prejsť na ďalší popis
+STR_EDIT_SIGN_PREVIOUS_SIGN_TOOLTIP                             :{BLACK}Prejsť na predchádzajúci popis
 
 STR_EDIT_SIGN_SIGN_OSKTITLE                                     :{BLACK}Zadajte názov pre popis
 
@@ -3225,10 +3255,10 @@ STR_GOALS_COMPANY_TITLE                                         :{BLACK}Ciele sp
 STR_GOALS_TOOLTIP_CLICK_ON_SERVICE_TO_CENTER                    :{BLACK}Klikni pre vycentrovanie pohľadu na priemysel/mesto/políčko. Ctrl+klik otvorí nové okno s pohľadom na priemysel/mesto/políčko
 
 # Goal question window
-STR_GOAL_QUESTION_CAPTION_QUESTION                              :Otázka
-STR_GOAL_QUESTION_CAPTION_INFORMATION                           :Informácie
-STR_GOAL_QUESTION_CAPTION_WARNING                               :Varovanie
-STR_GOAL_QUESTION_CAPTION_ERROR                                 :Chyba
+STR_GOAL_QUESTION_CAPTION_QUESTION                              :{BLACK}Otázka
+STR_GOAL_QUESTION_CAPTION_INFORMATION                           :{BLACK}Informácia
+STR_GOAL_QUESTION_CAPTION_WARNING                               :{BLACK}Varovanie
+STR_GOAL_QUESTION_CAPTION_ERROR                                 :{YELLOW}Chyba
 
 ############ Start of Goal Question button list
 STR_GOAL_QUESTION_BUTTON_CANCEL                                 :Zrušiť
@@ -3418,7 +3448,8 @@ STR_COMPANY_VIEW_RELOCATE_HQ                                    :{BLACK}Premiest
 STR_COMPANY_VIEW_RELOCATE_COMPANY_HEADQUARTERS                  :{BLACK}Sídlo spoločnosti je možné premiestniť za 1% hodnoty spoločnosti. Shift+klik zobrazí odhadovanú cenu
 STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON                          :{BLACK}Detaily
 STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP                         :{BLACK}Zobraziť podrobné políčka infraštruktúry
-STR_COMPANY_VIEW_GIVE_MONEY_BUTTON                              :{BLACK}Previesť peniaze
+STR_COMPANY_VIEW_GIVE_MONEY_BUTTON                              :{BLACK}Dať peniaze
+STR_COMPANY_VIEW_GIVE_MONEY_TOOLTIP                             :{BLACK}Presunúť peniaze do tejto spoločnosti
 
 STR_COMPANY_VIEW_NEW_FACE_BUTTON                                :{BLACK}Nová tvár
 STR_COMPANY_VIEW_NEW_FACE_TOOLTIP                               :{BLACK}Vybrať novú tvár prezidenta
@@ -3436,7 +3467,7 @@ STR_COMPANY_VIEW_SELL_SHARE_TOOLTIP                             :{BLACK}Predať 
 
 STR_COMPANY_VIEW_COMPANY_NAME_QUERY_CAPTION                     :Názov spoločnosti
 STR_COMPANY_VIEW_PRESIDENT_S_NAME_QUERY_CAPTION                 :Meno prezidenta
-STR_COMPANY_VIEW_GIVE_MONEY_QUERY_CAPTION                       :Vložte čiastku ktorú chcete dať
+STR_COMPANY_VIEW_GIVE_MONEY_QUERY_CAPTION                       :Zadajte množstvo peňazí, ktoré chcete dať spoločnosti
 
 STR_BUY_COMPANY_MESSAGE                                         :{WHITE}Hľadáme záujemcu o kúpu našej spoločnosti{}{}Chcete kúpiť našu spoločnosť {COMPANY} za {CURRENCY_LONG}?
 
@@ -3797,10 +3828,10 @@ STR_REPLACE_REMOVE_WAGON_HELP                                   :{BLACK}Zachovan
 # Vehicle view
 STR_VEHICLE_VIEW_CAPTION                                        :{WHITE}{VEHICLE}
 
-STR_VEHICLE_VIEW_TRAIN_LOCATION_TOOLTIP                         :{BLACK}Vycentrovať pohľad na pozíciu vlaku. Ctrl+klik bude sledovať vlak
-STR_VEHICLE_VIEW_ROAD_VEHICLE_LOCATION_TOOLTIP                  :{BLACK}Vycentrovať pohľad na pozíciu vozidla. Ctrl+klik bude sledovať vozidlo
-STR_VEHICLE_VIEW_SHIP_LOCATION_TOOLTIP                          :{BLACK}Vycentrovať pohľad na pozíciu lode. Ctrl+klik bude sledovať loď
-STR_VEHICLE_VIEW_AIRCRAFT_LOCATION_TOOLTIP                      :{BLACK}Vycentrovať pohľad na pozíciu lietadla. Ctrl+klik bude sledovať lietadlo
+STR_VEHICLE_VIEW_TRAIN_CENTER_TOOLTIP                           :{BLACK}Vycentrovať pohľad na pozíciu vlaku. Dvojité kliknutie bude sledovať vlak v hlavnom pohľade. Ctrl+klik otvorí nové okno s pohľadom na vlak
+STR_VEHICLE_VIEW_ROAD_VEHICLE_CENTER_TOOLTIP                    :{BLACK}Vycentrovať pohľad na pozíciu vozidla. Dvojité kliknutie bude sledovať vozidlo v hlavnom pohľade. Ctrl+klik otvorí nové okno s pohľadom na vozidlo
+STR_VEHICLE_VIEW_SHIP_CENTER_TOOLTIP                            :{BLACK}Vycentrovať pohľad na pozíciu lode. Dvojité kliknutie bude sledovať loď v hlavnom pohľade. Ctrl+klik otvorí nové okno s pohľadom na loď
+STR_VEHICLE_VIEW_AIRCRAFT_CENTER_TOOLTIP                        :{BLACK}Vycentrovať pohľad na pozíciu lietadla. Dvojité kliknutie bude sledovať lietadlo v hlavnom pohľade. Ctrl+klik otvorí nové okno s pohľadom na lietadlo
 
 STR_VEHICLE_VIEW_TRAIN_SEND_TO_DEPOT_TOOLTIP                    :{BLACK}Poslať vlak do depa. Ctrl+klik iba servis
 STR_VEHICLE_VIEW_ROAD_VEHICLE_SEND_TO_DEPOT_TOOLTIP             :{BLACK}Poslať vozidlo do garáže. Ctrl+klik iba servis.
@@ -3832,10 +3863,12 @@ STR_VEHICLE_VIEW_ROAD_VEHICLE_SHOW_DETAILS_TOOLTIP              :{BLACK}Zobrazi�
 STR_VEHICLE_VIEW_SHIP_SHOW_DETAILS_TOOLTIP                      :{BLACK}Zobraziť detaily o lodi
 STR_VEHICLE_VIEW_AIRCRAFT_SHOW_DETAILS_TOOLTIP                  :{BLACK}Zobraziť detaily o lietadle
 
-STR_VEHICLE_VIEW_TRAIN_STATE_START_STOP_TOOLTIP                 :{BLACK}Aktuálna činnosť vlaku - kliknutím sa zastaví/spustí. Ctrl+klik presunie pohľad na cieľovú stanicu
-STR_VEHICLE_VIEW_ROAD_VEHICLE_STATE_START_STOP_TOOLTIP          :{BLACK}Aktuálna činnosť vozidla - kliknutím sa zastaví/spustí. Ctrl+klik presunie pohľad na cieľovú stanicu
-STR_VEHICLE_VIEW_SHIP_STATE_START_STOP_TOOLTIP                  :{BLACK}Aktuálna činnosť lode - kliknutím sa zastaví/spustí. Ctrl+klik presunie pohľad na cieľovú stanicu
-STR_VEHICLE_VIEW_AIRCRAFT_STATE_START_STOP_TOOLTIP              :{BLACK}Aktuálna činnosť lietadla - kliknutím sa zastaví/spustí. Ctrl+klik presunie pohľad na cieľovú stanicu
+STR_VEHICLE_VIEW_TRAIN_STATUS_START_STOP_TOOLTIP                :{BLACK}Činnosť aktuálneho vlaku - kliknite na zastavenie/spustenie vlaku
+STR_VEHICLE_VIEW_ROAD_VEHICLE_STATUS_START_STOP_TOOLTIP         :{BLACK}Činnosť aktuálneho cestného vozidla - kliknite na zastavenie/spustenie cestného vozidla
+STR_VEHICLE_VIEW_SHIP_STATE_STATUS_STOP_TOOLTIP                 :{BLACK}Činnosť aktuálnej lode - kliknite na zastavenie/spustenie lode
+STR_VEHICLE_VIEW_AIRCRAFT_STATUS_START_STOP_TOOLTIP             :{BLACK}Činnosť aktuálneho lietadla - kliknite na zastavenie/spustenie lietadla
+
+STR_VEHICLE_VIEW_ORDER_LOCATION_TOOLTIP                         :{BLACK}Vycentrovať pohľad na cieľovú pozíciu. Ctrl+klik otvorí nové okno s pohľadom na cieľ
 
 # Messages in the start stop button in the vehicle view
 STR_VEHICLE_STATUS_LOADING_UNLOADING                            :{LTBLUE}Nakláda / Vykláda
@@ -4063,6 +4096,7 @@ STR_ORDER_REFIT_STOP_ORDER                                      :(Prestavba na {
 STR_ORDER_STOP_ORDER                                            :(Zastav)
 
 STR_ORDER_GO_TO_STATION                                         :{STRING} {STATION} {STRING}
+STR_ORDER_GO_TO_STATION_CAN_T_USE_STATION                       :{PUSH_COLOUR}{RED}(Nemožno použiť stanicu){POP_COLOUR} {STRING} {STATION} {STRING}
 
 STR_ORDER_IMPLICIT                                              :(Predpokladané)
 
@@ -4307,6 +4341,7 @@ STR_GAME_SAVELOAD_ERROR_TOO_NEW_SAVEGAME                        :Hra bola ulože
 STR_GAME_SAVELOAD_ERROR_FILE_NOT_READABLE                       :Súbor nie je možné prečítať
 STR_GAME_SAVELOAD_ERROR_FILE_NOT_WRITEABLE                      :Súbor nie je možné zapísať
 STR_GAME_SAVELOAD_ERROR_DATA_INTEGRITY_CHECK_FAILED             :Kontrola integrity dát zlyhala
+STR_GAME_SAVELOAD_ERROR_PATCHPACK                               :Hra bola uložená v modifikovanej verzii
 STR_GAME_SAVELOAD_NOT_AVAILABLE                                 :<nedostupné>
 STR_WARNING_LOADGAME_REMOVED_TRAMS                              :{WHITE}Hra bola uložená vo verzii bez električiek. Vsetky električky boli odstránené
 
@@ -4386,7 +4421,8 @@ STR_ERROR_CAN_T_BORROW_ANY_MORE_MONEY                           :{WHITE}Nemôže
 STR_ERROR_LOAN_ALREADY_REPAYED                                  :{WHITE}... úver už bol splatený
 STR_ERROR_CURRENCY_REQUIRED                                     :{WHITE}... {CURRENCY_LONG} potrebuješ
 STR_ERROR_CAN_T_REPAY_LOAN                                      :{WHITE}Úver sa nedá splatiť...
-STR_ERROR_INSUFFICIENT_FUNDS                                    :{WHITE}Nie je mozne poskytnut peniaze, ktore su pozicane z banky ...
+STR_ERROR_INSUFFICIENT_FUNDS                                    :{WHITE}Nie je možné presunúť peniaze, ktoré sú požičané z banky...
+STR_ERROR_CAN_T_GIVE_MONEY                                      :{WHITE}Nie je možné presunúť peniaze tejto spoločnosti...
 STR_ERROR_CAN_T_BUY_COMPANY                                     :{WHITE}Spoločnosť nie je možné kúpiť ...
 STR_ERROR_CAN_T_BUILD_COMPANY_HEADQUARTERS                      :{WHITE}Nemôžeš postaviť sídlo spoločnosti...
 STR_ERROR_CAN_T_BUY_25_SHARE_IN_THIS                            :{WHITE}Nemôžeš kúpiť 25% podiel v tejto spoločnosti...
@@ -4513,6 +4549,8 @@ STR_ERROR_DEPOT_WRONG_DEPOT_TYPE                                :Nesprávny typ 
 STR_ERROR_TRAIN_TOO_LONG_AFTER_REPLACEMENT                      :{WHITE}{VEHICLE} je dlho po výmene
 STR_ERROR_AUTOREPLACE_NOTHING_TO_DO                             :{WHITE}Neboli využité žiadne pravidlá pre obnovu.
 STR_ERROR_AUTOREPLACE_MONEY_LIMIT                               :(finančný limit)
+STR_ERROR_AUTOREPLACE_INCOMPATIBLE_CARGO                        :{WHITE}Nové vozidlo nemôže prevážať {STRING}
+STR_ERROR_AUTOREPLACE_INCOMPATIBLE_REFIT                        :{WHITE}Nové vozidlo nemôže uskutočniť prestavbu v príkaze {NUM}
 
 # Rail construction errors
 STR_ERROR_IMPOSSIBLE_TRACK_COMBINATION                          :{WHITE}Nemožná kombinácia trate
@@ -4713,6 +4751,11 @@ STR_BASEMUSIC_DOS_DESCRIPTION                                   :Pôvodná hudba
 STR_BASEMUSIC_TTO_DESCRIPTION                                   :Pôvodná hudba z Transport Tycoon (DOS).
 STR_BASEMUSIC_NONE_DESCRIPTION                                  :Sada hudby neobsahujúca hudbu.
 
+STR_TRADITIONAL_TRAIN_NAME                                      :{G=m}Vlak {COMMA}
+STR_TRADITIONAL_ROAD_VEHICLE_NAME                               :{G=s}Cestné vozidlo {COMMA}
+STR_TRADITIONAL_SHIP_NAME                                       :{G=z}Loď {COMMA}
+STR_TRADITIONAL_AIRCRAFT_NAME                                   :{G=s}Lietadlo {COMMA}
+
 ##id 0x2000
 # Town building names
 STR_TOWN_BUILDING_NAME_TALL_OFFICE_BLOCK_1                      :{G=z}Vysoká kancelárska budova
@@ -4794,10 +4837,10 @@ STR_INDUSTRY_NAME_SUGAR_MINE                                    :{G=z}Cukrová b
 ##id 0x6000
 STR_SV_EMPTY                                                    :
 STR_SV_UNNAMED                                                  :Bez názvu
-STR_SV_TRAIN_NAME                                               :{G=m}Vlak {COMMA}
-STR_SV_ROAD_VEHICLE_NAME                                        :{G=s}Cestné vozidlo {COMMA}
-STR_SV_SHIP_NAME                                                :{G=z}Loď {COMMA}
-STR_SV_AIRCRAFT_NAME                                            :{G=s}Lietadlo {COMMA}
+STR_SV_TRAIN_NAME                                               :{G=m}Vlak č. {COMMA}
+STR_SV_ROAD_VEHICLE_NAME                                        :{G=s}Cestné vozidlo č. {COMMA}
+STR_SV_SHIP_NAME                                                :{G=z}Loď č. {COMMA}
+STR_SV_AIRCRAFT_NAME                                            :{G=s}Lietadlo č. {COMMA}
 
 STR_SV_STNAME                                                   :{STRING}
 STR_SV_STNAME_NORTH                                             :{STRING} Sever
@@ -4826,7 +4869,7 @@ STR_SV_STNAME_UPPER                                             :Horný {STRING}
 STR_SV_STNAME_LOWER                                             :Dolný {STRING}
 STR_SV_STNAME_HELIPORT                                          :{STRING} Heliport
 STR_SV_STNAME_FOREST                                            :{STRING} Les
-STR_SV_STNAME_FALLBACK                                          :{STRING} Stanica #{NUM}
+STR_SV_STNAME_FALLBACK                                          :{STRING} Stanica č. {NUM}
 ############ end of savegame specific region!
 
 ##id 0x8000
@@ -5096,19 +5139,20 @@ STR_FORMAT_DATE_LONG                                            :{STRING} {STRIN
 STR_FORMAT_DATE_ISO                                             :{2:NUM}-{1:STRING}-{0:STRING}
 
 STR_FORMAT_BUOY_NAME                                            :{TOWN} Bója
-STR_FORMAT_BUOY_NAME_SERIAL                                     :{TOWN} Bója #{COMMA}
+STR_FORMAT_BUOY_NAME_SERIAL                                     :{TOWN} Bója č. {COMMA}
 STR_FORMAT_COMPANY_NUM                                          :(Spoločnosť {COMMA})
 STR_FORMAT_GROUP_NAME                                           :Skupina {COMMA}
+STR_FORMAT_GROUP_VEHICLE_NAME                                   :{GROUP} č. {COMMA}
 STR_FORMAT_INDUSTRY_NAME                                        :{1:STRING} {0:TOWN}
 STR_FORMAT_WAYPOINT_NAME                                        :Smerový bod {TOWN}
-STR_FORMAT_WAYPOINT_NAME_SERIAL                                 :Smerový bod {TOWN} #{COMMA}
+STR_FORMAT_WAYPOINT_NAME_SERIAL                                 :Smerový bod {TOWN} č. {COMMA}
 
 STR_FORMAT_DEPOT_NAME_TRAIN                                     :Vlakové depo {TOWN}
-STR_FORMAT_DEPOT_NAME_TRAIN_SERIAL                              :Vlakové depo {TOWN} #{COMMA}
+STR_FORMAT_DEPOT_NAME_TRAIN_SERIAL                              :Vlakové depo {TOWN} č. {COMMA}
 STR_FORMAT_DEPOT_NAME_ROAD_VEHICLE                              :Garáž {TOWN}
-STR_FORMAT_DEPOT_NAME_ROAD_VEHICLE_SERIAL                       :Garáž {TOWN} #{COMMA}
+STR_FORMAT_DEPOT_NAME_ROAD_VEHICLE_SERIAL                       :Garáž {TOWN} č. {COMMA}
 STR_FORMAT_DEPOT_NAME_SHIP                                      :Lodenica {TOWN}
-STR_FORMAT_DEPOT_NAME_SHIP_SERIAL                               :Lodenica {TOWN} #{COMMA}
+STR_FORMAT_DEPOT_NAME_SHIP_SERIAL                               :Lodenica {TOWN} č. {COMMA}
 STR_FORMAT_DEPOT_NAME_AIRCRAFT                                  :Letecký hangár {STATION}
 
 STR_UNKNOWN_STATION                                             :neznáma stanica

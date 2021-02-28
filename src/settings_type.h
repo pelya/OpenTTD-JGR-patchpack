@@ -119,7 +119,6 @@ struct GUISettings : public TimeSettings {
 	uint8  window_soft_limit;                ///< soft limit of maximum number of non-stickied non-vital windows (0 = no limit)
 	ZoomLevel zoom_min;                      ///< minimum zoom out level
 	ZoomLevel zoom_max;                      ///< maximum zoom out level
-	bool   disable_unsuitable_building;      ///< disable infrastructure building when no suitable vehicles are available
 	byte   autosave;                         ///< how often should we do autosaves?
 	bool   threaded_saves;                   ///< should we do threaded saves?
 	bool   keep_all_autosave;                ///< name the autosave in a different way
@@ -196,6 +195,7 @@ struct GUISettings : public TimeSettings {
 	uint8  osk_activation;                   ///< Mouse gesture to trigger the OSK.
 	byte   starting_colour;                  ///< default color scheme for the company to start a new game with
 	bool   show_newgrf_name;                 ///< Show the name of the NewGRF in the build vehicle window
+	bool   auto_remove_signals;              ///< automatically remove signals when in the way during rail construction
 	bool   show_vehicle_route_steps;         ///< when a window related to a specific vehicle is focused, show route steps
 	bool   show_vehicle_list_company_colour; ///< show the company colour of vehicles which have an owner different to the owner of the vehicle list
 	bool   enable_single_veh_shared_order_gui;    ///< enable showing a single vehicle in the shared order GUI window
@@ -206,6 +206,7 @@ struct GUISettings : public TimeSettings {
 	bool   open_vehicle_gui_clone_share;     ///< Open vehicle GUI when share-cloning vehicle from depot GUI
 	uint8  linkgraph_colours;                ///< linkgraph overlay colours
 	bool   disable_vehicle_image_update;     ///< Disable NewGRFs from continuously updating vehicle images
+	uint8  vehicle_names;                    ///< Vehicle naming scheme
 
 	uint16 console_backlog_timeout;          ///< the minimum amount of time items should be in the console backlog before they will be removed in ~3 seconds granularity.
 	uint16 console_backlog_length;           ///< the minimum amount of items in the console backlog before items will be removed.
@@ -316,7 +317,6 @@ struct NetworkSettings {
 	char   admin_password[NETWORK_PASSWORD_LENGTH];       ///< password for the admin network
 	char   settings_password[NETWORK_PASSWORD_LENGTH];    ///< password for game settings (server side)
 	bool   server_advertise;                              ///< advertise the server to the masterserver
-	uint8  lan_internet;                                  ///< search on the LAN or internet for servers
 	char   client_name[NETWORK_CLIENT_NAME_LENGTH];       ///< name of the player (as client)
 	char   default_company_pass[NETWORK_PASSWORD_LENGTH]; ///< default password for new companies in encrypted form
 	char   connect_to_ip[NETWORK_HOSTNAME_LENGTH];        ///< default for the "Add server" query
@@ -538,6 +538,7 @@ struct VehicleSettings {
 	uint8  max_train_length;                 ///< maximum length for trains
 	uint8  smoke_amount;                     ///< amount of smoke/sparks locomotives produce
 	uint8  train_acceleration_model;         ///< realistic acceleration for trains
+	uint8  train_braking_model;              ///< braking model for trains
 	uint8  roadveh_acceleration_model;       ///< realistic acceleration for road vehicles
 	uint8  train_slope_steepness;            ///< Steepness of hills for trains when using realistic acceleration
 	uint8  roadveh_slope_steepness;          ///< Steepness of hills for road vehicles when using realistic acceleration
@@ -570,6 +571,7 @@ struct VehicleSettings {
 /** Settings related to the economy. */
 struct EconomySettings {
 	bool   inflation;                        ///< disable inflation
+	bool   inflation_fixed_dates;            ///< whether inflation is applied between fixed dates
 	bool   bribe;                            ///< enable bribing the local authority
 	EconomyType type;                        ///< economy type (original/smooth/frozen)
 	bool   allow_shares;                     ///< allow the buying/selling of shares

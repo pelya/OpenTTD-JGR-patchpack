@@ -16,6 +16,7 @@
 
 #include <stdarg.h>
 #include <vector>
+#include <string>
 
 /** SaveLoad versions
  * Previous savegame versions, the trunk revision where they were
@@ -325,6 +326,8 @@ enum SaveLoadVersion : uint16 {
 	SLV_END_PATCHPACKS = 286,               ///< 286  Last known patchpack to use a version just above ours.
 
 	SLV_GS_INDUSTRY_CONTROL,                ///< 287  PR#7912 and PR#8115 GS industry control.
+	SLV_VEH_MOTION_COUNTER,                 ///< 288  PR#8591 Desync safe motion counter
+	SLV_INDUSTRY_TEXT,                      ///< 289  PR#8576 Additional GS text for industries.
 
 	SL_MAX_VERSION,                         ///< Highest possible saveload version
 
@@ -365,7 +368,7 @@ struct FileToSaveLoad {
 	SaveLoadOperation file_op;           ///< File operation to perform.
 	DetailedFileType detail_ftype;   ///< Concrete file type (PNG, BMP, old save, etc).
 	AbstractFileType abstract_ftype; ///< Abstract type of file (scenario, heightmap, etc).
-	char name[MAX_PATH];             ///< Name of the file.
+	std::string name;                ///< Name of the file.
 	char title[255];                 ///< Internal name of the game.
 
 	void SetMode(FiosType ft);
@@ -389,7 +392,7 @@ extern FileToSaveLoad _file_to_saveload;
 void GenerateDefaultSaveName(char *buf, const char *last);
 void SetSaveLoadError(StringID str);
 const char *GetSaveLoadErrorString();
-SaveOrLoadResult SaveOrLoad(const char *filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded = true);
+SaveOrLoadResult SaveOrLoad(const std::string &filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded = true);
 void WaitTillSaved();
 void ProcessAsyncSaveFinish();
 void DoExitSave();

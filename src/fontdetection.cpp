@@ -222,7 +222,7 @@ static const char *GetEnglishFontName(const ENUMLOGFONTEX *logfont)
 		offset += buf[pos++];
 
 		/* Don't buffer overflow */
-		length = min(length, MAX_PATH - 1);
+		length = std::min(length, MAX_PATH - 1);
 		for (uint j = 0; j < length; j++) font_name[j] = buf[stringOffset + offset + j];
 		font_name[length] = '\0';
 
@@ -347,7 +347,7 @@ static int CALLBACK EnumFontCallback(const ENUMLOGFONTEX *logfont, const NEWTEXT
 	PLOGFONT os_data = MallocT<LOGFONT>(1);
 	*os_data = logfont->elfLogFont;
 	info->callback->SetFontNames(info->settings, font_name, os_data);
-	if (info->callback->FindMissingGlyphs(nullptr)) return 1;
+	if (info->callback->FindMissingGlyphs()) return 1;
 	DEBUG(freetype, 1, "Fallback font: %s (%s)", font_name, english_name);
 	return 0; // stop enumerating
 }
@@ -399,7 +399,7 @@ FT_Error GetFontByFaceName(const char *font_name, FT_Face *face)
 	 * We instead query the list of all font descriptors that match the given name which
 	 * does not do this stupid name fallback. */
 	CFAutoRelease<CTFontDescriptorRef> name_desc(CTFontDescriptorCreateWithNameAndSize(name.get(), 0.0));
-	CFAutoRelease<CFSetRef> mandatory_attribs(CFSetCreate(kCFAllocatorDefault, (const void **)&kCTFontNameAttribute, 1, &kCFTypeSetCallBacks));
+	CFAutoRelease<CFSetRef> mandatory_attribs(CFSetCreate(kCFAllocatorDefault, const_cast<const void **>(reinterpret_cast<const void * const *>(&kCTFontNameAttribute)), 1, &kCFTypeSetCallBacks));
 	CFAutoRelease<CFArrayRef> descs(CTFontDescriptorCreateMatchingFontDescriptors(name_desc.get(), mandatory_attribs.get()));
 
 	/* Loop over all matches until we can get a path for one of them. */
@@ -441,13 +441,13 @@ bool SetFallbackFont(FreeTypeSettings *settings, const char *language_isocode, i
 	lang_codes[0] = CFStringCreateWithCString(kCFAllocatorDefault, lang, kCFStringEncodingUTF8);
 	lang_codes[1] = CFSTR("en");
 	CFArrayRef lang_arr = CFArrayCreate(kCFAllocatorDefault, (const void **)lang_codes, lengthof(lang_codes), &kCFTypeArrayCallBacks);
-	CFAutoRelease<CFDictionaryRef> lang_attribs(CFDictionaryCreate(kCFAllocatorDefault, (const void**)&kCTFontLanguagesAttribute, (const void **)&lang_arr, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+	CFAutoRelease<CFDictionaryRef> lang_attribs(CFDictionaryCreate(kCFAllocatorDefault, const_cast<const void **>(reinterpret_cast<const void * const *>(&kCTFontLanguagesAttribute)), (const void **)&lang_arr, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 	CFAutoRelease<CTFontDescriptorRef> lang_desc(CTFontDescriptorCreateWithAttributes(lang_attribs.get()));
 	CFRelease(lang_arr);
 	CFRelease(lang_codes[0]);
 
 	/* Get array of all font descriptors for the wanted language. */
-	CFAutoRelease<CFSetRef> mandatory_attribs(CFSetCreate(kCFAllocatorDefault, (const void **)&kCTFontLanguagesAttribute, 1, &kCFTypeSetCallBacks));
+	CFAutoRelease<CFSetRef> mandatory_attribs(CFSetCreate(kCFAllocatorDefault, const_cast<const void **>(reinterpret_cast<const void * const *>(&kCTFontLanguagesAttribute)), 1, &kCFTypeSetCallBacks));
 	CFAutoRelease<CFArrayRef> descs(CTFontDescriptorCreateMatchingFontDescriptors(lang_desc.get(), mandatory_attribs.get()));
 
 	bool result = false;
@@ -477,7 +477,7 @@ bool SetFallbackFont(FreeTypeSettings *settings, const char *language_isocode, i
 
 		/* Save result. */
 		callback->SetFontNames(settings, name);
-		if (!callback->FindMissingGlyphs(nullptr)) {
+		if (!callback->FindMissingGlyphs()) {
 			DEBUG(freetype, 2, "CT-Font for %s: %s", language_isocode, name);
 			result = true;
 			break;
@@ -488,10 +488,10 @@ bool SetFallbackFont(FreeTypeSettings *settings, const char *language_isocode, i
 		/* For some OS versions, the font 'Arial Unicode MS' does not report all languages it
 		 * supports. If we didn't find any other font, just try it, maybe we get lucky. */
 		callback->SetFontNames(settings, "Arial Unicode MS");
-		result = !callback->FindMissingGlyphs(nullptr);
+		result = !callback->FindMissingGlyphs();
 	}
 
-	callback->FindMissingGlyphs(nullptr);
+	callback->FindMissingGlyphs();
 	return result;
 }
 
@@ -627,7 +627,7 @@ bool SetFallbackFont(FreeTypeSettings *settings, const char *language_isocode, i
 
 			callback->SetFontNames(settings, (const char*)file);
 
-			missing += callback->FindMissingGlyphs(nullptr);
+			missing += callback->FindMissingGlyphs();
 			DEBUG(freetype, 1, "Font \"%s\" misses %d glyphs for lang %s", file, missing, lang);
 
 			if (missing < best_missing_glypths) {

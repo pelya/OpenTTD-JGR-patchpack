@@ -350,7 +350,7 @@ inline bool LinkGraphOverlay::IsLinkVisible(Point pta, Point ptb, const DrawPixe
 {
 	/* multiply the numbers by 32 in order to avoid comparing to 0 too often. */
 	if (cargo.capacity == 0 ||
-			max(cargo.usage, cargo.planned) * 32 / (cargo.capacity + 1) < max(new_usg, new_plan) * 32 / (new_cap + 1)) {
+			std::max(cargo.usage, cargo.planned) * 32 / (cargo.capacity + 1) < std::max(new_usg, new_plan) * 32 / (new_cap + 1)) {
 		cargo.capacity = new_cap;
 		cargo.usage = new_usg;
 		cargo.planned = new_plan;
@@ -417,7 +417,7 @@ void LinkGraphOverlay::DrawLinks(const DrawPixelInfo *dpi) const
  */
 void LinkGraphOverlay::DrawContent(Point pta, Point ptb, const LinkProperties &cargo) const
 {
-	uint usage_or_plan = min(cargo.capacity * 2 + 1, max(cargo.usage, cargo.planned));
+	uint usage_or_plan = std::min(cargo.capacity * 2 + 1, std::max(cargo.usage, cargo.planned));
 	int colour = LinkGraphOverlay::LINK_COLOURS[_settings_client.gui.linkgraph_colours][usage_or_plan * lengthof(LinkGraphOverlay::LINK_COLOURS[0]) / (cargo.capacity * 2 + 2)];
 	int dash = cargo.shared ? this->scale * 4 : 0;
 
@@ -448,7 +448,7 @@ void LinkGraphOverlay::DrawStationDots(const DrawPixelInfo *dpi) const
 		const Station *st = Station::GetIfValid(i->id);
 		if (st == nullptr) continue;
 
-		uint r = this->scale * 2 + this->scale * 2 * min(200, i->quantity) / 200;
+		uint r = this->scale * 2 + this->scale * 2 * std::min<uint>(200, i->quantity) / 200;
 
 		LinkGraphOverlay::DrawVertex(pt.x, pt.y, r,
 				_colour_gradient[st->owner != OWNER_NONE ?
@@ -600,7 +600,7 @@ static const NWidgetPart _nested_linkgraph_legend_widgets[] = {
 	EndContainer()
 };
 
-assert_compile(WID_LGL_SATURATION_LAST - WID_LGL_SATURATION_FIRST ==
+static_assert(WID_LGL_SATURATION_LAST - WID_LGL_SATURATION_FIRST ==
 		lengthof(LinkGraphOverlay::LINK_COLOURS[0]) - 1);
 
 static WindowDesc _linkgraph_legend_desc(

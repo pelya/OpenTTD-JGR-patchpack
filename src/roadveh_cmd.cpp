@@ -64,7 +64,7 @@ static const uint16 _roadveh_full_adder[] = {
 	 0,  16,  16,   0,   8,   8,   8,   8,
 	 0,   0,   0,   8,   8,   8,   8
 };
-assert_compile(lengthof(_roadveh_images) == lengthof(_roadveh_full_adder));
+static_assert(lengthof(_roadveh_images) == lengthof(_roadveh_full_adder));
 
 template <>
 bool IsValidImageIndex<VEH_ROAD>(uint8 image_index)
@@ -475,11 +475,11 @@ int RoadVehicle::GetEffectiveMaxSpeed() const
 	if (this->critical_breakdown_count == 0) return max_speed;
 
 	for (uint i = 0; i < this->critical_breakdown_count; i++) {
-		max_speed = min(max_speed - (max_speed / 3) + 1, max_speed);
+		max_speed = std::min(max_speed - (max_speed / 3) + 1, max_speed);
 	}
 
 	/* clamp speed to be no less than lower of 5mph and 1/8 of base speed */
-	return max<uint16>(max_speed, min<uint16>(10, (this->vcache.cached_max_speed + 7) >> 3));
+	return std::max<uint16>(max_speed, std::min<uint16>(10, (this->vcache.cached_max_speed + 7) >> 3));
 }
 
 /**
@@ -488,7 +488,7 @@ int RoadVehicle::GetEffectiveMaxSpeed() const
  */
 inline int RoadVehicle::GetCurrentMaxSpeed() const
 {
-	int max_speed = min(this->GetEffectiveMaxSpeed(), this->gcache.cached_max_track_speed);
+	int max_speed = std::min<int>(this->GetEffectiveMaxSpeed(), this->gcache.cached_max_track_speed);
 
 	/* Limit speed to 50% while reversing, 75% in curves. */
 	for (const RoadVehicle *u = this; u != nullptr; u = u->Next()) {
@@ -503,11 +503,11 @@ inline int RoadVehicle::GetCurrentMaxSpeed() const
 
 		/* Vehicle is on the middle part of a bridge. */
 		if (u->state == RVSB_WORMHOLE && !(u->vehstatus & VS_HIDDEN)) {
-			max_speed = min(max_speed, GetBridgeSpec(GetBridgeType(u->tile))->speed * 2);
+			max_speed = std::min(max_speed, GetBridgeSpec(GetBridgeType(u->tile))->speed * 2);
 		}
 	}
 
-	return min(max_speed, this->current_order.GetMaxSpeed() * 2);
+	return std::min(max_speed, this->current_order.GetMaxSpeed() * 2);
 }
 
 /**
@@ -616,12 +616,8 @@ static void RoadVehCrash(RoadVehicle *v)
 	Game::NewEvent(new ScriptEventVehicleCrashed(v->index, v->tile, ScriptEventVehicleCrashed::CRASH_RV_LEVEL_CROSSING));
 
 	SetDParam(0, pass);
-	AddVehicleNewsItem(
-		(pass == 1) ?
-			STR_NEWS_ROAD_VEHICLE_CRASH_DRIVER : STR_NEWS_ROAD_VEHICLE_CRASH,
-		NT_ACCIDENT,
-		v->index
-	);
+	StringID newsitem = (pass == 1) ? STR_NEWS_ROAD_VEHICLE_CRASH_DRIVER : STR_NEWS_ROAD_VEHICLE_CRASH;
+	AddTileNewsItem(newsitem, NT_ACCIDENT, v->tile);
 
 	ModifyStationRatingAround(v->tile, v->owner, -160, 22);
 	if (_settings_client.sound.disaster) SndPlayVehicleFx(SND_12_EXPLOSION, v);
@@ -794,13 +790,19 @@ static void RoadVehArrivesAt(const RoadVehicle *v, Station *st)
  */
 int RoadVehicle::UpdateSpeed()
 {
+	int max_speed = this->GetCurrentMaxSpeed();
 	switch (_settings_game.vehicle.roadveh_acceleration_model) {
 		default: NOT_REACHED();
-		case AM_ORIGINAL:
-			return this->DoUpdateSpeed(this->overtaking != 0 ? 512 : 256, 0, this->GetCurrentMaxSpeed());
+		case AM_ORIGINAL: {
+			int acceleration = this->overtaking != 0 ? 512 : 256;
+			return this->DoUpdateSpeed({ acceleration, acceleration }, 0, max_speed, max_speed);
+		}
 
-		case AM_REALISTIC:
-			return this->DoUpdateSpeed(this->GetAcceleration() + (this->overtaking != 0 ? 256 : 0), this->GetAccelerationStatus() == AS_BRAKE ? 0 : 4, this->GetCurrentMaxSpeed());
+		case AM_REALISTIC: {
+			GroundVehicleAcceleration acceleration = this->GetAcceleration();
+			if (this->overtaking != 0) acceleration.acceleration += 256;
+			return this->DoUpdateSpeed(acceleration, this->GetAccelerationStatus() == AS_BRAKE ? 0 : 4, max_speed, max_speed);
+		}
 	}
 }
 
@@ -1021,7 +1023,7 @@ static void RoadVehCheckOvertake(RoadVehicle *v, RoadVehicle *u)
 	/* Can't overtake a vehicle that is moving faster than us. If the vehicle in front is
 	 * accelerating, take the maximum speed for the comparison, else the current speed.
 	 * Original acceleration always accelerates, so always use the maximum speed. */
-	int u_speed = (_settings_game.vehicle.roadveh_acceleration_model == AM_ORIGINAL || u->GetAcceleration() > 0) ? u->GetCurrentMaxSpeed() : u->cur_speed;
+	int u_speed = (_settings_game.vehicle.roadveh_acceleration_model == AM_ORIGINAL || u->GetAcceleration().acceleration > 0) ? u->GetCurrentMaxSpeed() : u->cur_speed;
 	if (u_speed >= v->GetCurrentMaxSpeed() &&
 			!(u->vehstatus & VS_STOPPED) &&
 			u->cur_speed != 0) {
@@ -1259,6 +1261,7 @@ static Trackdir RoadFindPathToDest(RoadVehicle *v, TileIndex tile, DiagDirection
 
 		default: NOT_REACHED();
 	}
+	DEBUG_UPDATESTATECHECKSUM("RoadFindPathToDest: v: %u, path_found: %d, best_track: %d", v->index, path_found, best_track);
 	UpdateStateChecksum((((uint64) v->index) << 32) | (path_found << 16) | best_track);
 	v->HandlePathfindingResult(path_found);
 
@@ -1868,7 +1871,16 @@ again:
 		int y = TileY(v->tile) * TILE_SIZE + rdp[turn_around_start_frame].y;
 
 		Direction new_dir = RoadVehGetSlidingDirection(v, x, y);
-		if (v->IsFrontEngine() && RoadVehFindCloseTo(v, x, y, new_dir) != nullptr) return false;
+		if (v->IsFrontEngine() && RoadVehFindCloseTo(v, x, y, new_dir) != nullptr) {
+			/* We are blocked. */
+			v->cur_speed = 0;
+			if (!v->path.empty()) {
+				/* Prevent pathfinding rerun as we already know where we are heading to. */
+				v->path.tile.push_front(v->tile);
+				v->path.td.push_front(dir);
+			}
+			return false;
+		}
 
 		uint32 r = VehicleEnterTile(v, v->tile, x, y);
 		if (HasBit(r, VETS_CANNOT_ENTER)) {
@@ -2116,7 +2128,9 @@ Money RoadVehicle::GetRunningCost() const
 
 bool RoadVehicle::Tick()
 {
+	DEBUG_UPDATESTATECHECKSUM("RoadVehicle::Tick 1: v: %u, x: %d, y: %d", this->index, this->x_pos, this->y_pos);
 	UpdateStateChecksum((((uint64) this->x_pos) << 32) | this->y_pos);
+	DEBUG_UPDATESTATECHECKSUM("RoadVehicle::Tick 2: v: %u, state: %d, frame: %d", this->index, this->state, this->frame);
 	UpdateStateChecksum((((uint64) this->state) << 32) | this->frame);
 	if (this->IsFrontEngine()) {
 		if (!(this->IsRoadVehicleStopped() || this->IsWaitingInDepot())) this->running_ticks++;

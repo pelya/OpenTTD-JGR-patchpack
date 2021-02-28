@@ -93,7 +93,7 @@ PACK(struct BitmapFileHeader {
 	uint32 reserved;
 	uint32 off_bits;
 });
-assert_compile(sizeof(BitmapFileHeader) == 14);
+static_assert(sizeof(BitmapFileHeader) == 14);
 
 /** BMP Info Header (stored in little endian) */
 struct BitmapInfoHeader {
@@ -102,13 +102,13 @@ struct BitmapInfoHeader {
 	uint16 planes, bitcount;
 	uint32 compression, sizeimage, xpels, ypels, clrused, clrimp;
 };
-assert_compile(sizeof(BitmapInfoHeader) == 40);
+static_assert(sizeof(BitmapInfoHeader) == 40);
 
 /** Format of palette data in BMP header */
 struct RgbQuad {
 	byte blue, green, red, reserved;
 };
-assert_compile(sizeof(RgbQuad) == 4);
+static_assert(sizeof(RgbQuad) == 4);
 
 /**
  * Generic .BMP writer
@@ -194,7 +194,7 @@ static bool MakeBMPImage(const char *name, ScreenshotCallback *callb, void *user
 
 	/* Start at the bottom, since bitmaps are stored bottom up */
 	do {
-		uint n = min(h, maxlines);
+		uint n = std::min(h, maxlines);
 		h -= n;
 
 		/* Render the pixels */
@@ -393,7 +393,7 @@ static bool MakePNGImage(const char *name, ScreenshotCallback *callb, void *user
 	y = 0;
 	do {
 		/* determine # lines to write */
-		n = min(h - y, maxlines);
+		n = std::min(h - y, maxlines);
 
 		/* render the pixels into the buffer */
 		callb(userdata, buff, y, w, n);
@@ -437,7 +437,7 @@ struct PcxHeader {
 	uint16 height;
 	byte filler[54];
 };
-assert_compile(sizeof(PcxHeader) == 128);
+static_assert(sizeof(PcxHeader) == 128);
 
 /**
  * Generic .PCX file image writer.
@@ -500,7 +500,7 @@ static bool MakePCXImage(const char *name, ScreenshotCallback *callb, void *user
 	y = 0;
 	do {
 		/* determine # lines to write */
-		uint n = min(h - y, maxlines);
+		uint n = std::min(h - y, maxlines);
 		uint i;
 
 		/* render the pixels into the buffer */
@@ -658,7 +658,7 @@ static void LargeWorldCallback(void *userdata, void *buf, uint y, uint pitch, ui
 	/* Render viewport in blocks of 1600 pixels width */
 	left = 0;
 	while (vp->width - left != 0) {
-		wx = min(vp->width - left, 1600);
+		wx = std::min(vp->width - left, 1600);
 		left += wx;
 
 		ViewportDoDraw(vp,
@@ -701,7 +701,7 @@ static const char *MakeScreenshotName(const char *default_fn, const char *ext, b
 	size_t len = strlen(_screenshot_name);
 	seprintf(&_screenshot_name[len], lastof(_screenshot_name), ".%s", ext);
 
-	const char *screenshot_dir = crashlog ? _personal_dir : FiosGetScreenshotDir();
+	const char *screenshot_dir = crashlog ? _personal_dir.c_str() : FiosGetScreenshotDir();
 
 	for (uint serial = 1;; serial++) {
 		if (seprintf(_full_screenshot_name, lastof(_full_screenshot_name), "%s%s", screenshot_dir, _screenshot_name) >= (int)lengthof(_full_screenshot_name)) {

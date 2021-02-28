@@ -107,6 +107,7 @@
 #include "tunnelbridge_map.h"
 #include "video/video_driver.hpp"
 #include "scope_info.h"
+#include "scope.h"
 
 #include <map>
 #include <vector>
@@ -816,8 +817,7 @@ static void AddTileSpriteToDraw(SpriteID image, PaletteID pal, int32 x, int32 y,
 {
 	assert((image & SPRITE_MASK) < MAX_SPRITES);
 
-	/*C++17: TileSpriteToDraw &ts = */ _vd.tile_sprites_to_draw.emplace_back();
-	TileSpriteToDraw &ts = _vd.tile_sprites_to_draw.back();
+	TileSpriteToDraw &ts = _vd.tile_sprites_to_draw.emplace_back();
 	ts.image = image;
 	ts.pal = pal;
 	ts.sub = sub;
@@ -1024,10 +1024,10 @@ void AddSortableSpriteToDraw(SpriteID image, PaletteID pal, int x, int y, int w,
 
 	if (unlikely(_draw_bounding_boxes && (image != SPR_EMPTY_BOUNDING_BOX))) {
 		/* Compute maximal extents of sprite and its bounding box */
-		left   = min(left  , RemapCoords(x + w          , y + bb_offset_y, z + bb_offset_z).x);
-		right  = max(right , RemapCoords(x + bb_offset_x, y + h          , z + bb_offset_z).x + 1);
-		top    = min(top   , RemapCoords(x + bb_offset_x, y + bb_offset_y, z + dz         ).y);
-		bottom = max(bottom, RemapCoords(x + w          , y + h          , z + bb_offset_z).y + 1);
+		left   = std::min(left  , RemapCoords(x + w          , y + bb_offset_y, z + bb_offset_z).x);
+		right  = std::max(right , RemapCoords(x + bb_offset_x, y + h          , z + bb_offset_z).x + 1);
+		top    = std::min(top   , RemapCoords(x + bb_offset_x, y + bb_offset_y, z + dz         ).y);
+		bottom = std::max(bottom, RemapCoords(x + w          , y + h          , z + bb_offset_z).y + 1);
 	}
 
 	/* Do not add the sprite to the viewport, if it is outside */
@@ -1038,8 +1038,7 @@ void AddSortableSpriteToDraw(SpriteID image, PaletteID pal, int x, int y, int w,
 		return;
 	}
 
-	/*C++17: ParentSpriteToDraw &ps = */ _vd.parent_sprites_to_draw.emplace_back();
-	ParentSpriteToDraw &ps = _vd.parent_sprites_to_draw.back();
+	ParentSpriteToDraw &ps = _vd.parent_sprites_to_draw.emplace_back();
 	ps.x = tmp_x;
 	ps.y = tmp_y;
 
@@ -1050,13 +1049,13 @@ void AddSortableSpriteToDraw(SpriteID image, PaletteID pal, int x, int y, int w,
 	ps.pal = pal;
 	ps.sub = sub;
 	ps.xmin = x + bb_offset_x;
-	ps.xmax = x + max(bb_offset_x, w) - 1;
+	ps.xmax = x + std::max(bb_offset_x, w) - 1;
 
 	ps.ymin = y + bb_offset_y;
-	ps.ymax = y + max(bb_offset_y, h) - 1;
+	ps.ymax = y + std::max(bb_offset_y, h) - 1;
 
 	ps.zmin = z + bb_offset_z;
-	ps.zmax = z + max(bb_offset_z, dz) - 1;
+	ps.zmax = z + std::max(bb_offset_z, dz) - 1;
 
 	ps.first_child = -1;
 	ps.width = tmp_width;
@@ -1180,8 +1179,7 @@ void AddChildSpriteScreen(SpriteID image, PaletteID pal, int x, int y, bool tran
 
 	*_vd.last_child = (uint)_vd.child_screen_sprites_to_draw.size();
 
-	/*C++17: ChildScreenSpriteToDraw &cs = */ _vd.child_screen_sprites_to_draw.emplace_back();
-	ChildScreenSpriteToDraw &cs = _vd.child_screen_sprites_to_draw.back();
+	ChildScreenSpriteToDraw &cs = _vd.child_screen_sprites_to_draw.emplace_back();
 	cs.image = image;
 	cs.pal = pal;
 	cs.sub = sub;
@@ -1201,8 +1199,7 @@ void AddChildSpriteScreen(SpriteID image, PaletteID pal, int x, int y, bool tran
 static void AddStringToDraw(int x, int y, StringID string, uint64 params_1, uint64 params_2, Colours colour, uint16 width)
 {
 	assert(width != 0);
-	/*C++17: StringSpriteToDraw &ss = */ _vd.string_sprites_to_draw.emplace_back();
-	StringSpriteToDraw &ss = _vd.string_sprites_to_draw.back();
+	StringSpriteToDraw &ss = _vd.string_sprites_to_draw.emplace_back();
 	ss.string = string;
 	ss.x = x;
 	ss.y = y;
@@ -1401,7 +1398,7 @@ static void DrawTileHighlightType(const TileInfo *ti, TileHighlightType tht)
 		case THT_NONE: break;
 		case THT_WHITE: DrawTileSelectionRect(ti, PAL_NONE); break;
 		case THT_BLUE:  DrawTileSelectionRect(ti, PALETTE_SEL_TILE_BLUE); break;
-		case THT_RED:   DrawTileSelectionRect(ti, PALETTE_TILE_RED_PULSATING); break;
+		case THT_RED:   DrawTileSelectionRect(ti, PALETTE_SEL_TILE_RED); break;
 		case THT_LIGHT_BLUE: DrawTileSelectionRect(ti, SPR_ZONING_INNER_HIGHLIGHT_LIGHT_BLUE); break;
 	}
 }
@@ -2179,9 +2176,8 @@ static inline Vehicle *GetVehicleFromWindow(Window *w)
 
 static inline TileIndex GetLastValidOrderLocation(const Vehicle *veh)
 {
-	Order *order;
 	TileIndex tmp, result = INVALID_TILE;
-	FOR_VEHICLE_ORDERS(veh, order) {
+	for(const Order *order : veh->Orders()) {
 		switch (order->GetType()) {
 			case OT_GOTO_STATION:
 			case OT_GOTO_WAYPOINT:
@@ -2197,13 +2193,16 @@ static inline TileIndex GetLastValidOrderLocation(const Vehicle *veh)
 	return result;
 }
 
-static inline Order *GetFinalOrder(const Vehicle *veh, Order *order)
+static inline std::pair<const Order *, bool> GetFinalOrder(const Vehicle *veh, const Order *order)
 {
 	// Use Floyd's cycle-finding algorithm to prevent endless loop
 	// due to a cycle formed by confitional orders.
 	auto cycle_check = order;
 
+	bool is_conditional = false;
+
 	while (order->IsType(OT_CONDITIONAL)) {
+		if (order->GetConditionVariable() != OCV_UNCONDITIONALLY) is_conditional = true;
 		order = veh->GetOrder(order->GetConditionSkipToOrder());
 
 		if (cycle_check->IsType(OT_CONDITIONAL)) {
@@ -2216,10 +2215,10 @@ static inline Order *GetFinalOrder(const Vehicle *veh, Order *order)
 
 		bool cycle_detected = (order->IsType(OT_CONDITIONAL) && (order == cycle_check));
 
-		if (cycle_detected) return nullptr;
+		if (cycle_detected) return std::pair<const Order *, bool>(nullptr, is_conditional);
 	}
 
-	return order;
+	return std::pair<const Order *, bool>(order, is_conditional);
 }
 
 static bool ViewportMapPrepareVehicleRoute(const Vehicle * const veh)
@@ -2230,16 +2229,22 @@ static bool ViewportMapPrepareVehicleRoute(const Vehicle * const veh)
 		TileIndex from_tile = GetLastValidOrderLocation(veh);
 		if (from_tile == INVALID_TILE) return false;
 
-		Order *order;
-		FOR_VEHICLE_ORDERS(veh, order) {
-			Order *final_order = GetFinalOrder(veh, order);
+		for(const Order *order : veh->Orders()) {
+			auto guard = scope_guard([&]() {
+				if (order->IsType(OT_CONDITIONAL) && order->GetConditionVariable() == OCV_UNCONDITIONALLY) from_tile = INVALID_TILE;
+			});
+			const Order *final_order;
+			bool conditional;
+			std::tie(final_order, conditional) = GetFinalOrder(veh, order);
 			if (final_order == nullptr) continue;
 			const TileIndex to_tile = final_order->GetLocation(veh, veh->type == VEH_AIRCRAFT);
 			if (to_tile == INVALID_TILE) continue;
 
-			DrawnPathRouteTileLine path = { from_tile, to_tile, (final_order == order) };
-			if (path.from_tile > path.to_tile) std::swap(path.from_tile, path.to_tile);
-			_vp_route_paths.push_back(path);
+			if (from_tile != INVALID_TILE) {
+				DrawnPathRouteTileLine path = { from_tile, to_tile, !conditional };
+				if (path.from_tile > path.to_tile) std::swap(path.from_tile, path.to_tile);
+				_vp_route_paths.push_back(path);
+			}
 
 			const OrderType ot = order->GetType();
 			if (ot == OT_GOTO_STATION || ot == OT_GOTO_DEPOT || ot == OT_GOTO_WAYPOINT || ot == OT_IMPLICIT) from_tile = to_tile;
@@ -2367,9 +2372,8 @@ static bool ViewportPrepareVehicleRouteSteps(const Vehicle * const veh)
 
 	if (_vp_route_steps.size() == 0) {
 		/* Prepare data. */
-		Order *order;
 		int order_rank = 0;
-		FOR_VEHICLE_ORDERS(veh, order) {
+		for(const Order *order : veh->Orders()) {
 			const TileIndex tile = order->GetLocation(veh, veh->type == VEH_AIRCRAFT);
 			order_rank++;
 			if (tile == INVALID_TILE) continue;
@@ -2622,7 +2626,7 @@ static inline uint32 ViewportMapGetColourVegetation(const TileIndex tile, TileTy
 				if (tg == TREE_GROUND_SNOW_DESERT || tg == TREE_GROUND_ROUGH_SNOW) {
 					return _vp_map_vegetation_clear_colours[colour_index][_settings_game.game_creation.landscape == LT_TROPIC ? CLEAR_DESERT : CLEAR_SNOW][td];
 				} else {
-					const uint rnd = min(GetTreeCount(tile) ^ (((tile & 3) ^ (TileY(tile) & 3)) * td), MAX_TREE_COUNT_BY_LANDSCAPE - 1);
+					const uint rnd = std::min<uint>(GetTreeCount(tile) ^ (((tile & 3) ^ (TileY(tile) & 3)) * td), MAX_TREE_COUNT_BY_LANDSCAPE - 1);
 					return _vp_map_vegetation_tree_colours[tg][rnd];
 				}
 			}
@@ -2925,13 +2929,13 @@ static void ViewportMapDrawScrollingViewportBox(const Viewport * const vp)
 			const int mask = ScaleByZoom(-1, vp->zoom);
 			const int vp_scrolling_virtual_top_mask = vp_scrolling->virtual_top & mask;
 			const int vp_scrolling_virtual_bottom_mask = (vp_scrolling->virtual_top + vp_scrolling->virtual_height) & mask;
-			const int t_inter = max(vp_scrolling_virtual_top_mask, _vd.dpi.top);
-			const int b_inter = min(vp_scrolling_virtual_bottom_mask, _vd.dpi.top + _vd.dpi.height);
+			const int t_inter = std::max(vp_scrolling_virtual_top_mask, _vd.dpi.top);
+			const int b_inter = std::min(vp_scrolling_virtual_bottom_mask, _vd.dpi.top + _vd.dpi.height);
 			if (t_inter < b_inter) {
 				const int vp_scrolling_virtual_left_mask = vp_scrolling->virtual_left & mask;
 				const int vp_scrolling_virtual_right_mask = (vp_scrolling->virtual_left + vp_scrolling->virtual_width) & mask;
-				const int l_inter = max(vp_scrolling_virtual_left_mask, _vd.dpi.left);
-				const int r_inter = min(vp_scrolling_virtual_right_mask, _vd.dpi.left + _vd.dpi.width);
+				const int l_inter = std::max(vp_scrolling_virtual_left_mask, _vd.dpi.left);
+				const int r_inter = std::min(vp_scrolling_virtual_right_mask, _vd.dpi.left + _vd.dpi.width);
 				if (l_inter < r_inter) {
 					/* OK, so we can draw something that tells where the scrolling viewport is */
 					Blitter * const blitter = BlitterFactory::GetCurrentBlitter();
@@ -3511,10 +3515,10 @@ void UpdateActiveScrollingViewport(Window *w)
 		/* Calculate symmetric difference of two rectangles */
 		const Rect a = get_bounds(w->viewport);
 		const Rect &b = _scrolling_viewport_bound;
-		if (a.left != b.left) MarkAllViewportMapsDirty(min(a.left, b.left) - gap, min(a.top, b.top) - gap, max(a.left, b.left) + gap, max(a.bottom, b.bottom) + gap);
-		if (a.top != b.top) MarkAllViewportMapsDirty(min(a.left, b.left) - gap, min(a.top, b.top) - gap, max(a.right, b.right) + gap, max(a.top, b.top) + gap);
-		if (a.right != b.right) MarkAllViewportMapsDirty(min(a.right, b.right) - (2 * gap), min(a.top, b.top) - gap, max(a.right, b.right) + gap, max(a.bottom, b.bottom) + gap);
-		if (a.bottom != b.bottom) MarkAllViewportMapsDirty(min(a.left, b.left) - gap, min(a.bottom, b.bottom) - (2 * gap), max(a.right, b.right) + gap, max(a.bottom, b.bottom) + gap);
+		if (a.left != b.left) MarkAllViewportMapsDirty(std::min(a.left, b.left) - gap, std::min(a.top, b.top) - gap, std::max(a.left, b.left) + gap, std::max(a.bottom, b.bottom) + gap);
+		if (a.top != b.top) MarkAllViewportMapsDirty(std::min(a.left, b.left) - gap, std::min(a.top, b.top) - gap, std::max(a.right, b.right) + gap, std::max(a.top, b.top) + gap);
+		if (a.right != b.right) MarkAllViewportMapsDirty(std::min(a.right, b.right) - (2 * gap), std::min(a.top, b.top) - gap, std::max(a.right, b.right) + gap, std::max(a.bottom, b.bottom) + gap);
+		if (a.bottom != b.bottom) MarkAllViewportMapsDirty(std::min(a.left, b.left) - gap, std::min(a.bottom, b.bottom) - (2 * gap), std::max(a.right, b.right) + gap, std::max(a.bottom, b.bottom) + gap);
 		_scrolling_viewport_bound = a;
 	}
 }
@@ -3536,23 +3540,23 @@ void MarkViewportDirty(Viewport * const vp, int left, int top, int right, int bo
 
 	right -= vp->virtual_left;
 	if (right <= 0) return;
-	right = min(right, vp->virtual_width);
+	right = std::min(right, vp->virtual_width);
 
 	bottom -= vp->virtual_top;
 	if (bottom <= 0) return;
-	bottom = min(bottom, vp->virtual_height);
+	bottom = std::min(bottom, vp->virtual_height);
 
-	left = max(0, left - vp->virtual_left);
+	left = std::max(0, left - vp->virtual_left);
 
 	if (left >= vp->virtual_width) return;
 
-	top = max(0, top - vp->virtual_top);
+	top = std::max(0, top - vp->virtual_top);
 
 	if (top >= vp->virtual_height) return;
 
-	uint x = max<int>(0, UnScaleByZoomLower(left, vp->zoom) - vp->dirty_block_left_margin) >> vp->GetDirtyBlockWidthShift();
+	uint x = std::max<int>(0, UnScaleByZoomLower(left, vp->zoom) - vp->dirty_block_left_margin) >> vp->GetDirtyBlockWidthShift();
 	uint y = UnScaleByZoomLower(top, vp->zoom) >> vp->GetDirtyBlockHeightShift();
-	uint w = (max<int>(0, UnScaleByZoomLower(right, vp->zoom) - 1 - vp->dirty_block_left_margin) >> vp->GetDirtyBlockWidthShift()) + 1 - x;
+	uint w = (std::max<int>(0, UnScaleByZoomLower(right, vp->zoom) - 1 - vp->dirty_block_left_margin) >> vp->GetDirtyBlockWidthShift()) + 1 - x;
 	uint h = ((UnScaleByZoom(bottom, vp->zoom) - 1) >> vp->GetDirtyBlockHeightShift()) + 1 - y;
 
 	uint column_skip = vp->dirty_blocks_per_column - h;
@@ -4079,7 +4083,7 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeStation(StationID id)
 	item.top = st->sign.top;
 
 	/* Assume the sign can be a candidate for drawing, so measure its width */
-	_viewport_sign_maxwidth = max<int>(_viewport_sign_maxwidth, st->sign.width_normal);
+	_viewport_sign_maxwidth = std::max<int>(_viewport_sign_maxwidth, st->sign.width_normal);
 
 	return item;
 }
@@ -4096,7 +4100,7 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeWaypoint(StationID id)
 	item.top = st->sign.top;
 
 	/* Assume the sign can be a candidate for drawing, so measure its width */
-	_viewport_sign_maxwidth = max<int>(_viewport_sign_maxwidth, st->sign.width_normal);
+	_viewport_sign_maxwidth = std::max<int>(_viewport_sign_maxwidth, st->sign.width_normal);
 
 	return item;
 }
@@ -4113,7 +4117,7 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeTown(TownID id)
 	item.top = town->cache.sign.top;
 
 	/* Assume the sign can be a candidate for drawing, so measure its width */
-	_viewport_sign_maxwidth = max<int>(_viewport_sign_maxwidth, town->cache.sign.width_normal);
+	_viewport_sign_maxwidth = std::max<int>(_viewport_sign_maxwidth, town->cache.sign.width_normal);
 
 	return item;
 }
@@ -4130,7 +4134,7 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeSign(SignID id)
 	item.top = sign->sign.top;
 
 	/* Assume the sign can be a candidate for drawing, so measure its width */
-	_viewport_sign_maxwidth = max<int>(_viewport_sign_maxwidth, sign->sign.width_normal);
+	_viewport_sign_maxwidth = std::max<int>(_viewport_sign_maxwidth, sign->sign.width_normal);
 
 	return item;
 }
@@ -4222,15 +4226,15 @@ bool HandleViewportDoubleClicked(Window *w, int x, int y)
 	}
 }
 
-bool HandleViewportClicked(const Viewport *vp, int x, int y, bool double_click)
+HandleViewportClickedResult HandleViewportClicked(const Viewport *vp, int x, int y, bool double_click)
 {
-	/* No click in smallmap mode except for plan making. */
-	if (vp->zoom >= ZOOM_LVL_DRAW_MAP && !(_thd.place_mode & HT_MAP)) return true;
+	/* No click in smallmap mode except for plan making and left-button scrolling. */
+	if (vp->zoom >= ZOOM_LVL_DRAW_MAP && !(_thd.place_mode & HT_MAP)) return HVCR_SCROLL_ONLY;
 
 	const Vehicle *v = CheckClickOnVehicle(vp, x, y);
 
 	if (_thd.place_mode & HT_VEHICLE) {
-		if (v != nullptr && VehicleClicked(v)) return true;
+		if (v != nullptr && VehicleClicked(v)) return HVCR_DENY;
 	}
 
 	/* Vehicle placement mode already handled above. */
@@ -4242,18 +4246,18 @@ bool HandleViewportClicked(const Viewport *vp, int x, int y, bool double_click)
 			static bool stop_snap_on_double_click = false;
 			if (double_click && stop_snap_on_double_click) {
 				SetRailSnapMode(RSM_NO_SNAP);
-				return true;
+				return HVCR_DENY;
 			}
 			stop_snap_on_double_click = !(_thd.drawstyle & HT_LINE) || (_thd.dir2 == HT_DIR_END);
 		}
 
 		PlaceObject();
-		return true;
+		return HVCR_DENY;
 	}
 
-	if (vp->zoom >= ZOOM_LVL_DRAW_MAP) return true;
+	if (vp->zoom >= ZOOM_LVL_DRAW_MAP) return HVCR_SCROLL_ONLY;
 
-	if (CheckClickOnViewportSign(vp, x, y)) return true;
+	if (CheckClickOnViewportSign(vp, x, y)) return HVCR_DENY;
 	bool result = CheckClickOnLandscape(vp, x, y);
 
 	if (v != nullptr) {
@@ -4267,9 +4271,9 @@ bool HandleViewportClicked(const Viewport *vp, int x, int y, bool double_click)
 				ShowVehicleViewWindow(v);
 			}
 		}
-		return true;
+		return HVCR_DENY;
 	}
-	return result;
+	return result ? HVCR_DENY : HVCR_ALLOW;
 }
 
 void RebuildViewportOverlay(Window *w, bool incremental)
@@ -4440,10 +4444,10 @@ static inline void CalcNewPolylineOutersize()
 		if (outer_x1 > outer_x2) Swap(outer_x1, outer_x2);
 		if (outer_y1 > outer_y2) Swap(outer_y1, outer_y2);
 		/* include the first part */
-		outer_x1 = min<int>(outer_x1, _thd.new_pos.x);
-		outer_y1 = min<int>(outer_y1, _thd.new_pos.y);
-		outer_x2 = max<int>(outer_x2, _thd.new_pos.x + _thd.new_size.x - TILE_SIZE);
-		outer_y2 = max<int>(outer_y2, _thd.new_pos.y + _thd.new_size.y - TILE_SIZE);
+		outer_x1 = std::min<int>(outer_x1, _thd.new_pos.x);
+		outer_y1 = std::min<int>(outer_y1, _thd.new_pos.y);
+		outer_x2 = std::max<int>(outer_x2, _thd.new_pos.x + _thd.new_size.x - TILE_SIZE);
+		outer_y2 = std::max<int>(outer_y2, _thd.new_pos.y + _thd.new_size.y - TILE_SIZE);
 		/* write new values */
 		_thd.new_offs.x = outer_x1 - _thd.new_pos.x;
 		_thd.new_offs.y = outer_y1 - _thd.new_pos.y;
@@ -4662,6 +4666,18 @@ void VpStartPlaceSizing(TileIndex tile, ViewportPlaceMethod method, ViewportDrag
 	_special_mouse_mode = WSM_SIZING;
 }
 
+/** Drag over the map while holding the left mouse down. */
+void VpStartDragging(ViewportDragDropSelectionProcess process)
+{
+	_thd.select_method = VPM_X_AND_Y;
+	_thd.select_proc = process;
+	_thd.selstart.x = 0;
+	_thd.selstart.y = 0;
+	_thd.next_drawstyle = HT_RECT;
+
+	_special_mouse_mode = WSM_DRAGGING;
+}
+
 void VpSetPlaceSizingLimit(int limit)
 {
 	_thd.sizelimit = limit;
@@ -4833,7 +4849,7 @@ static int CalcHeightdiff(HighLightStyle style, uint distance, TileIndex start_t
 			assert(style_t < lengthof(heightdiff_line_by_dir) - 13);
 			h0 = TileHeight(TILE_ADD(start_tile, ToTileIndexDiff(heightdiff_line_by_dir[style_t])));
 			uint ht = TileHeight(TILE_ADD(start_tile, ToTileIndexDiff(heightdiff_line_by_dir[style_t + 1])));
-			h0 = max(h0, ht);
+			h0 = std::max(h0, ht);
 
 			/* Use lookup table for end-tile based on HighLightStyle direction
 			 * flip around side (lower/upper, left/right) based on distance */
@@ -4841,7 +4857,7 @@ static int CalcHeightdiff(HighLightStyle style, uint distance, TileIndex start_t
 			assert(style_t < lengthof(heightdiff_line_by_dir) - 13);
 			h1 = TileHeight(TILE_ADD(end_tile, ToTileIndexDiff(heightdiff_line_by_dir[12 + style_t])));
 			ht = TileHeight(TILE_ADD(end_tile, ToTileIndexDiff(heightdiff_line_by_dir[12 + style_t + 1])));
-			h1 = max(h1, ht);
+			h1 = std::max(h1, ht);
 			break;
 		}
 	}
@@ -4970,7 +4986,7 @@ static bool FindPolyline(const Point &pt, const LineSnapPoint &start, PolylineIn
 	uint ortho_len = 0, ortho_len2 = 0;
 	if (HasBit(start.dirs, ortho_line_dir)) {
 		bool is_len_even = (align_x != 0) ? d_x >= d_y : d_x <= d_y;
-		ortho_len = 2 * min(d_x, d_y) - (int)is_len_even;
+		ortho_len = 2 * std::min(d_x, d_y) - (int)is_len_even;
 		assert((int)ortho_len >= 0);
 		if (d_ns == 0 || d_we == 0) { // just single segment?
 			ortho_len++;
@@ -4985,7 +5001,7 @@ static bool FindPolyline(const Point &pt, const LineSnapPoint &start, PolylineIn
 		if (d_x == 0 || d_y == 0) { // just single segment?
 			diag_len = d_x + d_y;
 		} else {
-			diag_len = min(d_ns, d_we);
+			diag_len = std::min(d_ns, d_we);
 			diag_len2 = d_x + d_y - diag_len;
 		}
 	}
@@ -4998,7 +5014,7 @@ static bool FindPolyline(const Point &pt, const LineSnapPoint &start, PolylineIn
 		/* if equeal, choose the shorter line */
 		if (cmp == 0) cmp = ortho_len - diag_len;
 		/* finally look at small "units" and choose the line which is closer to the mouse point */
-		if (cmp == 0) cmp = min(abs(we), abs(ns)) - min(abs(x), abs(y));
+		if (cmp == 0) cmp = std::min(abs(we), abs(ns)) - std::min(abs(x), abs(y));
 		/* based on comparison, disable one of variants */
 		if (cmp > 0) {
 			ortho_len = 0;
@@ -5541,7 +5557,7 @@ calc_heightdiff_single_direction:;
  */
 EventState VpHandlePlaceSizingDrag()
 {
-	if (_special_mouse_mode != WSM_SIZING) return ES_NOT_HANDLED;
+	if (_special_mouse_mode != WSM_SIZING && _special_mouse_mode != WSM_DRAGGING) return ES_NOT_HANDLED;
 
 	/* stop drag mode if the window has been closed */
 	Window *w = _thd.GetCallbackWnd();
@@ -5550,14 +5566,23 @@ EventState VpHandlePlaceSizingDrag()
 		return ES_HANDLED;
 	}
 
+	if (_left_button_down && _special_mouse_mode == WSM_DRAGGING) {
+		/* Only register a drag event when the mouse moved. */
+		if (_thd.new_pos.x == _thd.selstart.x && _thd.new_pos.y == _thd.selstart.y) return ES_HANDLED;
+		_thd.selstart.x = _thd.new_pos.x;
+		_thd.selstart.y = _thd.new_pos.y;
+	}
+
 	/* While dragging execute the drag procedure of the corresponding window (mostly VpSelectTilesWithMethod() ).
 	 * Do it even if the button is no longer pressed to make sure that OnPlaceDrag was called at least once. */
 	w->OnPlaceDrag(_thd.select_method, _thd.select_proc, GetTileBelowCursor());
 	if (_left_button_down) return ES_HANDLED;
 
-	/* mouse button released..
-	 * keep the selected tool, but reset it to the original mode. */
+	/* Mouse button released. */
 	_special_mouse_mode = WSM_NONE;
+	if (_special_mouse_mode == WSM_DRAGGING) return ES_HANDLED;
+
+	/* Keep the selected tool, but reset it to the original mode. */
 	HighLightStyle others = _thd.place_mode & ~(HT_DRAG_MASK | HT_DIR_MASK);
 	if ((_thd.next_drawstyle & HT_DRAG_MASK) == HT_RECT) {
 		_thd.place_mode = HT_RECT | others;

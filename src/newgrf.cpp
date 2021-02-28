@@ -10,7 +10,6 @@
 #include "stdafx.h"
 
 #include <stdarg.h>
-#include <algorithm>
 
 #include "debug.h"
 #include "fileio_func.h"
@@ -508,7 +507,7 @@ static StringID TTDPStringIDToOTTDStringIDMapping(StringID str)
 	assert(!IsInsideMM(str, 0xD000, 0xD7FF));
 
 #define TEXTID_TO_STRINGID(begin, end, stringid, stringend) \
-	assert_compile(stringend - stringid == end - begin); \
+	static_assert(stringend - stringid == end - begin); \
 	if (str >= begin && str <= end) return str + (stringid - begin)
 
 	/* We have some changes in our cargo strings, resulting in some missing. */
@@ -668,7 +667,7 @@ static Engine *GetNewEngine(const GRFFile *file, VehicleType type, uint16 intern
 			scope_grfid, // Note: this is INVALID_GRFID if dynamic_engines is disabled, so no reservation
 			internal_id,
 			type,
-			static_cast<uint8>(min(internal_id, _engine_counts[type])) // substitute_id == _engine_counts[subtype] means "no substitute"
+			std::min<uint8>(internal_id, _engine_counts[type]) // substitute_id == _engine_counts[subtype] means "no substitute"
 	});
 
 	if (engine_pool_size != Engine::GetPoolSize()) {
@@ -1951,8 +1950,7 @@ static ChangeInfoResult StationChangeInfo(uint stid, int numinfo, int prop, cons
 					tmp_layout.clear();
 					for (;;) {
 						/* no relative bounding box support */
-						/*C++17: DrawTileSeqStruct &dtss = */ tmp_layout.emplace_back();
-						DrawTileSeqStruct &dtss = tmp_layout.back();
+						DrawTileSeqStruct &dtss = tmp_layout.emplace_back();
 						MemSetT(&dtss, 0);
 
 						dtss.delta_x = buf->ReadByte();
@@ -2540,7 +2538,7 @@ static ChangeInfoResult TownHouseChangeInfo(uint hid, int numinfo, int prop, con
 			}
 
 			case 0x16: // Periodic refresh multiplier
-				housespec->processing_time = min(buf->ReadByte(), 63);
+				housespec->processing_time = std::min<byte>(buf->ReadByte(), 63u);
 				break;
 
 			case 0x17: // Four random colours to use
@@ -2722,7 +2720,7 @@ static ChangeInfoResult GlobalVarChangeInfo(uint gvid, int numinfo, int prop, co
 				uint price = gvid + i;
 
 				if (price < PR_END) {
-					_cur.grffile->price_base_multipliers[price] = min<int>(factor - 8, MAX_PRICE_MODIFIER);
+					_cur.grffile->price_base_multipliers[price] = std::min<int>(factor - 8, MAX_PRICE_MODIFIER);
 				} else {
 					grfmsg(1, "GlobalVarChangeInfo: Price %d out of range, ignoring", price);
 				}
@@ -3109,7 +3107,7 @@ static ChangeInfoResult CargoChangeInfo(uint cid, int numinfo, int prop, const G
 				break;
 
 			case 0x1D: // Vehicle capacity muliplier
-				cs->multiplier = max<uint16>(1u, buf->ReadWord());
+				cs->multiplier = std::max<uint16>(1u, buf->ReadWord());
 				break;
 
 			default:
@@ -3994,11 +3992,11 @@ static ChangeInfoResult AirportChangeInfo(uint airport, int numinfo, int prop, c
 							}
 
 							if (as->rotation[j] == DIR_E || as->rotation[j] == DIR_W) {
-								as->size_x = max<byte>(as->size_x, att[k].ti.y + 1);
-								as->size_y = max<byte>(as->size_y, att[k].ti.x + 1);
+								as->size_x = std::max<byte>(as->size_x, att[k].ti.y + 1);
+								as->size_y = std::max<byte>(as->size_y, att[k].ti.x + 1);
 							} else {
-								as->size_x = max<byte>(as->size_x, att[k].ti.x + 1);
-								as->size_y = max<byte>(as->size_y, att[k].ti.y + 1);
+								as->size_x = std::max<byte>(as->size_x, att[k].ti.x + 1);
+								as->size_y = std::max<byte>(as->size_y, att[k].ti.y + 1);
 							}
 						}
 						tile_table[j] = CallocT<AirportTileTable>(size);
@@ -5159,8 +5157,7 @@ static void NewSpriteGroup(ByteReader *buf)
 			/* Loop through the var adjusts. Unfortunately we don't know how many we have
 			 * from the outset, so we shall have to keep reallocing. */
 			do {
-				/*C++17: DeterministicSpriteGroupAdjust &adjust = */ adjusts.emplace_back();
-				DeterministicSpriteGroupAdjust &adjust = adjusts.back();
+				DeterministicSpriteGroupAdjust &adjust = adjusts.emplace_back();
 
 				/* The first var adjust doesn't have an operation specified, so we set it to add. */
 				adjust.operation = adjusts.size() == 1 ? DSGA_OP_ADD : (DeterministicSpriteGroupAdjustOperation)buf->ReadByte();
@@ -5338,7 +5335,7 @@ static void NewSpriteGroup(ByteReader *buf)
 				case GSF_AIRPORTTILES:
 				case GSF_OBJECTS:
 				case GSF_INDUSTRYTILES: {
-					byte num_building_sprites = max((uint8)1, type);
+					byte num_building_sprites = std::max((uint8)1, type);
 
 					assert(TileLayoutSpriteGroup::CanAllocateItem());
 					TileLayoutSpriteGroup *group = new TileLayoutSpriteGroup();
@@ -6213,7 +6210,7 @@ static uint16 SanitizeSpriteOffset(uint16& num, uint16 offset, int max_sprites, 
 	if (offset + num > max_sprites) {
 		grfmsg(4, "GraphicsNew: %s sprite overflow, truncating...", name);
 		uint orig_num = num;
-		num = max(max_sprites - offset, 0);
+		num = std::max(max_sprites - offset, 0);
 		return orig_num - num;
 	}
 
@@ -6401,7 +6398,7 @@ bool GetGlobalVariable(byte param, uint32 *value, const GRFFile *grffile)
 
 	switch (param) {
 		case 0x00: // current date
-			*value = max(_date - DAYS_TILL_ORIGINAL_BASE_YEAR, 0);
+			*value = std::max(_date - DAYS_TILL_ORIGINAL_BASE_YEAR, 0);
 			return true;
 
 		case 0x01: // current year
@@ -7120,7 +7117,7 @@ static uint32 GetPatchVariable(uint8 param)
 {
 	switch (param) {
 		/* start year - 1920 */
-		case 0x0B: return max(_settings_game.game_creation.starting_year, ORIGINAL_BASE_YEAR) - ORIGINAL_BASE_YEAR;
+		case 0x0B: return std::max(_settings_game.game_creation.starting_year, ORIGINAL_BASE_YEAR) - ORIGINAL_BASE_YEAR;
 
 		/* freight trains weight factor */
 		case 0x0E: return _settings_game.vehicle.freight_trains;
@@ -7159,7 +7156,7 @@ static uint32 GetPatchVariable(uint8 param)
 			byte map_bits = 0;
 			byte log_X = MapLogX() - 6; // subtraction is required to make the minimal size (64) zero based
 			byte log_Y = MapLogY() - 6;
-			byte max_edge = max(log_X, log_Y);
+			byte max_edge = std::max(log_X, log_Y);
 
 			if (log_X == log_Y) { // we have a squared map, since both edges are identical
 				SetBit(map_bits, 0);
@@ -7167,7 +7164,7 @@ static uint32 GetPatchVariable(uint8 param)
 				if (max_edge == log_Y) SetBit(map_bits, 1); // edge Y been the biggest, mark it
 			}
 
-			return (map_bits << 24) | (min(log_X, log_Y) << 20) | (max_edge << 16) |
+			return (map_bits << 24) | (std::min(log_X, log_Y) << 20) | (max_edge << 16) |
 				(log_X << 12) | (log_Y << 8) | (log_X + log_Y);
 		}
 
@@ -7991,7 +7988,7 @@ static bool ChangeGRFNumUsedParams(size_t len, ByteReader *buf)
 		grfmsg(2, "StaticGRFInfo: expected only 1 byte for 'INFO'->'NPAR' but got " PRINTF_SIZE ", ignoring this field", len);
 		buf->Skip(len);
 	} else {
-		_cur.grfconfig->num_valid_params = min(buf->ReadByte(), lengthof(_cur.grfconfig->param));
+		_cur.grfconfig->num_valid_params = std::min<byte>(buf->ReadByte(), lengthof(_cur.grfconfig->param));
 	}
 	return true;
 }
@@ -8145,8 +8142,8 @@ static bool ChangeGRFParamMask(size_t len, ByteReader *buf)
 			buf->Skip(len - 1);
 		} else {
 			_cur_parameter->param_nr = param_nr;
-			if (len >= 2) _cur_parameter->first_bit = min(buf->ReadByte(), 31);
-			if (len >= 3) _cur_parameter->num_bit = min(buf->ReadByte(), 32 - _cur_parameter->first_bit);
+			if (len >= 2) _cur_parameter->first_bit = std::min<byte>(buf->ReadByte(), 31);
+			if (len >= 3) _cur_parameter->num_bit = std::min<byte>(buf->ReadByte(), 32 - _cur_parameter->first_bit);
 		}
 	}
 
@@ -9006,7 +9003,8 @@ static void InitializeGRFSpecial()
 	                   |                                                      (1 << 0x1E)  // variablerunningcosts
 	                   |                                                      (1 << 0x1F); // any switch is on
 
-	_ttdpatch_flags[4] =                                                      (1 << 0x00); // larger persistent storage
+	_ttdpatch_flags[4] =                                                      (1 << 0x00)  // larger persistent storage
+	                   |             ((_settings_game.economy.inflation ? 1 : 0) << 0x01); // inflation is on
 }
 
 /** Reset and clear all NewGRF stations */
@@ -9344,7 +9342,7 @@ GRFFile::GRFFile(const GRFConfig *config)
 
 	/* Copy the initial parameter list
 	 * 'Uninitialised' parameters are zeroed as that is their default value when dynamically creating them. */
-	assert_compile(lengthof(this->param) == lengthof(config->param) && lengthof(this->param) == 0x80);
+	static_assert(lengthof(this->param) == lengthof(config->param) && lengthof(this->param) == 0x80);
 
 	assert(config->num_params <= lengthof(config->param));
 	this->param_end = config->num_params;
@@ -9983,8 +9981,7 @@ void LoadNewGRFFile(GRFConfig *config, uint file_index, GrfLoadingStage stage, S
 		return;
 	}
 
-	free(config->full_filename);
-	config->full_filename = nullptr;
+	config->full_filename.clear();
 	FioOpenFile(file_index, filename, subdir, &(config->full_filename));
 	_cur.file_index = file_index; // XXX
 	_palette_remap_grf[_cur.file_index] = (config->palette & GRFP_USE_MASK);

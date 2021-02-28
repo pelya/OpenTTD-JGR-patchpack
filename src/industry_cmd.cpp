@@ -41,6 +41,8 @@
 #include "object_base.h"
 #include "game/game.hpp"
 #include "error.h"
+#include "cmd_helper.h"
+#include "string_func.h"
 
 #include "table/strings.h"
 #include "table/industry_land.h"
@@ -534,7 +536,7 @@ static bool TransportIndustryGoods(TileIndex tile)
 	bool moved_cargo = false;
 
 	for (uint j = 0; j < lengthof(i->produced_cargo_waiting); j++) {
-		uint cw = min(i->produced_cargo_waiting[j], 255);
+		uint cw = std::min<uint>(i->produced_cargo_waiting[j], 255u);
 		if (cw > indspec->minimal_cargo && i->produced_cargo[j] != CT_INVALID) {
 			i->produced_cargo_waiting[j] -= cw;
 
@@ -1076,7 +1078,7 @@ static void PlantFarmField(TileIndex tile, IndustryID industry)
 	uint size_x = GB(r, 0, 8);
 	uint size_y = GB(r, 8, 8);
 
-	TileArea ta(tile - TileDiffXY(min(TileX(tile), size_x / 2), min(TileY(tile), size_y / 2)), size_x, size_y);
+	TileArea ta(tile - TileDiffXY(std::min(TileX(tile), size_x / 2), std::min(TileY(tile), size_y / 2)), size_x, size_y);
 	ta.ClampToMap();
 
 	if (ta.w == 0 || ta.h == 0) return;
@@ -1165,7 +1167,7 @@ static void ChopLumberMillTrees(Industry *i)
 
 	TileIndex tile = i->location.tile;
 	if (CircularTileSearch(&tile, 40, SearchLumberMillTrees, nullptr)) { // 40x40 tiles  to search.
-		i->produced_cargo_waiting[0] = min(0xffff, i->produced_cargo_waiting[0] + 45); // Found a tree, add according value to waiting cargo.
+		i->produced_cargo_waiting[0] = std::min(0xffff, i->produced_cargo_waiting[0] + 45); // Found a tree, add according value to waiting cargo.
 	}
 }
 
@@ -1176,7 +1178,7 @@ static void ProduceIndustryGoodsFromRate(Industry *i, bool scale)
 		if (amount != 0 && scale) {
 			amount = ScaleQuantity(amount, _settings_game.economy.industry_cargo_scale_factor);
 		}
-		i->produced_cargo_waiting[j] = min(0xffff, i->produced_cargo_waiting[j] + amount);
+		i->produced_cargo_waiting[j] = std::min<uint>(0xffff, i->produced_cargo_waiting[j] + amount);
 	}
 }
 
@@ -1815,7 +1817,7 @@ static void DoCreateNewIndustry(Industry *i, TileIndex tile, IndustryType type, 
 	/* Randomize inital production if non-original economy is used and there are no production related callbacks. */
 	if (!indspec->UsesOriginalEconomy()) {
 		for (size_t ci = 0; ci < lengthof(i->production_rate); ci++) {
-			i->production_rate[ci] = min((RandomRange(256) + 128) * i->production_rate[ci] >> 8, 255);
+			i->production_rate[ci] = std::min((RandomRange(256) + 128) * i->production_rate[ci] >> 8, 255u);
 		}
 	}
 
@@ -2136,16 +2138,13 @@ CommandCost CmdBuildIndustry(TileIndex tile, DoCommandFlag flags, uint32 p1, uin
  * @param flags Type of operation.
  * @param p1 IndustryID
  * @param p2 various bitstuffed elements
- * - p2 = (bit 0 - 7) - action to perform:
- *                      0 = set control flags
- *                      1 = set exclusive supplier
- *                      2 = set exclusive consumer
+ * - p2 = (bit 0 - 7) - IndustryAction to perform
  * - p2 = (bit 8 - 15) - IndustryControlFlags
  *                       (only used with set control flags)
  * - p2 = (bit 16 - 23) - CompanyID to set or INVALID_OWNER (available to everyone) or
  *                        OWNER_NONE (neutral stations only) or OWNER_DEITY (no one)
  *                        (only used with set exclusive supplier / consumer)
- * @param text unused
+ * @param text - Additional industry text (only used with set text action)
  * @return Empty cost or an error.
  */
 CommandCost CmdIndustryCtrl(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text)
@@ -2155,10 +2154,10 @@ CommandCost CmdIndustryCtrl(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 	Industry *ind = Industry::GetIfValid(p1);
 	if (ind == nullptr) return CMD_ERROR;
 
-	uint8 action = GB(p2, 0, 8);
+	auto action = static_cast<IndustryAction>(GB(p2, 0, 8));
 
 	switch (action) {
-		case 0: {
+		case IndustryAction::SetControlFlags: {
 			IndustryControlFlags ctlflags = (IndustryControlFlags)GB(p2, 8, 8) & INDCTL_MASK;
 
 			if (flags & DC_EXEC) ind->ctlflags = ctlflags;
@@ -2166,21 +2165,28 @@ CommandCost CmdIndustryCtrl(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 			break;
 		}
 
-		case 1:
-		case 2: {
+		case IndustryAction::SetExclusiveSupplier:
+		case IndustryAction::SetExclusiveConsumer: {
 			Owner company_id = (Owner)GB(p2, 16, 8);
 
 			if (company_id != OWNER_NONE && company_id != INVALID_OWNER && company_id != OWNER_DEITY
 				&& !Company::IsValidID(company_id)) return CMD_ERROR;
 
 			if (flags & DC_EXEC) {
-				if (action == 1) {
+				if (action == IndustryAction::SetExclusiveSupplier) {
 					ind->exclusive_supplier = company_id;
 				} else {
 					ind->exclusive_consumer = company_id;
 				}
 			}
 
+			break;
+		}
+
+		case IndustryAction::SetText: {
+			ind->text.clear();
+			if (!StrEmpty(text)) ind->text = text;
+			InvalidateWindowData(WC_INDUSTRY_VIEW, ind->index);
 			break;
 		}
 
@@ -2281,7 +2287,7 @@ static uint GetNumberOfIndustries()
 
 	assert(lengthof(numof_industry_table) == ID_END);
 	uint difficulty = (_game_mode != GM_EDITOR) ? _settings_game.difficulty.industry_density : (uint)ID_VERY_LOW;
-	return min(IndustryPool::MAX_SIZE, ScaleByMapSize(numof_industry_table[difficulty]));
+	return std::min<uint>(IndustryPool::MAX_SIZE, ScaleByMapSize(numof_industry_table[difficulty]));
 }
 
 /**
@@ -2357,7 +2363,7 @@ void IndustryBuildData::MonthlyLoop()
 
 	/* To prevent running out of unused industries for the player to connect,
 	 * add a fraction of new industries each month, but only if the manager can keep up. */
-	uint max_behind = 1 + min(99u, ScaleByMapSize(3)); // At most 2 industries for small maps, and 100 at the biggest map (about 6 months industry build attempts).
+	uint max_behind = 1 + std::min(99u, ScaleByMapSize(3)); // At most 2 industries for small maps, and 100 at the biggest map (about 6 months industry build attempts).
 	if (GetCurrentTotalNumberOfIndustries() + max_behind >= (this->wanted_inds >> 16)) {
 		this->wanted_inds += ScaleByMapSize(NEWINDS_PER_MONTH);
 	}
@@ -2425,7 +2431,7 @@ static void UpdateIndustryStatistics(Industry *i)
 			byte pct = 0;
 			if (i->this_month_production[j] != 0) {
 				i->last_prod_year = _cur_year;
-				pct = min(i->this_month_transported[j] * 256 / i->this_month_production[j], 255);
+				pct = std::min(i->this_month_transported[j] * 256 / i->this_month_production[j], 255);
 			}
 			i->last_month_pct_transported[j] = pct;
 
@@ -2449,7 +2455,7 @@ void Industry::RecomputeProductionMultipliers()
 
 	/* Rates are rounded up, so e.g. oilrig always produces some passengers */
 	for (size_t i = 0; i < lengthof(this->production_rate); i++) {
-		this->production_rate[i] = min(CeilDiv(indspec->production_rate[i] * this->prod_level, PRODLEVEL_DEFAULT), 0xFF);
+		this->production_rate[i] = std::min(CeilDiv(indspec->production_rate[i] * this->prod_level, PRODLEVEL_DEFAULT), 0xFFu);
 	}
 }
 
@@ -2582,10 +2588,10 @@ void IndustryBuildData::TryBuildNewIndustry()
 		const Industry *ind = PlaceIndustry(it, IACT_RANDOMCREATION, false);
 		if (ind == nullptr) {
 			this->builddata[it].wait_count = this->builddata[it].max_wait + 1; // Compensate for decrementing below.
-			this->builddata[it].max_wait = min(1000, this->builddata[it].max_wait + 2);
+			this->builddata[it].max_wait = std::min(1000, this->builddata[it].max_wait + 2);
 		} else {
 			AdvertiseIndustryOpening(ind);
-			this->builddata[it].max_wait = max(this->builddata[it].max_wait / 2, 1); // Reduce waiting time of the industry type.
+			this->builddata[it].max_wait = std::max(this->builddata[it].max_wait / 2, 1); // Reduce waiting time of the industry type.
 		}
 	}
 
@@ -2682,8 +2688,7 @@ static int WhoCanServiceIndustry(Industry *ind)
 		 * We cannot check the first of shared orders only, since the first vehicle in such a chain
 		 * may have a different cargo type.
 		 */
-		const Order *o;
-		FOR_VEHICLE_ORDERS(v, o) {
+		for (const Order *o : v->Orders()) {
 			if (o->IsType(OT_GOTO_STATION) && !(o->GetUnloadType() & OUFB_TRANSFER)) {
 				/* Vehicle visits a station to load or unload */
 				Station *st = Station::Get(o->GetDestination());
@@ -2823,13 +2828,12 @@ static void ChangeIndustryProduction(Industry *i, bool monthly)
 				/* 4.5% chance for 3-23% (or 1 unit for very low productions) production change,
 				 * determined by mult value. If mult = 1 prod. increases, else (-1) it decreases. */
 				if (Chance16I(1, 22, r >> 16)) {
-					new_prod += mult * (max(((RandomRange(50) + 10) * old_prod) >> 8, 1U));
+					new_prod += mult * (std::max(((RandomRange(50) + 10) * old_prod) >> 8, 1U));
 				}
 
 				/* Prevent production to overflow or Oil Rig passengers to be over-"produced" */
 				new_prod = Clamp(new_prod, 1, 255);
-
-				if (((indspec->behaviour & INDUSTRYBEH_BUILT_ONWATER) != 0) && j == 1 && !(indspec->behaviour & INDUSTRYBEH_WATER_NO_CLAMP_PROD)) {
+				if (i->produced_cargo[j] == CT_PASSENGERS && !(indspec->behaviour & INDUSTRYBEH_NO_PAX_PROD_CLAMP)) {
 					new_prod = Clamp(new_prod, 0, 16);
 				}
 
@@ -2868,7 +2872,7 @@ static void ChangeIndustryProduction(Industry *i, bool monthly)
 
 	/* Increase if needed */
 	while (mul-- != 0 && i->prod_level < PRODLEVEL_MAXIMUM) {
-		i->prod_level = min(i->prod_level * 2, PRODLEVEL_MAXIMUM);
+		i->prod_level = std::min<int>(i->prod_level * 2, PRODLEVEL_MAXIMUM);
 		recalculate_multipliers = true;
 		if (str == STR_NULL) str = indspec->production_up_text;
 	}
@@ -2879,7 +2883,7 @@ static void ChangeIndustryProduction(Industry *i, bool monthly)
 			closeit = true;
 			break;
 		} else {
-			i->prod_level = max(i->prod_level / 2, (int)PRODLEVEL_MINIMUM); // typecast to int required to please MSVC
+			i->prod_level = std::max<int>(i->prod_level / 2, PRODLEVEL_MINIMUM);
 			recalculate_multipliers = true;
 			if (str == STR_NULL) str = indspec->production_down_text;
 		}
@@ -2971,7 +2975,7 @@ void IndustryDailyLoop()
 
 	uint perc = 3; // Between 3% and 9% chance of creating a new industry.
 	if ((_industry_builder.wanted_inds >> 16) > GetCurrentTotalNumberOfIndustries()) {
-		perc = min(9u, perc + (_industry_builder.wanted_inds >> 16) - GetCurrentTotalNumberOfIndustries());
+		perc = std::min(9u, perc + (_industry_builder.wanted_inds >> 16) - GetCurrentTotalNumberOfIndustries());
 	}
 	for (uint16 j = 0; j < change_loop; j++) {
 		if (Chance16(perc, 100)) {

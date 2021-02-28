@@ -629,6 +629,7 @@ static inline bool IsOrderUsableForSeparation(const Order *order)
 std::vector<TimetableProgress> PopulateSeparationState(const Vehicle *v_start)
 {
 	std::vector<TimetableProgress> out;
+	if (v_start->GetNumOrders() == 0) return out;
 	for (const Vehicle *v = v_start->FirstShared(); v != nullptr; v = v->NextShared()) {
 		if (!HasBit(v->vehicle_flags, VF_SEPARATION_ACTIVE)) continue;
 		bool separation_valid = true;
@@ -654,15 +655,19 @@ std::vector<TimetableProgress> PopulateSeparationState(const Vehicle *v_start)
 			// Do not try to separate vehicles on depot service or halt orders
 			separation_valid = false;
 		}
+		if (order->IsType(OT_RELEASE_SLOT)) {
+			// Do not try to separate vehicles on release slot orders
+			separation_valid = false;
+		}
 		int order_ticks;
 		if (order->GetType() == OT_GOTO_STATION && (v->current_order.IsType(OT_LOADING) || v->current_order.IsType(OT_LOADING_ADVANCE)) &&
 				v->last_station_visited == order->GetDestination()) {
 			order_count++;
 			order_ticks = order->GetTravelTime() + v->current_loading_time;
-			cumulative_ticks += order->GetTravelTime() + min(v->current_loading_time, order->GetWaitTime());
+			cumulative_ticks += order->GetTravelTime() + std::min(v->current_loading_time, order->GetWaitTime());
 		} else {
 			order_ticks = v->current_order_time;
-			cumulative_ticks += min(v->current_order_time, order->GetTravelTime());
+			cumulative_ticks += std::min(v->current_order_time, order->GetTravelTime());
 		}
 
 		out.push_back({ v->index, order_count, order_ticks, separation_valid ? cumulative_ticks : -1 });
@@ -881,7 +886,7 @@ void UpdateVehicleTimetable(Vehicle *v, bool travelling)
 		 * processing of different orders when filling the timetable. */
 		Company *owner = Company::GetIfValid(v->owner);
 		uint rounding_factor = owner ? owner->settings.timetable_autofill_rounding : DAY_TICKS;
-		uint time_to_set = CeilDiv(max(time_taken, 1U), rounding_factor) * rounding_factor;
+		uint time_to_set = CeilDiv(std::max(time_taken, 1U), rounding_factor) * rounding_factor;
 
 		if (travel_field && (autofilling || !real_timetable_order->IsTravelTimetabled())) {
 			ChangeTimetable(v, v->cur_timetable_order_index, time_to_set, MTF_TRAVEL_TIME, autofilling);

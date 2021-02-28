@@ -287,10 +287,10 @@ bool VideoDriver_SDL::CreateMainSurface(uint w, uint h)
 
 	if (bpp == 0) usererror("Can't use a blitter that blits 0 bpp for normal visuals");
 
-	char icon_path[MAX_PATH];
-	if (FioFindFullPath(icon_path, lastof(icon_path), BASESET_DIR, "openttd.32.bmp") != nullptr) {
+	std::string icon_path = FioFindFullPath(BASESET_DIR, "openttd.32.bmp");
+	if (!icon_path.empty()) {
 		/* Give the application an icon */
-		icon = SDL_LoadBMP(icon_path);
+		icon = SDL_LoadBMP(icon_path.c_str());
 		if (icon != nullptr) {
 			/* Get the colourkey, which will be magenta */
 			uint32 rgbmap = SDL_MapRGB(icon->format, 255, 0, 255);
@@ -632,8 +632,8 @@ int VideoDriver_SDL::PollEvent()
 			break;
 #ifndef __ANDROID__
 		case SDL_VIDEORESIZE: {
-			int w = max(ev.resize.w, 64);
-			int h = max(ev.resize.h, 64);
+			int w = std::max(ev.resize.w, 64);
+			int h = std::max(ev.resize.h, 64);
 			CreateMainSurface(w, h);
 			break;
 		}
@@ -664,6 +664,8 @@ const char *VideoDriver_SDL::Start(const StringList &parm)
 		ret_code = SDL_InitSubSystem(SDL_INIT_VIDEO);
 	}
 	if (ret_code < 0) return SDL_GetError();
+
+	this->UpdateAutoResolution();
 
 	GetVideoModes();
 	if (!CreateMainSurface(_cur_resolution.width, _cur_resolution.height)) {

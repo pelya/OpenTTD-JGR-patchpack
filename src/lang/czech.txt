@@ -102,17 +102,17 @@ STR_CARGO_PLURAL_SUGAR.big                                      :Cukr
 STR_CARGO_PLURAL_TOYS                                           :hračky
 STR_CARGO_PLURAL_TOYS.gen                                       :hraček
 STR_CARGO_PLURAL_TOYS.big                                       :Hračky
-STR_CARGO_PLURAL_CANDY                                          :bonbony
-STR_CARGO_PLURAL_CANDY.gen                                      :bonbonů
-STR_CARGO_PLURAL_CANDY.big                                      :Bonbony
+STR_CARGO_PLURAL_SWEETS                                         :bonbony
+STR_CARGO_PLURAL_SWEETS.gen                                     :bonbonů
+STR_CARGO_PLURAL_SWEETS.big                                     :Bonbony
 STR_CARGO_PLURAL_COLA                                           :kola
 STR_CARGO_PLURAL_COLA.gen                                       :koly
 STR_CARGO_PLURAL_COLA.acc                                       :kolu
 STR_CARGO_PLURAL_COLA.big                                       :Kola
-STR_CARGO_PLURAL_COTTON_CANDY                                   :cukrová vata
-STR_CARGO_PLURAL_COTTON_CANDY.gen                               :cukrové vaty
-STR_CARGO_PLURAL_COTTON_CANDY.acc                               :cukrovou vatu
-STR_CARGO_PLURAL_COTTON_CANDY.big                               :Cukrová vata
+STR_CARGO_PLURAL_CANDYFLOSS                                     :cukrová vata
+STR_CARGO_PLURAL_CANDYFLOSS.gen                                 :cukrové vaty
+STR_CARGO_PLURAL_CANDYFLOSS.acc                                 :cukrovou vatu
+STR_CARGO_PLURAL_CANDYFLOSS.big                                 :Cukrová vata
 STR_CARGO_PLURAL_BUBBLES                                        :bubliny
 STR_CARGO_PLURAL_BUBBLES.gen                                    :bublin
 STR_CARGO_PLURAL_BUBBLES.big                                    :Bubliny
@@ -157,9 +157,9 @@ STR_CARGO_SINGULAR_WHEAT                                        :pšenice
 STR_CARGO_SINGULAR_RUBBER                                       :kaučuku
 STR_CARGO_SINGULAR_SUGAR                                        :cukru
 STR_CARGO_SINGULAR_TOY                                          :hraček
-STR_CARGO_SINGULAR_CANDY                                        :bonbonů
+STR_CARGO_SINGULAR_SWEETS                                       :bonbonů
 STR_CARGO_SINGULAR_COLA                                         :koly
-STR_CARGO_SINGULAR_COTTON_CANDY                                 :cukrové vaty
+STR_CARGO_SINGULAR_CANDYFLOSS                                   :cukrové vaty
 STR_CARGO_SINGULAR_BUBBLE                                       :bublin
 STR_CARGO_SINGULAR_TOFFEE                                       :karamelu
 STR_CARGO_SINGULAR_BATTERY                                      :baterií
@@ -308,7 +308,6 @@ STR_TOOLTIP_SORT_ORDER                                          :{BLACK}Vyber zp
 STR_TOOLTIP_SORT_CRITERIA                                       :{BLACK}Vyber, podle čeho se má třídit
 STR_TOOLTIP_FILTER_CRITERIA                                     :{BLACK}Vyber třídící podmínku
 STR_BUTTON_SORT_BY                                              :{BLACK}Řadit podle
-STR_BUTTON_LOCATION                                             :{BLACK}Umístění
 STR_BUTTON_RENAME                                               :{BLACK}Přejmenovat
 STR_BUTTON_CATCHMENT                                            :{BLACK}Pokrytí
 STR_TOOLTIP_CATCHMENT                                           :{BLACK}Zapnout/vypnout zvýrazňování oblasti pokrytí
@@ -391,6 +390,8 @@ STR_SORT_BY_CARGO_CAPACITY                                      :přepravní kap
 STR_SORT_BY_RANGE                                               :dosah
 STR_SORT_BY_POPULATION                                          :Podle populace
 STR_SORT_BY_RATING                                              :Hodnocení
+
+# Group by options for vehicle list
 
 # Tooltips for the main toolbar
 STR_TOOLBAR_TOOLTIP_PAUSE_GAME                                  :{BLACK}Pauza
@@ -1854,9 +1855,6 @@ STR_CONFIG_SETTING_TOWN_CARGO_FACTOR_HELPTEXT                   :Cestující, po
 
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT                         :Umístění stromů ve hře: {STRING}
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_HELPTEXT                :Náhodné umisťování stromů během hry. Může ovlivnit průmysl závisející na růstu stromů, například pily.
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NONE                    :Žádné {RED}(nefunguje pila)
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_RAINFOREST              :Jen v deštných pralesech
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_ALL                     :Všude
 
 STR_CONFIG_SETTING_TREES_AROUND_SNOWLINE                        :Upravené umístění arktických stromů: {STRING}
 STR_CONFIG_SETTING_TREES_AROUND_SNOWLINE_HELPTEXT               :Upraví umístění stromů kolem sněhové čáry v sub-arktickém klimatu. Stromy nad sněhovou čarou řídnou. Stromy jsou směsí arktických a mírných těsně pod sněhovou čarou. Níže jsou už pouze stromy mírného pásma.
@@ -2158,7 +2156,6 @@ STR_ABANDON_SCENARIO_QUERY                                      :{YELLOW}Určite
 # Cheat window
 STR_CHEATS                                                      :{WHITE}Cheaty
 STR_CHEATS_TOOLTIP                                              :{BLACK}Zaškrtávací políčka ukazují, jestli jsi tento cheat už použil
-STR_CHEATS_WARNING                                              :{BLACK}Varování! Chystáš se podvést ostatní hráče. Pamatuj si, že tento podlý čin nebude nikdy zapomenut!
 STR_CHEAT_MONEY                                                 :{LTBLUE}Navýšit peníze o {CURRENCY_LONG}
 STR_CHEAT_CHANGE_COMPANY                                        :{LTBLUE}Hrát jako společnost: {ORANGE}{COMMA}
 STR_CHEAT_EXTRA_DYNAMITE                                        :{LTBLUE}Magický buldozer (odstraní průmysl a další objekty): {ORANGE}{STRING}
@@ -2274,10 +2271,6 @@ STR_FACE_TIE_EARRING_TOOLTIP                                    :{BLACK}Změnit 
 
 # Network server list
 STR_NETWORK_SERVER_LIST_CAPTION                                 :{WHITE}Multiplayer
-STR_NETWORK_SERVER_LIST_ADVERTISED                              :{BLACK}Vypsané
-STR_NETWORK_SERVER_LIST_ADVERTISED_TOOLTIP                      :{BLACK}Vyber mezi propagovanou (internet) a nepropagovanou (Místní síť, LAN) hrou
-STR_NETWORK_SERVER_LIST_ADVERTISED_NO                           :Ne
-STR_NETWORK_SERVER_LIST_ADVERTISED_YES                          :Ano
 STR_NETWORK_SERVER_LIST_PLAYER_NAME                             :{BLACK}Jméno hráče:
 STR_NETWORK_SERVER_LIST_ENTER_NAME_TOOLTIP                      :{BLACK}Podle tohoto jména tě ostatní hráči poznají
 
@@ -2318,8 +2311,6 @@ STR_NETWORK_SERVER_LIST_JOIN_GAME                               :{BLACK}Přidat 
 STR_NETWORK_SERVER_LIST_REFRESH                                 :{BLACK}Obnovit info
 STR_NETWORK_SERVER_LIST_REFRESH_TOOLTIP                         :{BLACK}Znovu načte informace o serveru
 
-STR_NETWORK_SERVER_LIST_FIND_SERVER                             :{BLACK}Najít server
-STR_NETWORK_SERVER_LIST_FIND_SERVER_TOOLTIP                     :{BLACK}Hledat server v síti
 STR_NETWORK_SERVER_LIST_ADD_SERVER                              :{BLACK}Přidat server
 STR_NETWORK_SERVER_LIST_ADD_SERVER_TOOLTIP                      :{BLACK}Přidá server do seznamu, ve kterém se budou hledat běžící hry
 STR_NETWORK_SERVER_LIST_START_SERVER                            :{BLACK}Spustit server
@@ -2336,6 +2327,8 @@ STR_NETWORK_START_SERVER_NEW_GAME_NAME_TOOLTIP                  :{BLACK}Jméno h
 STR_NETWORK_START_SERVER_SET_PASSWORD                           :{BLACK}Nastavit heslo
 STR_NETWORK_START_SERVER_PASSWORD_TOOLTIP                       :{BLACK}Svoji hru si můžeš ochránit heslem, když nechceš, aby se ti do ni hlásili jiní lidé
 
+STR_NETWORK_START_SERVER_ADVERTISED_LABEL                       :{BLACK}Vypsané
+STR_NETWORK_START_SERVER_ADVERTISED_TOOLTIP                     :{BLACK}Vyber mezi propagovanou (internet) a nepropagovanou (Místní síť, LAN) hrou
 STR_NETWORK_START_SERVER_UNADVERTISED                           :Ne
 STR_NETWORK_START_SERVER_ADVERTISED                             :Ano
 STR_NETWORK_START_SERVER_CLIENTS_SELECT                         :{BLACK}{NUM} klient{P "" i ů}
@@ -2559,9 +2552,9 @@ STR_NETWORK_MESSAGE_CLIENT_COMPANY_SPECTATE                     :*** {STRING} se
 STR_NETWORK_MESSAGE_CLIENT_COMPANY_NEW                          :*** {STRING} zakládá novou společnost (č. {2:NUM})
 STR_NETWORK_MESSAGE_CLIENT_LEFT                                 :*** {STRING} opouští hru ({2:STRING})
 STR_NETWORK_MESSAGE_NAME_CHANGE                                 :*** {STRING} si mění jméno na {STRING}
-STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} poslal(a) tvé společnosti {2:CURRENCY_LONG}
+STR_NETWORK_MESSAGE_GIVE_MONEY_RECEIVE                          :*** {STRING} poslal(a) tvé společnosti {2:CURRENCY_LONG}
 STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Dal(a) jsi {1:STRING} {2:CURRENCY_LONG}
-STR_NETWORK_MESSAGE_MONEY_GIVEN                                 :*** {STRING} dal {1:STRING} {2:CURRENCY_LONG}
+STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} dal {1:STRING} {2:CURRENCY_LONG}
 STR_NETWORK_MESSAGE_MONEY_GIVE_SRC_DESCRIPTION                  :{STRING} ({COMPANY})
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}Server ukončil relaci
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}Server se restartuje...{}Počkejte prosím...
@@ -2681,6 +2674,8 @@ STR_JOIN_STATION_CREATE_SPLITTED_STATION                        :{YELLOW}Postavi
 
 STR_JOIN_WAYPOINT_CAPTION                                       :{WHITE}Spojování směrování
 STR_JOIN_WAYPOINT_CREATE_SPLITTED_WAYPOINT                      :{YELLOW}Postavit samostatné směrování
+
+# Generic toolbar
 
 # Rail construction toolbar
 STR_RAIL_TOOLBAR_RAILROAD_CONSTRUCTION_CAPTION                  :Výstavba železnice
@@ -3135,7 +3130,7 @@ STR_OBJECT_BUILD_SIZE                                           :{BLACK}Velikost
 STR_OBJECT_CLASS_LTHS                                           :Majáky
 STR_OBJECT_CLASS_TRNS                                           :Vysílače
 
-# Tree planting window (last two for SE only)
+# Tree planting window (last eight for SE only)
 STR_PLANT_TREE_CAPTION                                          :{WHITE}Stromy
 STR_PLANT_TREE_TOOLTIP                                          :{BLACK}Zvol druh stromu na vysazení. Pokud se na políčku už nějaký strom nachází, přidá se k němu několik různých druhů bez ohledu na výběr druhu
 STR_TREES_RANDOM_TYPE                                           :{BLACK}Různé stromy
@@ -4350,11 +4345,6 @@ STR_REPLACE_REMOVE_WAGON_HELP                                   :{BLACK}Funkce a
 # Vehicle view
 STR_VEHICLE_VIEW_CAPTION                                        :{WHITE}{VEHICLE}
 
-STR_VEHICLE_VIEW_TRAIN_LOCATION_TOOLTIP                         :{BLACK}Vycentrovat pohled na vlak. Ctrl+kliknutí otevře nový pohled
-STR_VEHICLE_VIEW_ROAD_VEHICLE_LOCATION_TOOLTIP                  :{BLACK}Vycentrovat pohled na vozidlo. Ctrl+kliknutí otevře nový pohled
-STR_VEHICLE_VIEW_SHIP_LOCATION_TOOLTIP                          :{BLACK}Vycentrovat pohled na loď. Ctrl+kliknutí otevře nový pohled
-STR_VEHICLE_VIEW_AIRCRAFT_LOCATION_TOOLTIP                      :{BLACK}Vycentrovat pohled na letadlo. Ctrl+kliknutí otevře nový pohled
-
 STR_VEHICLE_VIEW_TRAIN_SEND_TO_DEPOT_TOOLTIP                    :{BLACK}Poslat vlak do depa. Ctrl+kliknutí pouze pro provedení oprav
 STR_VEHICLE_VIEW_ROAD_VEHICLE_SEND_TO_DEPOT_TOOLTIP             :{BLACK}Pošli vozidlo do garáže. Ctrl+kliknutí pouze provede opravy
 STR_VEHICLE_VIEW_SHIP_SEND_TO_DEPOT_TOOLTIP                     :{BLACK}Poslat loď do doku
@@ -4385,10 +4375,7 @@ STR_VEHICLE_VIEW_ROAD_VEHICLE_SHOW_DETAILS_TOOLTIP              :{BLACK}Ukaž de
 STR_VEHICLE_VIEW_SHIP_SHOW_DETAILS_TOOLTIP                      :{BLACK}Ukázat detaily lodi
 STR_VEHICLE_VIEW_AIRCRAFT_SHOW_DETAILS_TOOLTIP                  :{BLACK}Ukázat detaily letadla
 
-STR_VEHICLE_VIEW_TRAIN_STATE_START_STOP_TOOLTIP                 :{BLACK}Současná činnost vlaku - když sem klikneš, vlak se zastaví nebo rozjede. Když ještě podržíš Ctrl, pohled se posune na cílovou stanici
-STR_VEHICLE_VIEW_ROAD_VEHICLE_STATE_START_STOP_TOOLTIP          :{BLACK}Současná činnost vozidla - klikni sem pro zastavení/rozjetí
-STR_VEHICLE_VIEW_SHIP_STATE_START_STOP_TOOLTIP                  :{BLACK}Současná činnost plavidla - pro zastavení či rozjetí, klikni sem
-STR_VEHICLE_VIEW_AIRCRAFT_STATE_START_STOP_TOOLTIP              :{BLACK}Činnost letadla - stiskni pro rozjetí/zastavení letadla
+
 
 # Messages in the start stop button in the vehicle view
 STR_VEHICLE_STATUS_LOADING_UNLOADING                            :{LTBLUE}Nakládá nebo vykládá
@@ -5272,6 +5259,11 @@ STR_BASEMUSIC_WIN_DESCRIPTION                                   :Původní hudba
 STR_BASEMUSIC_DOS_DESCRIPTION                                   :Původní hudba Transport Tycoon Deluxe (verze pro DOS).
 STR_BASEMUSIC_TTO_DESCRIPTION                                   :Původní hudba Transport Tycoon (verze pro DOS).
 STR_BASEMUSIC_NONE_DESCRIPTION                                  :Prázná hudební sada.
+
+STR_TRADITIONAL_TRAIN_NAME                                      :{G=m}Vlak {COMMA}
+STR_TRADITIONAL_ROAD_VEHICLE_NAME                               :{G=n}Silniční vozidlo {COMMA}
+STR_TRADITIONAL_SHIP_NAME                                       :{G=f}Loď {COMMA}
+STR_TRADITIONAL_AIRCRAFT_NAME                                   :{G=n}Letadlo {COMMA}
 
 ##id 0x2000
 # Town building names

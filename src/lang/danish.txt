@@ -48,9 +48,9 @@ STR_CARGO_PLURAL_WHEAT                                          :Hvede
 STR_CARGO_PLURAL_RUBBER                                         :Gummi
 STR_CARGO_PLURAL_SUGAR                                          :Sukker
 STR_CARGO_PLURAL_TOYS                                           :Legetøj
-STR_CARGO_PLURAL_CANDY                                          :Slik
+STR_CARGO_PLURAL_SWEETS                                         :Slik
 STR_CARGO_PLURAL_COLA                                           :Cola
-STR_CARGO_PLURAL_COTTON_CANDY                                   :Candyfloss
+STR_CARGO_PLURAL_CANDYFLOSS                                     :Candyfloss
 STR_CARGO_PLURAL_BUBBLES                                        :Bobler
 STR_CARGO_PLURAL_TOFFEE                                         :Karamel
 STR_CARGO_PLURAL_BATTERIES                                      :Batterier
@@ -82,9 +82,9 @@ STR_CARGO_SINGULAR_WHEAT                                        :Hvede
 STR_CARGO_SINGULAR_RUBBER                                       :Gummi
 STR_CARGO_SINGULAR_SUGAR                                        :Sukker
 STR_CARGO_SINGULAR_TOY                                          :Legetøj
-STR_CARGO_SINGULAR_CANDY                                        :Slik
+STR_CARGO_SINGULAR_SWEETS                                       :Slik
 STR_CARGO_SINGULAR_COLA                                         :Cola
-STR_CARGO_SINGULAR_COTTON_CANDY                                 :Candyfloss
+STR_CARGO_SINGULAR_CANDYFLOSS                                   :Candyfloss
 STR_CARGO_SINGULAR_BUBBLE                                       :Boble
 STR_CARGO_SINGULAR_TOFFEE                                       :Karamel
 STR_CARGO_SINGULAR_BATTERY                                      :Batteri
@@ -233,7 +233,6 @@ STR_TOOLTIP_SORT_ORDER                                          :{BLACK}Vælg so
 STR_TOOLTIP_SORT_CRITERIA                                       :{BLACK}Vælg sorteringskriterie
 STR_TOOLTIP_FILTER_CRITERIA                                     :{BLACK}Vælg filtreringskriterier
 STR_BUTTON_SORT_BY                                              :{BLACK}Sortér på
-STR_BUTTON_LOCATION                                             :{BLACK}Lokalitet
 STR_BUTTON_RENAME                                               :{BLACK}Omdøb
 STR_BUTTON_CATCHMENT                                            :{BLACK}Dækning
 STR_TOOLTIP_CATCHMENT                                           :{BLACK}Aktiver visning af dækningsområde
@@ -314,6 +313,8 @@ STR_SORT_BY_CARGO_CAPACITY                                      :Lasteevne
 STR_SORT_BY_RANGE                                               :Interval
 STR_SORT_BY_POPULATION                                          :Indbyggertal
 STR_SORT_BY_RATING                                              :Værdi
+
+# Group by options for vehicle list
 
 # Tooltips for the main toolbar
 STR_TOOLBAR_TOOLTIP_PAUSE_GAME                                  :{BLACK}Sæt spillet på pause
@@ -1605,9 +1606,6 @@ STR_CONFIG_SETTING_TOWN_CARGOGENMODE_BITCOUNT                   :Lineær
 
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT                         :Placering af træer i spillet: {STRING}
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_HELPTEXT                :Kontroller den tilfældige fremkomst af træer i løbet af spillet. Dette vil påvirke industrier der afhænger træers vækst, f.eks. savværker
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NONE                    :Ingen {RED}(ødelægger træfabrik)
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_RAINFOREST              :Kun i regnskove
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_ALL                     :Alle steder
 
 STR_CONFIG_SETTING_TOOLBAR_POS                                  :Placering af værktøjslinje: {STRING}
 STR_CONFIG_SETTING_TOOLBAR_POS_HELPTEXT                         :Horisontal placering af hovedværktøjlinjen i toppen af skærmen
@@ -1817,7 +1815,6 @@ STR_ABANDON_SCENARIO_QUERY                                      :{YELLOW}Er du s
 # Cheat window
 STR_CHEATS                                                      :{WHITE}Snydefunktioner
 STR_CHEATS_TOOLTIP                                              :{BLACK}Checkbokse viser, om du har brugt denne snydefunktion før
-STR_CHEATS_WARNING                                              :{BLACK}Advarsel! Du er ved at forråde dine modstandere. Tænk lige på at dette vil blive husket i al evighed.
 STR_CHEAT_MONEY                                                 :{LTBLUE}Forøg kassebeholdning med {CURRENCY_LONG}
 STR_CHEAT_CHANGE_COMPANY                                        :{LTBLUE}Spiller som firmaet: {ORANGE}{COMMA}
 STR_CHEAT_EXTRA_DYNAMITE                                        :{LTBLUE}Magisk bulldozer (nedriv ting, som normalt ikke kan fjernes): {ORANGE}{STRING}
@@ -1929,10 +1926,6 @@ STR_FACE_TIE_EARRING_TOOLTIP                                    :{BLACK}Ændre s
 
 # Network server list
 STR_NETWORK_SERVER_LIST_CAPTION                                 :{WHITE}Netværksspil
-STR_NETWORK_SERVER_LIST_ADVERTISED                              :{BLACK}Offentlig
-STR_NETWORK_SERVER_LIST_ADVERTISED_TOOLTIP                      :{BLACK}Vælg mellem et offentligt (internet) og et ikke offentligt (lokalnetværk, LAN) spil
-STR_NETWORK_SERVER_LIST_ADVERTISED_NO                           :Nej
-STR_NETWORK_SERVER_LIST_ADVERTISED_YES                          :Ja
 STR_NETWORK_SERVER_LIST_PLAYER_NAME                             :{BLACK}Spiller navn:
 STR_NETWORK_SERVER_LIST_ENTER_NAME_TOOLTIP                      :{BLACK}Dette er det navn, som andre spillere vil kende dig ved
 
@@ -1973,8 +1966,6 @@ STR_NETWORK_SERVER_LIST_JOIN_GAME                               :{BLACK}Tilslut 
 STR_NETWORK_SERVER_LIST_REFRESH                                 :{BLACK}Genopfrisk server
 STR_NETWORK_SERVER_LIST_REFRESH_TOOLTIP                         :{BLACK}Genopfrisk serverens info
 
-STR_NETWORK_SERVER_LIST_FIND_SERVER                             :{BLACK}Find server
-STR_NETWORK_SERVER_LIST_FIND_SERVER_TOOLTIP                     :{BLACK}Søg netværket for en server
 STR_NETWORK_SERVER_LIST_ADD_SERVER                              :{BLACK}Tilføj server
 STR_NETWORK_SERVER_LIST_ADD_SERVER_TOOLTIP                      :{BLACK}Tilføjer en server til listen, som altid vil blive tjekket for kørerende spil.
 STR_NETWORK_SERVER_LIST_START_SERVER                            :{BLACK}Start server
@@ -1991,6 +1982,8 @@ STR_NETWORK_START_SERVER_NEW_GAME_NAME_TOOLTIP                  :{BLACK}Navnet v
 STR_NETWORK_START_SERVER_SET_PASSWORD                           :{BLACK}Sæt kodeord
 STR_NETWORK_START_SERVER_PASSWORD_TOOLTIP                       :{BLACK}Beskyt dit spil med et kodeord hvis du ikke vil have fremmede med
 
+STR_NETWORK_START_SERVER_ADVERTISED_LABEL                       :{BLACK}Offentlig
+STR_NETWORK_START_SERVER_ADVERTISED_TOOLTIP                     :{BLACK}Vælg mellem et offentligt (internet) og et ikke offentligt (lokalnetværk, LAN) spil
 STR_NETWORK_START_SERVER_UNADVERTISED                           :Nej
 STR_NETWORK_START_SERVER_ADVERTISED                             :Ja
 STR_NETWORK_START_SERVER_CLIENTS_SELECT                         :{BLACK}{NUM} klient{P "" er}
@@ -2212,8 +2205,6 @@ STR_NETWORK_MESSAGE_CLIENT_COMPANY_SPECTATE                     :*** {STRING} ha
 STR_NETWORK_MESSAGE_CLIENT_COMPANY_NEW                          :*** {STRING} har startet et nyt selskab (#{2:NUM})
 STR_NETWORK_MESSAGE_CLIENT_LEFT                                 :*** {STRING} har forladt spillet ({2:STRING})
 STR_NETWORK_MESSAGE_NAME_CHANGE                                 :*** {STRING} har ændret sit navn til {STRING}
-STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} gav dit selskab {2:CURRENCY_LONG}
-STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Du gav {1:STRING} {2:CURRENCY_LONG}
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}Serveren har lukket ned for dette spil
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}Serveren genstarter...{}Vent venligst...
 STR_NETWORK_MESSAGE_KICKED                                      :*** {STRING} blev sparket ud. Grund: ({STRING})
@@ -2331,6 +2322,8 @@ STR_JOIN_STATION_CREATE_SPLITTED_STATION                        :{YELLOW}Byg en 
 
 STR_JOIN_WAYPOINT_CAPTION                                       :{WHITE}Forbind waypoint
 STR_JOIN_WAYPOINT_CREATE_SPLITTED_WAYPOINT                      :{YELLOW}Byg et separat waypoint
+
+# Generic toolbar
 
 # Rail construction toolbar
 STR_RAIL_TOOLBAR_RAILROAD_CONSTRUCTION_CAPTION                  :Jernbanekonstruktion
@@ -2519,7 +2512,7 @@ STR_OBJECT_BUILD_SIZE                                           :{BLACK}Størrel
 STR_OBJECT_CLASS_LTHS                                           :Fyrtårn
 STR_OBJECT_CLASS_TRNS                                           :Sendere
 
-# Tree planting window (last two for SE only)
+# Tree planting window (last eight for SE only)
 STR_PLANT_TREE_CAPTION                                          :{WHITE}Træer
 STR_PLANT_TREE_TOOLTIP                                          :{BLACK}Vælg typen af træer der skal plantes. Hvis feltet allerede har et træ, vil dette tilføje flere træer i blandede typer, uafhængigt af den valgte type
 STR_TREES_RANDOM_TYPE                                           :{BLACK}Træer af tilfældig type
@@ -3727,10 +3720,6 @@ STR_REPLACE_REMOVE_WAGON_HELP                                   :{BLACK}Få auto
 # Vehicle view
 STR_VEHICLE_VIEW_CAPTION                                        :{WHITE}{VEHICLE}
 
-STR_VEHICLE_VIEW_TRAIN_LOCATION_TOOLTIP                         :{BLACK}Centrér skærmen over togets lokalitet. Ctrl-Klik vil følge toget i hovedvinduet
-STR_VEHICLE_VIEW_ROAD_VEHICLE_LOCATION_TOOLTIP                  :{BLACK}Centrér skærmen over køretøjets lokalitet. Ctrl-Klik vil følge køretøjet i hovedvinduet
-STR_VEHICLE_VIEW_SHIP_LOCATION_TOOLTIP                          :{BLACK}Centrér skærmen over skibets lokalitet. Ctrl-Klik vil følge skibet i hovedvinduet
-STR_VEHICLE_VIEW_AIRCRAFT_LOCATION_TOOLTIP                      :{BLACK}Centrér skærmen over flyets lokalitet. Ctrl+Klik vil følge flyet i hovedvinduet
 
 STR_VEHICLE_VIEW_TRAIN_SEND_TO_DEPOT_TOOLTIP                    :{BLACK}Send toget til remise. CTRL+klik vil kun servicere
 STR_VEHICLE_VIEW_ROAD_VEHICLE_SEND_TO_DEPOT_TOOLTIP             :{BLACK}Send køretøjet til værksted. CTRL+klik vil kun servicere
@@ -3762,10 +3751,7 @@ STR_VEHICLE_VIEW_ROAD_VEHICLE_SHOW_DETAILS_TOOLTIP              :{BLACK}Vis kør
 STR_VEHICLE_VIEW_SHIP_SHOW_DETAILS_TOOLTIP                      :{BLACK}Vis detaljer omkring skibet
 STR_VEHICLE_VIEW_AIRCRAFT_SHOW_DETAILS_TOOLTIP                  :{BLACK}Vis detaljet omkring flyet
 
-STR_VEHICLE_VIEW_TRAIN_STATE_START_STOP_TOOLTIP                 :{BLACK}Nuværende opførsel - klik her for at starte/stoppe toget. Ctrl+Click for at scrolle til destinationen
-STR_VEHICLE_VIEW_ROAD_VEHICLE_STATE_START_STOP_TOOLTIP          :{BLACK}Nuværende opførsel - klik her for at stoppe/starte køretøjet. Ctrl+Click for at scrolle til destinationen
-STR_VEHICLE_VIEW_SHIP_STATE_START_STOP_TOOLTIP                  :{BLACK}Nuværende opførsel - klik her for at starte/stoppe skibet. Ctrl+Click for at scrolle til destinationen
-STR_VEHICLE_VIEW_AIRCRAFT_STATE_START_STOP_TOOLTIP              :{BLACK}Nuværende opførsel - klik her for at starte/stoppe flyet. Ctrl+Click for at scrolle til destinationen
+
 
 # Messages in the start stop button in the vehicle view
 STR_VEHICLE_STATUS_LOADING_UNLOADING                            :{LTBLUE}Læsser / Aflæsser
@@ -4642,6 +4628,11 @@ STR_BASEMUSIC_WIN_DESCRIPTION                                   :Originalmusik f
 STR_BASEMUSIC_DOS_DESCRIPTION                                   :Originalmusik fra Transport Tycoon Deluxe DOS-version.
 STR_BASEMUSIC_TTO_DESCRIPTION                                   :Originalmusik fra Transport Tycoon (Original/World Editor) DOS-version.
 STR_BASEMUSIC_NONE_DESCRIPTION                                  :En musikpakke uden musik.
+
+STR_TRADITIONAL_TRAIN_NAME                                      :Tog {COMMA}
+STR_TRADITIONAL_ROAD_VEHICLE_NAME                               :Vejkøretøj {COMMA}
+STR_TRADITIONAL_SHIP_NAME                                       :Skib {COMMA}
+STR_TRADITIONAL_AIRCRAFT_NAME                                   :Fly {COMMA}
 
 ##id 0x2000
 # Town building names

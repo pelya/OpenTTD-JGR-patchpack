@@ -10,6 +10,55 @@ env:
   CTEST_OUTPUT_ON_FAILURE: 1
 
 jobs:
+  emscripten:
+    name: Emscripten
+
+    runs-on: ubuntu-20.04
+    container:
+      # If you change this version, change the number in the cache step too.
+      image: emscripten/emsdk:2.0.10
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup cache
+      uses: actions/cache@v2
+      with:
+        path: /emsdk/upstream/emscripten/cache
+        key: 2.0.10-${{ runner.os }}
+
+    - name: Build (host tools)
+      run: |
+        mkdir build-host
+        cd build-host
+
+        echo "::group::CMake"
+        cmake .. -DOPTION_TOOLS_ONLY=ON
+        echo "::endgroup::"
+
+        echo "::group::Build"
+        echo "Running on $(nproc) cores"
+        make -j$(nproc) tools
+        echo "::endgroup::"
+
+    - name: Install GCC problem matcher
+      uses: ammaraskar/gcc-problem-matcher@master
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+
+        echo "::group::CMake"
+        emcmake cmake .. -DHOST_BINARY_DIR=../build-host
+        echo "::endgroup::"
+
+        echo "::group::Build"
+        echo "Running on $(nproc) cores"
+        emmake make -j$(nproc)
+        echo "::endgroup::"
+
   linux:
     name: Linux
 
@@ -45,7 +94,6 @@ jobs:
           liblzo2-dev \
           libsdl1.2-dev \
           libsdl2-dev \
-          libxdg-basedir-dev \
           zlib1g-dev \
           # EOF
         echo "::endgroup::"
@@ -161,6 +209,18 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+
+    # "restore-cache" which is done by "run-vcpkg" uses Windows tar.
+    # A git clone on windows marks a few files as read-only; when Windows tar
+    # tries to extract the cache over this folder, it fails, despite the files
+    # being identical. This failure shows up as an warning in the logs. We
+    # avoid this by simply removing the read-only mark from the git folder.
+    # In other words: this is a hack!
+    # See: https://github.com/lukka/run-vcpkg/issues/61
+    - name: Remove read-only flag from vcpkg git folder
+      shell: powershell
+      run: |
+        attrib -r "c:\vcpkg\.git\*.*" /s
 
     - name: Prepare vcpkg (with cache)
       uses: lukka/run-vcpkg@v6

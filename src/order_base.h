@@ -33,8 +33,8 @@ extern bool _order_destination_refcount_map_valid;
 
 inline uint32 OrderDestinationRefcountMapKey(DestinationID dest, CompanyID cid, OrderType order_type, VehicleType veh_type)
 {
-	assert_compile(sizeof(dest) == 2);
-	assert_compile(OT_END <= 16);
+	static_assert(sizeof(dest) == 2);
+	static_assert(OT_END <= 16);
 	return (((uint32) dest) << 16) | (((uint32) cid) << 8) | (((uint32) order_type) << 4) | ((uint32) veh_type);
 }
 
@@ -168,6 +168,7 @@ public:
 	void MakeImplicit(StationID destination);
 	void MakeWaiting();
 	void MakeLoadingAdvance(StationID destination);
+	void MakeReleaseSlot();
 
 	/**
 	 * Is this a 'goto' order with a real destination?
@@ -179,8 +180,17 @@ public:
 	}
 
 	/**
+	 * Is this an order with a BaseStation destination?
+	 * @return True if the type is either #OT_IMPLICIT, #OT_GOTO_STATION or #OT_GOTO_WAYPOINT.
+	 */
+	inline bool IsBaseStationOrder() const
+	{
+		return IsType(OT_IMPLICIT) || IsType(OT_GOTO_STATION) || IsType(OT_GOTO_WAYPOINT);
+	}
+
+	/**
 	 * Gets the destination of this order.
-	 * @pre IsType(OT_GOTO_WAYPOINT) || IsType(OT_GOTO_DEPOT) || IsType(OT_GOTO_STATION).
+	 * @pre IsType(OT_GOTO_WAYPOINT) || IsType(OT_GOTO_DEPOT) || IsType(OT_GOTO_STATION) || IsType(OT_RELEASE_SLOT).
 	 * @return the destination of the order.
 	 */
 	inline DestinationID GetDestination() const { return this->dest; }
@@ -188,7 +198,7 @@ public:
 	/**
 	 * Sets the destination of this order.
 	 * @param destination the new destination of the order.
-	 * @pre IsType(OT_GOTO_WAYPOINT) || IsType(OT_GOTO_DEPOT) || IsType(OT_GOTO_STATION).
+	 * @pre IsType(OT_GOTO_WAYPOINT) || IsType(OT_GOTO_DEPOT) || IsType(OT_GOTO_STATION) || IsType(OT_RELEASE_SLOT).
 	 */
 	inline void SetDestination(DestinationID destination) { this->dest = destination; }
 
@@ -814,7 +824,5 @@ public:
 };
 
 void ShiftOrderDates(int interval);
-
-#define FOR_VEHICLE_ORDERS(v, order) for (order = (v->orders.list == nullptr) ? nullptr : v->orders.list->GetFirstOrder(); order != nullptr; order = order->next)
 
 #endif /* ORDER_BASE_H */

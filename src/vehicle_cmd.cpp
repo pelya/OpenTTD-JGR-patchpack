@@ -446,14 +446,14 @@ static CommandCost RefitVehicle(Vehicle *v, bool only_this, uint8 num_vehicles, 
 		/* Store the result */
 		for (RefitResult &result : refit_result) {
 			Vehicle *u = result.v;
-			u->refit_cap = (u->cargo_type == new_cid) ? min(result.capacity, u->refit_cap) : 0;
+			u->refit_cap = (u->cargo_type == new_cid) ? std::min<uint16>(result.capacity, u->refit_cap) : 0;
 			if (u->cargo.TotalCount() > u->refit_cap) u->cargo.Truncate(u->cargo.TotalCount() - u->refit_cap);
 			u->cargo_type = new_cid;
 			u->cargo_cap = result.capacity;
 			u->cargo_subtype = result.subtype;
 			if (u->type == VEH_AIRCRAFT) {
 				Vehicle *w = u->Next();
-				w->refit_cap = min(w->refit_cap, result.mail_capacity);
+				w->refit_cap = std::min<uint16>(w->refit_cap, result.mail_capacity);
 				w->cargo_cap = result.mail_capacity;
 				if (w->cargo.TotalCount() > w->refit_cap) w->cargo.Truncate(w->cargo.TotalCount() - w->refit_cap);
 			}
@@ -1016,6 +1016,7 @@ Train* VirtualTrainFromTemplateVehicle(const TemplateVehicle* tv, StringID &err,
 	for (tv = tv_head, tmp = head; tv != nullptr && tmp != nullptr; tv = tv->Next(), tmp = tmp->Next()) {
 		tmp->cargo_type = tv->cargo_type;
 		tmp->cargo_subtype = tv->cargo_subtype;
+		SB(tmp->flags, VRF_REVERSE_DIRECTION, 1, HasBit(tv->ctrl_flags, TVCF_REVERSED) ? 1 : 0);
 	}
 
 	_new_vehicle_id = head->index;
@@ -1064,6 +1065,7 @@ CommandCost CmdVirtualTrainFromTrain(TileIndex tile, DoCommandFlag flags, uint32
 
 			tmp->cargo_type = train->cargo_type;
 			tmp->cargo_subtype = train->cargo_subtype;
+			SB(tmp->flags, VRF_REVERSE_DIRECTION, 1, HasBit(train->flags, VRF_REVERSE_DIRECTION) ? 1 : 0);
 			CmdMoveRailVehicle(0, DC_EXEC, (1 << 21) | tmp->index, tail->index, 0);
 			tail = tmp;
 
@@ -1152,7 +1154,7 @@ CommandCost CmdReplaceTemplateVehicle(TileIndex tile, DoCommandFlag flags, uint3
 		VehicleID old_ID = INVALID_VEHICLE;
 
 		bool restore_flags = false;
-		bool reuse_depot_vehicles = true;
+		bool reuse_depot_vehicles = false;
 		bool keep_remaining_vehicles = false;
 		bool refit_as_template = true;
 		bool replace_old_only = false;
@@ -1508,7 +1510,12 @@ CommandCost CmdCloneVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 		 * the vehicle refitted before doing this, otherwise the moved
 		 * cargo types might not match (passenger vs non-passenger)
 		 */
-		DoCommand(0, w_front->index | (p2 & 1 ? CO_SHARE : CO_COPY) << 30, v_front->index, flags, CMD_CLONE_ORDER);
+		CommandCost result = DoCommand(0, w_front->index | (p2 & 1 ? CO_SHARE : CO_COPY) << 30, v_front->index, flags, CMD_CLONE_ORDER);
+		if (result.Failed()) {
+			/* The vehicle has already been bought, so now it must be sold again. */
+			DoCommand(w_front->tile, w_front->index | 1 << 20, 0, flags, GetCmdSellVeh(w_front));
+			return result;
+		}
 
 		/* Now clone the vehicle's name, if it has one. */
 		if (!v_front->name.empty()) CloneVehicleName(v_front, w_front);

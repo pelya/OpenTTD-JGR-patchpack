@@ -28,6 +28,7 @@
 #include "safeguards.h"
 
 bool _sprite_group_resolve_check_veh_check = false;
+bool _sprite_group_resolve_check_veh_curvature_check = false;
 
 struct WagonOverride {
 	EngineID *train_id;
@@ -692,6 +693,8 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 			 */
 			if (!v->IsGroundVehicle()) return 0;
 
+			_sprite_group_resolve_check_veh_curvature_check = false;
+
 			const Vehicle *u_p = v->Previous();
 			const Vehicle *u_n = v->Next();
 			DirDiff f = (u_p == nullptr) ?  DIRDIFF_SAME : DirDifference(u_p->direction, v->direction);
@@ -729,14 +732,22 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 		case 0x4A:
 			switch (v->type) {
 				case VEH_TRAIN: {
-					if (Train::From(v)->IsVirtual()) return 0x1FF;
+					if (Train::From(v)->IsVirtual()) {
+						return 0x1FF | ((GetRailTypeInfo(Train::From(v)->railtype)->flags & RTFB_CATENARY) ? 0x200 : 0);
+					}
 					RailType rt = GetTileRailTypeByTrackBit(v->tile, Train::From(v)->track);
-					return (HasPowerOnRail(Train::From(v)->railtype, rt) ? 0x100 : 0) | GetReverseRailTypeTranslation(rt, object->ro.grffile);
+					const RailtypeInfo *rti = GetRailTypeInfo(rt);
+					return ((rti->flags & RTFB_CATENARY) ? 0x200 : 0) |
+						(HasPowerOnRail(Train::From(v)->railtype, rt) ? 0x100 : 0) |
+						GetReverseRailTypeTranslation(rt, object->ro.grffile);
 				}
 
 				case VEH_ROAD: {
 					RoadType rt = GetRoadType(v->tile, GetRoadTramType(RoadVehicle::From(v)->roadtype));
-					return 0x100 | GetReverseRoadTypeTranslation(rt, object->ro.grffile);
+					const RoadTypeInfo *rti = GetRoadTypeInfo(rt);
+					return ((rti->flags & ROTFB_CATENARY) ? 0x200 : 0) |
+						0x100 |
+						GetReverseRoadTypeTranslation(rt, object->ro.grffile);
 				}
 
 				default:
@@ -812,6 +823,8 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 			const Vehicle *u = v->Move((int8)parameter);
 			if (u == nullptr) return 0;
 
+			_sprite_group_resolve_check_veh_curvature_check = false;
+
 			/* Get direction difference. */
 			bool prev = (int8)parameter < 0;
 			uint32 ret = prev ? DirDifference(u->direction, v->direction) : DirDifference(v->direction, u->direction);
@@ -826,6 +839,36 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 
 			return ret;
 		}
+
+		case 0x63:
+			/* Tile compatibility wrt. arbitrary track-type
+			 * Format:
+			 *  bit 0: Type 'parameter' is known.
+			 *  bit 1: Engines with type 'parameter' are compatible with this tile.
+			 *  bit 2: Engines with type 'parameter' are powered on this tile.
+			 *  bit 3: This tile has type 'parameter' or it is considered equivalent (alternate labels).
+			 */
+			switch (v->type) {
+				case VEH_TRAIN: {
+					RailType param_type = GetRailTypeTranslation(parameter, object->ro.grffile);
+					if (param_type == INVALID_RAILTYPE) return 0x00;
+					RailType tile_type = GetTileRailType(v->tile);
+					if (tile_type == param_type) return 0x0F;
+					return (HasPowerOnRail(param_type, tile_type) ? 0x04 : 0x00) |
+							(IsCompatibleRail(param_type, tile_type) ? 0x02 : 0x00) |
+							0x01;
+				}
+				case VEH_ROAD: {
+					RoadTramType rtt = GetRoadTramType(RoadVehicle::From(v)->roadtype);
+					RoadType param_type = GetRoadTypeTranslation(rtt, parameter, object->ro.grffile);
+					if (param_type == INVALID_ROADTYPE) return 0x00;
+					RoadType tile_type = GetRoadType(v->tile, rtt);
+					if (tile_type == param_type) return 0x0F;
+					return (HasPowerOnRoad(param_type, tile_type) ? 0x06 : 0x00) |
+							0x01;
+				}
+				default: return 0x00;
+			}
 
 		case 0xFE:
 		case 0xFF: {
@@ -1070,8 +1113,8 @@ static uint32 VehicleGetVariable(Vehicle *v, const VehicleScopeResolver *object,
 
 	if (totalsets == 0) return nullptr;
 
-	uint set = (v->cargo.StoredCount() * totalsets) / max((uint16)1, v->cargo_cap);
-	set = min(set, totalsets - 1);
+	uint set = (v->cargo.StoredCount() * totalsets) / std::max<uint16>(1u, v->cargo_cap);
+	set = std::min(set, totalsets - 1);
 
 	return in_motion ? group->loaded[set] : group->loading[set];
 }
@@ -1446,7 +1489,7 @@ void FillNewGRFVehicleCache(const Vehicle *v)
 		{ 0x43, NCVV_COMPANY_INFORMATION },
 		{ 0x4D, NCVV_POSITION_IN_VEHICLE },
 	};
-	assert_compile(NCVV_END == lengthof(cache_entries));
+	static_assert(NCVV_END == lengthof(cache_entries));
 
 	/* Resolve all the variables, so their caches are set. */
 	for (size_t i = 0; i < lengthof(cache_entries); i++) {

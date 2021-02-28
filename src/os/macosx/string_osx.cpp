@@ -261,7 +261,7 @@ int CoreTextParagraphLayout::CoreTextLine::GetLeading() const
 {
 	int leading = 0;
 	for (const auto &run : *this) {
-		leading = max(leading, run.GetLeading());
+		leading = std::max(leading, run.GetLeading());
 	}
 
 	return leading;
@@ -288,6 +288,17 @@ int CoreTextParagraphLayout::CoreTextLine::GetWidth() const
 void MacOSResetScriptCache(FontSize size)
 {
 	_font_cache[size].reset();
+}
+
+/** Register an external font file with the CoreText system. */
+void MacOSRegisterExternalFont(const char *file_path)
+{
+	if (!MacOSVersionIsAtLeast(10, 6, 0)) return;
+
+	CFAutoRelease<CFStringRef> path(CFStringCreateWithCString(kCFAllocatorDefault, file_path, kCFStringEncodingUTF8));
+	CFAutoRelease<CFURLRef> url(CFURLCreateWithFileSystemPath(kCFAllocatorDefault, path.get(), kCFURLPOSIXPathStyle, false));
+
+	CTFontManagerRegisterFontsForURL(url.get(), kCTFontManagerScopeProcess, nullptr);
 }
 
 /** Store current language locale as a CoreFounation locale. */

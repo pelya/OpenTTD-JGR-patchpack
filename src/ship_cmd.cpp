@@ -425,8 +425,8 @@ static bool ShipAccelerate(Vehicle *v)
 	uint spd;
 	byte t;
 
-	spd = min(v->cur_speed + 1, v->vcache.cached_max_speed);
-	spd = min(spd, v->current_order.GetMaxSpeed() * 2);
+	spd = std::min<uint>(v->cur_speed + 1, v->vcache.cached_max_speed);
+	spd = std::min<uint>(spd, v->current_order.GetMaxSpeed() * 2);
 
 	if (v->breakdown_ctr == 1 && v->breakdown_type == BREAKDOWN_LOW_POWER && v->cur_speed > (v->breakdown_severity * ShipVehInfo(v->engine_type)->max_speed) >> 8) {
 		if ((v->tick_counter & 0x7) == 0 && v->cur_speed > 0) {
@@ -437,7 +437,7 @@ static bool ShipAccelerate(Vehicle *v)
 	}
 
 	if (v->breakdown_ctr == 1 && v->breakdown_type == BREAKDOWN_LOW_SPEED) {
-		spd = min(spd, v->breakdown_severity);
+		spd = std::min<uint>(spd, v->breakdown_severity);
 	}
 
 	/* updates statusbar only if speed have changed to save CPU time */
@@ -524,6 +524,7 @@ static Track ChooseShipTrack(Ship *v, TileIndex tile, DiagDirection enterdir, Tr
 			default: NOT_REACHED();
 		}
 	}
+	DEBUG_UPDATESTATECHECKSUM("ChooseShipTrack: v: %u, path_found: %d, track: %d", v->index, path_found, track);
 	UpdateStateChecksum((((uint64) v->index) << 32) | (path_found << 16) | track);
 
 	v->HandlePathfindingResult(path_found);
@@ -971,6 +972,7 @@ reverse_direction:
 
 bool Ship::Tick()
 {
+	DEBUG_UPDATESTATECHECKSUM("Ship::Tick: v: %u, x: %d, y: %d", this->index, this->x_pos, this->y_pos);
 	UpdateStateChecksum((((uint64) this->x_pos) << 32) | this->y_pos);
 	if (!((this->vehstatus & VS_STOPPED) || this->IsWaitingInDepot())) this->running_ticks++;
 

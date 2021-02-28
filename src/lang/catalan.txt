@@ -49,9 +49,9 @@ STR_CARGO_PLURAL_WHEAT                                          :{G=Masculin}Bla
 STR_CARGO_PLURAL_RUBBER                                         :{G=Masculin}Cautxú
 STR_CARGO_PLURAL_SUGAR                                          :{G=Masculin}Sucre
 STR_CARGO_PLURAL_TOYS                                           :{G=Femenin}Joguines
-STR_CARGO_PLURAL_CANDY                                          :{G=Masculin}Dolços
+STR_CARGO_PLURAL_SWEETS                                         :{G=Masculin}Dolços
 STR_CARGO_PLURAL_COLA                                           :{G=Masculin}Refrescos
-STR_CARGO_PLURAL_COTTON_CANDY                                   :{G=Masculin}Cotó de sucre
+STR_CARGO_PLURAL_CANDYFLOSS                                     :{G=Masculin}Cotó de sucre
 STR_CARGO_PLURAL_BUBBLES                                        :{G=Femenin}Bombolles
 STR_CARGO_PLURAL_TOFFEE                                         :{G=Masculin}Caramels
 STR_CARGO_PLURAL_BATTERIES                                      :{G=Femenin}Piles
@@ -83,9 +83,9 @@ STR_CARGO_SINGULAR_WHEAT                                        :{G=Masculin}Bla
 STR_CARGO_SINGULAR_RUBBER                                       :{G=Masculin}Cautxú
 STR_CARGO_SINGULAR_SUGAR                                        :{G=Masculin}Sucre
 STR_CARGO_SINGULAR_TOY                                          :{G=Femenin}Joguina
-STR_CARGO_SINGULAR_CANDY                                        :{G=Masculin}Dolç
+STR_CARGO_SINGULAR_SWEETS                                       :{G=Masculin}Dolç
 STR_CARGO_SINGULAR_COLA                                         :{G=Masculin}Refresc
-STR_CARGO_SINGULAR_COTTON_CANDY                                 :{G=Masculin}Cotó de sucre
+STR_CARGO_SINGULAR_CANDYFLOSS                                   :{G=Masculin}Cotó de sucre
 STR_CARGO_SINGULAR_BUBBLE                                       :{G=Femenin}Bombolla
 STR_CARGO_SINGULAR_TOFFEE                                       :{G=Masculin}Caramel
 STR_CARGO_SINGULAR_BATTERY                                      :{G=Femenin}Pila
@@ -195,6 +195,7 @@ STR_COLOUR_DEFAULT                                              :Per defecte
 STR_UNITS_VELOCITY_IMPERIAL                                     :{COMMA}{NBSP}mph
 STR_UNITS_VELOCITY_METRIC                                       :{COMMA}{NBSP}km/h
 STR_UNITS_VELOCITY_SI                                           :{COMMA}{NBSP}m/s
+STR_UNITS_VELOCITY_GAMEUNITS                                    :{DECIMAL}{NBSP}cel·les/dia
 
 STR_UNITS_POWER_IMPERIAL                                        :{COMMA}{NBSP}cv
 STR_UNITS_POWER_METRIC                                          :{COMMA}{NBSP}cv
@@ -234,7 +235,6 @@ STR_TOOLTIP_SORT_ORDER                                          :{BLACK}Seleccio
 STR_TOOLTIP_SORT_CRITERIA                                       :{BLACK}Selecciona el criteri per ordenar la llista
 STR_TOOLTIP_FILTER_CRITERIA                                     :{BLACK}Filtra per tipus de càrrega
 STR_BUTTON_SORT_BY                                              :{BLACK}Ordena per:
-STR_BUTTON_LOCATION                                             :{G=Masculin}{BLACK}Lloc
 STR_BUTTON_RENAME                                               :{BLACK}Canvia el nom
 STR_BUTTON_CATCHMENT                                            :{BLACK}Cobertura
 STR_TOOLTIP_CATCHMENT                                           :{BLACK}Mostra/Amaga l'àrea de cobertura
@@ -315,6 +315,15 @@ STR_SORT_BY_CARGO_CAPACITY                                      :Capacitat de c�
 STR_SORT_BY_RANGE                                               :Abast
 STR_SORT_BY_POPULATION                                          :Població
 STR_SORT_BY_RATING                                              :Qualificació
+STR_SORT_BY_NUM_VEHICLES                                        :Nombre de vehicles
+STR_SORT_BY_TOTAL_PROFIT_LAST_YEAR                              :Benefici total de l'any passat
+STR_SORT_BY_TOTAL_PROFIT_THIS_YEAR                              :Benefici total d'aquest any
+STR_SORT_BY_AVERAGE_PROFIT_LAST_YEAR                            :Benefici mitjà de l'any passat
+STR_SORT_BY_AVERAGE_PROFIT_THIS_YEAR                            :Benefici mitjà aquest any
+
+# Group by options for vehicle list
+STR_GROUP_BY_NONE                                               :Cap
+STR_GROUP_BY_SHARED_ORDERS                                      :Ordres compartides
 
 # Tooltips for the main toolbar
 STR_TOOLBAR_TOOLTIP_PAUSE_GAME                                  :{BLACK}Posa en pausa o reprèn la partida
@@ -740,6 +749,7 @@ STR_SMALLMAP_LEGENDA_DOCK                                       :{TINY_FONT}{BLA
 STR_SMALLMAP_LEGENDA_ROUGH_LAND                                 :{TINY_FONT}{BLACK}Terreny irregular
 STR_SMALLMAP_LEGENDA_GRASS_LAND                                 :{TINY_FONT}{BLACK}Gespa
 STR_SMALLMAP_LEGENDA_BARE_LAND                                  :{TINY_FONT}{BLACK}Terreny erm
+STR_SMALLMAP_LEGENDA_RAINFOREST                                 :{TINY_FONT}{BLACK}Selva tropical
 STR_SMALLMAP_LEGENDA_FIELDS                                     :{TINY_FONT}{BLACK}Camps de conreu
 STR_SMALLMAP_LEGENDA_TREES                                      :{TINY_FONT}{BLACK}Arbres
 STR_SMALLMAP_LEGENDA_ROCKS                                      :{TINY_FONT}{BLACK}Roques
@@ -771,6 +781,7 @@ STR_SMALLMAP_TOOLTIP_ENABLE_ALL_CARGOS                          :{BLACK}Mostra t
 STR_STATUSBAR_TOOLTIP_SHOW_LAST_NEWS                            :{BLACK}Mostra el darrer missatge o notícia
 STR_STATUSBAR_COMPANY_NAME                                      :{SILVER}- -  {COMPANY}  - -
 STR_STATUSBAR_PAUSED                                            :{YELLOW}* *  EN PAUSA  *  *
+STR_STATUSBAR_PAUSED_LINK_GRAPH                                 :{ORANGE}*  *  EN PAUSA (s'espera que s'actualitzi el graf de distribució) *  *
 STR_STATUSBAR_AUTOSAVE                                          :{RED}DESADA AUTOMÀTICA
 STR_STATUSBAR_SAVING_GAME                                       :{RED}*  *  DESANT PARTIDA  *  *
 
@@ -1441,6 +1452,8 @@ STR_CONFIG_SETTING_PERSISTENT_BUILDINGTOOLS                     :Mantingues les 
 STR_CONFIG_SETTING_PERSISTENT_BUILDINGTOOLS_HELPTEXT            :Mantingues les eines de construcció pels ponts, túnels, etc. obertes després d'utilitzar-les
 STR_CONFIG_SETTING_EXPENSES_LAYOUT                              :Agrupa les despeses a la finestra de finances de la companyia: {STRING}
 STR_CONFIG_SETTING_EXPENSES_LAYOUT_HELPTEXT                     :Defineix la disposició de la companyia a la finestra de despeses
+STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS                          :Treu automàticament els senyals durant la construcció ferroviària: {STRING}
+STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS_HELPTEXT                 :Treu automàticament els senyals ferroviaris que hi hagi pel mig durant la construcció de rail. Aneu amb compte ja que pot provocar col·lisions de trens.
 
 STR_CONFIG_SETTING_SOUND_TICKER                                 :Barra de notícies: {STRING}
 STR_CONFIG_SETTING_SOUND_TICKER_HELPTEXT                        :Reprodueix un so quan apareixen les notícies resumides a la barra inferior
@@ -1554,6 +1567,11 @@ STR_CONFIG_SETTING_ENDING_YEAR                                  :Any de puntuaci
 STR_CONFIG_SETTING_ENDING_YEAR_HELPTEXT                         :Estableix l'any en què finalitza la partida i es puntua les companyies. Al final d'aquest any, la puntuació de la companyia es guarda i es mostra a la llista de classificació, però els jugadors poden continuar jugant.{}Si l'any de finalització és anterior a l'any d'inici, no es guardaran les puntuacions ni es mostrarà la llista de classificació.
 STR_CONFIG_SETTING_ENDING_YEAR_VALUE                            :{NUM}
 STR_CONFIG_SETTING_ENDING_YEAR_ZERO                             :Mai
+STR_CONFIG_SETTING_ECONOMY_TYPE                                 :Tipus d'economia: {STRING}
+STR_CONFIG_SETTING_ECONOMY_TYPE_HELPTEXT                        :Una economia suau implica canvis freqüents però petits en productivitat. En una economia congelada no hi ha canvis de productivitat ni tancament d'indústries. Aquesta configuració pot no tenir cap efecte si els tipus d'indústria venen predeterminats per un NewGRF.
+STR_CONFIG_SETTING_ECONOMY_TYPE_ORIGINAL                        :Original
+STR_CONFIG_SETTING_ECONOMY_TYPE_SMOOTH                          :Suau
+STR_CONFIG_SETTING_ECONOMY_TYPE_FROZEN                          :{G=Femenin}Congelada
 STR_CONFIG_SETTING_ALLOW_SHARES                                 :Permet comprar participacions d'altres companyies: {STRING}
 STR_CONFIG_SETTING_ALLOW_SHARES_HELPTEXT                        :Permet comprar i vendre accions de les companyies. Les accions només estan disponibles per companyies d'una certa edat.
 STR_CONFIG_SETTING_MIN_YEARS_FOR_SHARES                         :Edat mínima de la companyia per negociar participacions: {STRING}
@@ -1605,9 +1623,10 @@ STR_CONFIG_SETTING_TOWN_CARGOGENMODE_BITCOUNT                   :Lineal
 
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT                         :Disposició de nous arbres durant la partida: {STRING}
 STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_HELPTEXT                :Controla l'aparició aleatòria dels arbres durant una partida. Això podria afectar a les indústries que es basen en el creixement dels arbres, per exemple les serradores
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NONE                    :Cap {RED}(inhabilita la serradora)
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_RAINFOREST              :Només a les selves tropicals
-STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_ALL                     :A tot arreu
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NO_SPREAD               :Creixen però no n'apareixen més {RED}(trenca el funcionament de les serradores)
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_SPREAD_RAINFOREST       :Creixen però només n'apareixen més a la selva tropical
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_SPREAD_ALL              :Creixen i n'apareixen per tot arreu
+STR_CONFIG_SETTING_EXTRA_TREE_PLACEMENT_NO_GROWTH_NO_SPREAD     :No creixen ni n'apareixen més {RED}(trenca el funcionament les serradores)
 
 STR_CONFIG_SETTING_TOOLBAR_POS                                  :Posició de la barra d'eines principal: {STRING}
 STR_CONFIG_SETTING_TOOLBAR_POS_HELPTEXT                         :Posició horitzontal de la barra principal a la part superior de la pantalla
@@ -1674,6 +1693,7 @@ STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_HELPTEXT         :Quan es mostren
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_IMPERIAL         :Imperial (mph)
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_METRIC           :Mètric (km/h)
 STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_SI               :SI (m/s)
+STR_CONFIG_SETTING_LOCALISATION_UNITS_VELOCITY_GAMEUNITS        :Unitats del joc (cel·les/dia)
 
 STR_CONFIG_SETTING_LOCALISATION_UNITS_POWER                     :Unitats de potència dels vehicles: {STRING}
 STR_CONFIG_SETTING_LOCALISATION_UNITS_POWER_HELPTEXT            :Quan es mostra la potència d'un vehicle a la interfície d'usuari, presenta-la en les unitats seleccionades
@@ -1806,6 +1826,7 @@ STR_INTRO_TRANSLATION                                           :{BLACK}A aquest
 
 # Quit window
 STR_QUIT_CAPTION                                                :{WHITE}Surt
+STR_QUIT_ARE_YOU_SURE_YOU_WANT_TO_EXIT_OPENTTD                  :{YELLOW}Esteu segur que voleu sortir de l'OpenTTD?
 STR_QUIT_YES                                                    :{BLACK}Sí
 STR_QUIT_NO                                                     :{BLACK}No
 
@@ -1817,7 +1838,7 @@ STR_ABANDON_SCENARIO_QUERY                                      :{YELLOW}Esteu s
 # Cheat window
 STR_CHEATS                                                      :{WHITE}Trampes
 STR_CHEATS_TOOLTIP                                              :{BLACK}Les caselles de selecció indiquen si heu fet servir aquesta trampa.
-STR_CHEATS_WARNING                                              :{BLACK}Atenció! Esteu a punt d'enredar als altres jugadors. Penseu que una cosa així serà recordada per tota l'eternitat.
+STR_CHEATS_NOTE                                                 :{BLACK}Nota: Qualsevol ús d'aquests paràmetres serà enregistrat per la partida guardada
 STR_CHEAT_MONEY                                                 :{LTBLUE}Augmenta els diners de la companyia actual en {CURRENCY_LONG}.
 STR_CHEAT_CHANGE_COMPANY                                        :{LTBLUE}Juga amb la companyia: {ORANGE}{COMMA}
 STR_CHEAT_EXTRA_DYNAMITE                                        :{LTBLUE}Eruga màgica (treu indústries i altres objectes inamovibles): {ORANGE}{STRING}
@@ -1929,10 +1950,6 @@ STR_FACE_TIE_EARRING_TOOLTIP                                    :{BLACK}Canvia l
 
 # Network server list
 STR_NETWORK_SERVER_LIST_CAPTION                                 :{WHITE}Multijugador
-STR_NETWORK_SERVER_LIST_ADVERTISED                              :{BLACK}Anunciat
-STR_NETWORK_SERVER_LIST_ADVERTISED_TOOLTIP                      :{BLACK}Escull entre una partida anunciada (internet) i una partida no anunciada (xarxa d'àrea local, LAN)
-STR_NETWORK_SERVER_LIST_ADVERTISED_NO                           :No
-STR_NETWORK_SERVER_LIST_ADVERTISED_YES                          :Sí
 STR_NETWORK_SERVER_LIST_PLAYER_NAME                             :{BLACK}Nom del jugador:
 STR_NETWORK_SERVER_LIST_ENTER_NAME_TOOLTIP                      :{BLACK}Aquest és el nom amb el que els altres jugadors t'identificaran
 
@@ -1973,8 +1990,10 @@ STR_NETWORK_SERVER_LIST_JOIN_GAME                               :{BLACK}Connecta
 STR_NETWORK_SERVER_LIST_REFRESH                                 :{BLACK}Actualitza servidor
 STR_NETWORK_SERVER_LIST_REFRESH_TOOLTIP                         :{BLACK}Actualitza la informació del servidor
 
-STR_NETWORK_SERVER_LIST_FIND_SERVER                             :{BLACK}Busca servidor
-STR_NETWORK_SERVER_LIST_FIND_SERVER_TOOLTIP                     :{BLACK}Cercant un servidor a la xarxa
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_INTERNET                  :{BLACK}Cerca a Internet
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_INTERNET_TOOLTIP          :{BLACK}Cerca servidors públics a Internet
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_LAN                       :{BLACK}Cerca a la LAN
+STR_NETWORK_SERVER_LIST_SEARCH_SERVER_LAN_TOOLTIP               :{BLACK}Cerca servidors a la xarxa local
 STR_NETWORK_SERVER_LIST_ADD_SERVER                              :{BLACK}Afegeix un servidor
 STR_NETWORK_SERVER_LIST_ADD_SERVER_TOOLTIP                      :{BLACK}Afegeix un servidor a la llista que sempre es comprovarà per buscar partides en marxa
 STR_NETWORK_SERVER_LIST_START_SERVER                            :{BLACK}Inicia el servidor
@@ -1991,6 +2010,8 @@ STR_NETWORK_START_SERVER_NEW_GAME_NAME_TOOLTIP                  :{BLACK}El nom d
 STR_NETWORK_START_SERVER_SET_PASSWORD                           :{BLACK}Posa una contrasenya
 STR_NETWORK_START_SERVER_PASSWORD_TOOLTIP                       :{BLACK}Protegeix la teva partida amb una contrasenya si no vols que sigui accessible a desconeguts
 
+STR_NETWORK_START_SERVER_ADVERTISED_LABEL                       :{BLACK}Anunciat
+STR_NETWORK_START_SERVER_ADVERTISED_TOOLTIP                     :{BLACK}Escull entre una partida anunciada (internet) i una partida no anunciada (xarxa d'àrea local, LAN)
 STR_NETWORK_START_SERVER_UNADVERTISED                           :No
 STR_NETWORK_START_SERVER_ADVERTISED                             :Sí
 STR_NETWORK_START_SERVER_CLIENTS_SELECT                         :{BLACK}{NUM} client{P "" s}
@@ -2198,11 +2219,13 @@ STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_1                  :Partida encara 
 STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_2                  :Partida encara en pausa ({STRING}, {STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_3                  :Partida encara en pausa ({STRING}, {STRING}, {STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_4                  :La partida encara està en pausa ({STRING}, {STRING}, {STRING}, {STRING})
+STR_NETWORK_SERVER_MESSAGE_GAME_STILL_PAUSED_5                  :La partida encara està en pausa ({STRING}, {STRING}, {STRING}, {STRING}, {STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_UNPAUSED                        :Partida represa ({STRING})
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_NOT_ENOUGH_PLAYERS       :nombre de jugadors
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_CONNECTING_CLIENTS       :connectant clients
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_MANUAL                   :manual
 STR_NETWORK_SERVER_MESSAGE_GAME_REASON_GAME_SCRIPT              :script de la partida
+STR_NETWORK_SERVER_MESSAGE_GAME_REASON_LINK_GRAPH               :s'està esperant que s'actualitzi el graf de distribució
 ############ End of leave-in-this-order
 STR_NETWORK_MESSAGE_CLIENT_LEAVING                              :deixant
 STR_NETWORK_MESSAGE_CLIENT_JOINED                               :*** {STRING} s'ha unit a la partida
@@ -2212,8 +2235,7 @@ STR_NETWORK_MESSAGE_CLIENT_COMPANY_SPECTATE                     :*** {STRING} s'
 STR_NETWORK_MESSAGE_CLIENT_COMPANY_NEW                          :*** {STRING} ha començat una nova companyia (#{2:NUM})
 STR_NETWORK_MESSAGE_CLIENT_LEFT                                 :*** {STRING} ha deixat la partida ({2:STRING})
 STR_NETWORK_MESSAGE_NAME_CHANGE                                 :*** {STRING} ha canviat el seu nom a {STRING}
-STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} ha donat a la teva companyia {2:CURRENCY_LONG}
-STR_NETWORK_MESSAGE_GAVE_MONEY_AWAY                             :*** Has donat {1:STRING} {2:CURRENCY_LONG}
+STR_NETWORK_MESSAGE_GIVE_MONEY                                  :*** {STRING} ha donat {2:CURRENCY_LONG} a {1:STRING}.
 STR_NETWORK_MESSAGE_SERVER_SHUTDOWN                             :{WHITE}El servidor ha tancat la sessió
 STR_NETWORK_MESSAGE_SERVER_REBOOT                               :{WHITE}El servidor està reiniciant...{}Espera un moment...
 STR_NETWORK_MESSAGE_KICKED                                      :*** S'ha expulsat {STRING}. Motiu: {STRING}
@@ -2331,6 +2353,9 @@ STR_JOIN_STATION_CREATE_SPLITTED_STATION                        :{YELLOW}Constru
 
 STR_JOIN_WAYPOINT_CAPTION                                       :{WHITE}Uneix punt de pas
 STR_JOIN_WAYPOINT_CREATE_SPLITTED_WAYPOINT                      :{YELLOW}Construeix un punt de pas separat
+
+# Generic toolbar
+STR_TOOLBAR_DISABLED_NO_VEHICLE_AVAILABLE                       :{BLACK}S'ha desactivat ja que actualment no disposeu de vehicles per usar aquesta infraestructura.
 
 # Rail construction toolbar
 STR_RAIL_TOOLBAR_RAILROAD_CONSTRUCTION_CAPTION                  :Construcció de ferrocarril
@@ -2519,13 +2544,19 @@ STR_OBJECT_BUILD_SIZE                                           :{BLACK}Mida: {G
 STR_OBJECT_CLASS_LTHS                                           :Fars
 STR_OBJECT_CLASS_TRNS                                           :Transmissors
 
-# Tree planting window (last two for SE only)
+# Tree planting window (last eight for SE only)
 STR_PLANT_TREE_CAPTION                                          :{WHITE}Arbres
 STR_PLANT_TREE_TOOLTIP                                          :{BLACK}Selecciona el tipus d'arbre a plantar. Si la casella ja conté un arbre, s'afegiran més arbres d'altres espècies independentment de quin estigui seleccionat
 STR_TREES_RANDOM_TYPE                                           :{BLACK}Arbres de tipus aleatori
 STR_TREES_RANDOM_TYPE_TOOLTIP                                   :{BLACK}Situar arbres de tipus aleatori. Shift commuta construeix/mostra el cost estimat
 STR_TREES_RANDOM_TREES_BUTTON                                   :{BLACK}Arbres Aleatoris
 STR_TREES_RANDOM_TREES_TOOLTIP                                  :{BLACK}Planta arbres aleatòriament al paisatge
+STR_TREES_MODE_NORMAL_BUTTON                                    :{BLACK}Normal
+STR_TREES_MODE_NORMAL_TOOLTIP                                   :{BLACK}Planta un arbre a cada casella arrossegant el ratolí pel paisatge.
+STR_TREES_MODE_FOREST_SM_BUTTON                                 :Arbreda
+STR_TREES_MODE_FOREST_SM_TOOLTIP                                :{BLACK}Planta petits boscos arrossegant el ratolí pel paisatge.
+STR_TREES_MODE_FOREST_LG_BUTTON                                 :{BLACK}Bosc
+STR_TREES_MODE_FOREST_LG_TOOLTIP                                :{BLACK}Planta grans boscos arrossegant el ratolí pel paisatge.
 
 # Land generation window (SE)
 STR_TERRAFORM_TOOLBAR_LAND_GENERATION_CAPTION                   :{WHITE}Generador de Terreny
@@ -2602,6 +2633,7 @@ STR_INDUSTRY_CARGOES_SELECT_INDUSTRY_TOOLTIP                    :{BLACK}Seleccio
 
 # Land area window
 STR_LAND_AREA_INFORMATION_CAPTION                               :{WHITE}Informació del terreny
+STR_LAND_AREA_INFORMATION_LOCATION_TOOLTIP                      :{BLACK}Centra la vista principal al lloc on està la casella. Amb Ctrl+clic s'obre una vista nova al lloc de la casella.
 STR_LAND_AREA_INFORMATION_COST_TO_CLEAR_N_A                     :{BLACK}Cost de neteja: {LTBLUE}N/A
 STR_LAND_AREA_INFORMATION_COST_TO_CLEAR                         :{BLACK}Cost de neteja: {RED}{CURRENCY_LONG}
 STR_LAND_AREA_INFORMATION_REVENUE_WHEN_CLEARED                  :{BLACK}Ingressos en netejar: {LTBLUE}{CURRENCY_LONG}
@@ -3072,6 +3104,7 @@ STR_SIGN_LIST_MATCH_CASE_TOOLTIP                                :{BLACK}Commuta 
 
 # Sign window
 STR_EDIT_SIGN_CAPTION                                           :{WHITE}Edita el text del senyal
+STR_EDIT_SIGN_LOCATION_TOOLTIP                                  :{BLACK}Centra la vista principal en la senyal. Amb Ctrl+Clic, obre una nova vista centrada en la senyal.
 STR_EDIT_SIGN_NEXT_SIGN_TOOLTIP                                 :{BLACK}Vés al proper senyal
 STR_EDIT_SIGN_PREVIOUS_SIGN_TOOLTIP                             :{BLACK}Vés al senyal anterior
 
@@ -3155,10 +3188,10 @@ STR_GOALS_COMPANY_TITLE                                         :{BLACK}Objectiu
 STR_GOALS_TOOLTIP_CLICK_ON_SERVICE_TO_CENTER                    :{BLACK}Clica sobre l'objectiu per centrar la vista principal sobre la indústria/població/cel·la. Ctrl+clic per obrir una nova vista sobre la indústria/població/cel·la
 
 # Goal question window
-STR_GOAL_QUESTION_CAPTION_QUESTION                              :Pregunta
-STR_GOAL_QUESTION_CAPTION_INFORMATION                           :Informació
-STR_GOAL_QUESTION_CAPTION_WARNING                               :Alerta
-STR_GOAL_QUESTION_CAPTION_ERROR                                 :Error
+STR_GOAL_QUESTION_CAPTION_QUESTION                              :{BLACK}Pregunta
+STR_GOAL_QUESTION_CAPTION_INFORMATION                           :{BLACK}Informació
+STR_GOAL_QUESTION_CAPTION_WARNING                               :{BLACK}Avís
+STR_GOAL_QUESTION_CAPTION_ERROR                                 :{YELLOW}Error
 
 ############ Start of Goal Question button list
 STR_GOAL_QUESTION_BUTTON_CANCEL                                 :Cancel·la
@@ -3348,7 +3381,8 @@ STR_COMPANY_VIEW_RELOCATE_HQ                                    :{BLACK}Trasllad
 STR_COMPANY_VIEW_RELOCATE_COMPANY_HEADQUARTERS                  :{BLACK}Trasllada la seu a un altre lloc amb el cost d'un 1% del valor de la companyia. Amb Maj+Clic, mostra el cost estimat sense traslladar la seu.
 STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON                          :{BLACK}Detalls
 STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP                         :{BLACK}Veure els detalls de la infraestructura de la companyia.
-STR_COMPANY_VIEW_GIVE_MONEY_BUTTON                              :{BLACK}Entrega diners
+STR_COMPANY_VIEW_GIVE_MONEY_BUTTON                              :{BLACK}Dóna diners
+STR_COMPANY_VIEW_GIVE_MONEY_TOOLTIP                             :{BLACK}Doneu diners a aquesta companyia.
 
 STR_COMPANY_VIEW_NEW_FACE_BUTTON                                :{BLACK}Modifica la cara
 STR_COMPANY_VIEW_NEW_FACE_TOOLTIP                               :{BLACK}Modifica la cara del president de la companyia.
@@ -3366,7 +3400,7 @@ STR_COMPANY_VIEW_SELL_SHARE_TOOLTIP                             :{BLACK}Ven un 2
 
 STR_COMPANY_VIEW_COMPANY_NAME_QUERY_CAPTION                     :Nom de la companyia
 STR_COMPANY_VIEW_PRESIDENT_S_NAME_QUERY_CAPTION                 :Nom del president
-STR_COMPANY_VIEW_GIVE_MONEY_QUERY_CAPTION                       :Introdueix la quantitat de diners que vols donar
+STR_COMPANY_VIEW_GIVE_MONEY_QUERY_CAPTION                       :Escriviu la quantitat de diners que voleu donar
 
 STR_BUY_COMPANY_MESSAGE                                         :{WHITE}Estem venent la nostra companyia de transports.{}{}Vols comprar {COMPANY} per {CURRENCY_LONG}?
 
@@ -3727,10 +3761,10 @@ STR_REPLACE_REMOVE_WAGON_HELP                                   :{BLACK}Fer que 
 # Vehicle view
 STR_VEHICLE_VIEW_CAPTION                                        :{WHITE}{VEHICLE}
 
-STR_VEHICLE_VIEW_TRAIN_LOCATION_TOOLTIP                         :{BLACK}Centra la vista principal al lloc del tren. Ctrl+Clic per seguir el tren a la vista principal
-STR_VEHICLE_VIEW_ROAD_VEHICLE_LOCATION_TOOLTIP                  :{BLACK}Centra la vista principal al lloc del vehicle. Ctrl+Clic per seguir el vehicle a la vista principal
-STR_VEHICLE_VIEW_SHIP_LOCATION_TOOLTIP                          :{BLACK}Centra la vista principal al lloc del vaixell. Ctrl+Clic per seguir el vaixell a la vista principal
-STR_VEHICLE_VIEW_AIRCRAFT_LOCATION_TOOLTIP                      :{BLACK}Centra la vista principal al lloc de l'avió. Ctrl+Clic per seguir l'avió a la vista principal
+STR_VEHICLE_VIEW_TRAIN_CENTER_TOOLTIP                           :{BLACK}Centra la vista principal al lloc on està el tren. Si feu doble clic, se'l seguirà a la vista principal. Amb Ctrl+clic s'obre una vista nova al lloc on està el tren.
+STR_VEHICLE_VIEW_ROAD_VEHICLE_CENTER_TOOLTIP                    :{BLACK}Centra la vista principal al lloc on està el vehicle. Si feu doble clic, se'l seguirà a la vista principal. Amb Ctrl+clic s'obre una vista nova al lloc on està el vehicle.
+STR_VEHICLE_VIEW_SHIP_CENTER_TOOLTIP                            :{BLACK}Centra la vista principal al lloc on està el vaixell. Si feu doble clic, se'l seguirà a la vista principal. Amb Ctrl+clic s'obre una vista nova al lloc on està el vaixell.
+STR_VEHICLE_VIEW_AIRCRAFT_CENTER_TOOLTIP                        :{BLACK}Centra la vista principal al lloc on està l'aeronau. Si feu doble clic, se la seguirà a la vista principal. Amb Ctrl+clic s'obre una vista nova al lloc on està l'aeronau.
 
 STR_VEHICLE_VIEW_TRAIN_SEND_TO_DEPOT_TOOLTIP                    :{BLACK}Envia el tren a cotxera
 STR_VEHICLE_VIEW_ROAD_VEHICLE_SEND_TO_DEPOT_TOOLTIP             :{BLACK}Envia el vehicle a cotxera
@@ -3762,10 +3796,12 @@ STR_VEHICLE_VIEW_ROAD_VEHICLE_SHOW_DETAILS_TOOLTIP              :{BLACK}Mostra e
 STR_VEHICLE_VIEW_SHIP_SHOW_DETAILS_TOOLTIP                      :{BLACK}Mostra els detalls del vaixell
 STR_VEHICLE_VIEW_AIRCRAFT_SHOW_DETAILS_TOOLTIP                  :{BLACK}Mostra els detalls de l'avió
 
-STR_VEHICLE_VIEW_TRAIN_STATE_START_STOP_TOOLTIP                 :{BLACK}Acció sobre el tren actual - clica aquí per parar/engegar el tren. Ctrl+Clic per saltar a la destinació
-STR_VEHICLE_VIEW_ROAD_VEHICLE_STATE_START_STOP_TOOLTIP          :{BLACK}Acció sobre el vehicle actual - clica aquí per parar/engegar el vehicle. Ctrl+Clic per saltar a la destinació
-STR_VEHICLE_VIEW_SHIP_STATE_START_STOP_TOOLTIP                  :{BLACK}Accions sobre el vaixell actual - clica aquí per parar/engegar el vaixell. Ctrl+Clic per saltar a la destinació
-STR_VEHICLE_VIEW_AIRCRAFT_STATE_START_STOP_TOOLTIP              :{BLACK}Accions sobre l'avió actual - clica aquí per parar/engegar l'avió. Ctrl+Clic per saltar a la destinació
+STR_VEHICLE_VIEW_TRAIN_STATUS_START_STOP_TOOLTIP                :{BLACK}Acció actual del tren - Feu clic per parar-lo o engegar-lo.
+STR_VEHICLE_VIEW_ROAD_VEHICLE_STATUS_START_STOP_TOOLTIP         :{BLACK}Acció actual del vehicle - Feu clic per parar-lo o engegar-lo.
+STR_VEHICLE_VIEW_SHIP_STATE_STATUS_STOP_TOOLTIP                 :{BLACK}Acció actual del vaixell - Feu clic per parar-lo o engegar-lo.
+STR_VEHICLE_VIEW_AIRCRAFT_STATUS_START_STOP_TOOLTIP             :{BLACK}Acció actual de l'aeronau - Feu clic per parar-la o engegar-la.
+
+STR_VEHICLE_VIEW_ORDER_LOCATION_TOOLTIP                         :{BLACK}Centra la vista principal a la destinació de l'ordre. Amb Ctrl+clic s'obre una vista nova al lloc de la destinació de l'ordre.
 
 # Messages in the start stop button in the vehicle view
 STR_VEHICLE_STATUS_LOADING_UNLOADING                            :{LTBLUE}Carregant / Descarregant
@@ -3993,6 +4029,7 @@ STR_ORDER_REFIT_STOP_ORDER                                      :(Remodela a {ST
 STR_ORDER_STOP_ORDER                                            :(Para)
 
 STR_ORDER_GO_TO_STATION                                         :{STRING} {STATION} {STRING}
+STR_ORDER_GO_TO_STATION_CAN_T_USE_STATION                       :{PUSH_COLOUR}{RED}(No pot usar l'estació){POP_COLOUR} {STRING} {STATION} {STRING}
 
 STR_ORDER_IMPLICIT                                              :(Implícit)
 
@@ -4237,6 +4274,7 @@ STR_GAME_SAVELOAD_ERROR_TOO_NEW_SAVEGAME                        :La partida est�
 STR_GAME_SAVELOAD_ERROR_FILE_NOT_READABLE                       :No es pot llegir l'arxiu
 STR_GAME_SAVELOAD_ERROR_FILE_NOT_WRITEABLE                      :No es pot escriure a l'arxiu
 STR_GAME_SAVELOAD_ERROR_DATA_INTEGRITY_CHECK_FAILED             :El test d'integritat de dades ha fallat
+STR_GAME_SAVELOAD_ERROR_PATCHPACK                               :La desada es va fer amb una versió modificada.
 STR_GAME_SAVELOAD_NOT_AVAILABLE                                 :<no disponible>
 STR_WARNING_LOADGAME_REMOVED_TRAMS                              :{WHITE}La partida es va desar amb una versió sense suport de tramvies. S'han eliminat tots els tramvies
 
@@ -4317,6 +4355,7 @@ STR_ERROR_LOAN_ALREADY_REPAYED                                  :{WHITE}... No q
 STR_ERROR_CURRENCY_REQUIRED                                     :{WHITE}... {CURRENCY_LONG} necessaris
 STR_ERROR_CAN_T_REPAY_LOAN                                      :{WHITE}No es pot amortitzar préstec...
 STR_ERROR_INSUFFICIENT_FUNDS                                    :{WHITE}No es poden regalar els diners deixats pel banc...
+STR_ERROR_CAN_T_GIVE_MONEY                                      :{WHITE}No podeu donar diners a aquesta companyia...
 STR_ERROR_CAN_T_BUY_COMPANY                                     :{WHITE}No pots comprar la companyia...
 STR_ERROR_CAN_T_BUILD_COMPANY_HEADQUARTERS                      :{WHITE}No es pot construir la seu de la companyia...
 STR_ERROR_CAN_T_BUY_25_SHARE_IN_THIS                            :{WHITE}No pots comprar el 25% de participació en aquesta companyia...
@@ -4443,6 +4482,8 @@ STR_ERROR_DEPOT_WRONG_DEPOT_TYPE                                :Tipus de cotxer
 STR_ERROR_TRAIN_TOO_LONG_AFTER_REPLACEMENT                      :{WHITE}{VEHICLE} és massa llarg després de la substitució
 STR_ERROR_AUTOREPLACE_NOTHING_TO_DO                             :{WHITE}No s'han aplicat normes d'autosubstitució/renovació
 STR_ERROR_AUTOREPLACE_MONEY_LIMIT                               :(límit de diners)
+STR_ERROR_AUTOREPLACE_INCOMPATIBLE_CARGO                        :{WHITE}El vehicle nou no pot portar {STRING}.
+STR_ERROR_AUTOREPLACE_INCOMPATIBLE_REFIT                        :{WHITE}El vehicle nou no pot complir el remodelat de l'ordre {NUM}.
 
 # Rail construction errors
 STR_ERROR_IMPOSSIBLE_TRACK_COMBINATION                          :{WHITE}Combinació de vies impossible
@@ -4643,6 +4684,11 @@ STR_BASEMUSIC_DOS_DESCRIPTION                                   :Música origina
 STR_BASEMUSIC_TTO_DESCRIPTION                                   :Música original del Transport Tycoon Deluxe (original/editor d'escenaris) pel DOS.
 STR_BASEMUSIC_NONE_DESCRIPTION                                  :Una llista de música sense cap peça.
 
+STR_TRADITIONAL_TRAIN_NAME                                      :{G=Masculin}Tren {COMMA}
+STR_TRADITIONAL_ROAD_VEHICLE_NAME                               :{G=Masculin}Automòbil {COMMA}
+STR_TRADITIONAL_SHIP_NAME                                       :{G=Masculin}Vaixell {COMMA}
+STR_TRADITIONAL_AIRCRAFT_NAME                                   :{G=Masculin}Avió {COMMA}
+
 ##id 0x2000
 # Town building names
 STR_TOWN_BUILDING_NAME_TALL_OFFICE_BLOCK_1                      :Bloc d'oficines alt
@@ -4724,10 +4770,10 @@ STR_INDUSTRY_NAME_SUGAR_MINE                                    :{G=Femenin}Mina
 ##id 0x6000
 STR_SV_EMPTY                                                    :
 STR_SV_UNNAMED                                                  :Sense nom
-STR_SV_TRAIN_NAME                                               :{G=Masculin}Tren {COMMA}
-STR_SV_ROAD_VEHICLE_NAME                                        :{G=Masculin}Automòbil {COMMA}
-STR_SV_SHIP_NAME                                                :{G=Masculin}Vaixell {COMMA}
-STR_SV_AIRCRAFT_NAME                                            :{G=Masculin}Avió {COMMA}
+STR_SV_TRAIN_NAME                                               :{G=Masculin}Tren #{COMMA}
+STR_SV_ROAD_VEHICLE_NAME                                        :{G=Masculin}Automòbil #{COMMA}
+STR_SV_SHIP_NAME                                                :{G=Masculin}Vaixell #{COMMA}
+STR_SV_AIRCRAFT_NAME                                            :{G=Masculin}Avió #{COMMA}
 
 STR_SV_STNAME                                                   :{STRING}
 STR_SV_STNAME_NORTH                                             :{STRING} Nord
@@ -5029,6 +5075,7 @@ STR_FORMAT_BUOY_NAME                                            :Boia de {TOWN}
 STR_FORMAT_BUOY_NAME_SERIAL                                     :Boia de {TOWN} #{COMMA}
 STR_FORMAT_COMPANY_NUM                                          :{G=Femenin}(Companyia {COMMA})
 STR_FORMAT_GROUP_NAME                                           :{G=Masculin}Grup {COMMA}
+STR_FORMAT_GROUP_VEHICLE_NAME                                   :{GROUP} #{COMMA}
 STR_FORMAT_INDUSTRY_NAME                                        :{TOWN}: {STRING}
 STR_FORMAT_WAYPOINT_NAME                                        :Punt de pas de {TOWN}
 STR_FORMAT_WAYPOINT_NAME_SERIAL                                 :Punt de pas de {TOWN} #{COMMA}
