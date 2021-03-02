@@ -296,7 +296,9 @@ if(ANDROID)
         ${EXPAT_LIBRARY}
     )
     # A bug in Android NDK r22: https://github.com/android/ndk/issues/1418
-    set_source_files_properties(${CMAKE_SOURCE_DIR}/src/settings.cpp PROPERTIES COMPILE_FLAGS "-O1")
+    if(ANDROID_ABI STREQUAL "armeabi-v7a" OR ANDROID_ABI STREQUAL "x86")
+        set_source_files_properties(${CMAKE_SOURCE_DIR}/src/settings.cpp PROPERTIES COMPILE_FLAGS "-O0")
+    endif()
 endif(ANDROID)
 
 if(APPLE)
