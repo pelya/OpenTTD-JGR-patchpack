@@ -139,7 +139,7 @@ void ClientNetworkEmergencySave()
 
 	const char *filename = "netsave.sav";
 	DEBUG(net, 0, "Client: Performing emergency save (%s)", filename);
-	SaveOrLoad(filename, SLO_SAVE, DFT_GAME_FILE, AUTOSAVE_DIR, false);
+	SaveOrLoad(filename, SLO_SAVE, DFT_GAME_FILE, AUTOSAVE_DIR, false, SMF_ZSTD_OK);
 }
 
 
@@ -482,6 +482,11 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::SendGetMap()
 	my_client->status = STATUS_MAP_WAIT;
 
 	Packet *p = new Packet(PACKET_CLIENT_GETMAP);
+#if defined(WITH_ZSTD)
+	p->Send_bool(true);
+#else
+	p->Send_bool(false);
+#endif
 	my_client->SendPacket(p);
 	return NETWORK_RECV_STATUS_OKAY;
 }
@@ -978,7 +983,7 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::Receive_SERVER_MAP_DONE(Packet
 	bool load_success = SafeLoad({}, SLO_LOAD, DFT_GAME_FILE, GM_NORMAL, NO_DIRECTORY, lf);
 
 	/* Long savegame loads shouldn't affect the lag calculation! */
-	this->last_packet = _realtime_tick;
+	this->last_packet = std::chrono::steady_clock::now();
 
 	if (!load_success) {
 		DeleteWindowById(WC_NETWORK_STATUS_WINDOW, WN_NETWORK_STATUS_WINDOW_JOIN);
@@ -1312,27 +1317,23 @@ void ClientNetworkGameSocketHandler::CheckConnection()
 	/* Only once we're authorized we can expect a steady stream of packets. */
 	if (this->status < STATUS_AUTHORIZED) return;
 
-	/* It might... sometimes occur that the realtime ticker overflows. */
-	if (_realtime_tick < this->last_packet) this->last_packet = _realtime_tick;
-
-	/* Lag is in milliseconds; 5 seconds are roughly twice the
-	 * server's "you're slow" threshold (1 game day). */
-	uint lag = (_realtime_tick - this->last_packet) / 1000;
-	if (lag < 5) return;
+	/* 5 seconds are roughly twice the server's "you're slow" threshold (1 game day). */
+	std::chrono::steady_clock::duration lag = std::chrono::steady_clock::now() - this->last_packet;
+	if (lag < std::chrono::seconds(5)) return;
 
 	/* 20 seconds are (way) more than 4 game days after which
 	 * the server will forcefully disconnect you. */
-	if (lag > 20) {
+	if (lag > std::chrono::seconds(20)) {
 		this->NetworkGameSocketHandler::CloseConnection();
 		return;
 	}
 
 	/* Prevent showing the lag message every tick; just update it when needed. */
-	static uint last_lag = 0;
-	if (last_lag == lag) return;
+	static std::chrono::steady_clock::duration last_lag = {};
+	if (std::chrono::duration_cast<std::chrono::seconds>(last_lag) == std::chrono::duration_cast<std::chrono::seconds>(lag)) return;
 
 	last_lag = lag;
-	SetDParam(0, lag);
+	SetDParam(0, std::chrono::duration_cast<std::chrono::seconds>(lag).count());
 	ShowErrorMessage(STR_NETWORK_ERROR_CLIENT_GUI_LOST_CONNECTION_CAPTION, STR_NETWORK_ERROR_CLIENT_GUI_LOST_CONNECTION, WL_INFO);
 }
 

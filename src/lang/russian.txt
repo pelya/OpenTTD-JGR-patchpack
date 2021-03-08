@@ -362,7 +362,7 @@ STR_TOOLTIP_FILTER_CRITERIA                                     :{BLACK}Выбе
 STR_BUTTON_SORT_BY                                              :{BLACK}Сортировка
 STR_BUTTON_RENAME                                               :{BLACK}Переименовать
 STR_BUTTON_CATCHMENT                                            :{BLACK}Охват
-STR_TOOLTIP_CATCHMENT                                           :{BLACK}Переключить подсветку участков, находящихся в зонах обслуживания станциями игрока, а также не попадающих в эти зоны.
+STR_TOOLTIP_CATCHMENT                                           :{BLACK}Показать область, обслуживаемую станцией.
 
 STR_TOOLTIP_CLOSE_WINDOW                                        :{BLACK}Закрыть окно
 STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS                              :{BLACK}Окна можно перетаскивать, схватив за заголовок
@@ -512,8 +512,8 @@ STR_SCENEDIT_FILE_MENU_QUIT                                     :Выход
 ############ range for SE file menu starts
 
 ############ range for settings menu starts
-STR_SETTINGS_MENU_GAME_OPTIONS                                  :Настройки игры
-STR_SETTINGS_MENU_CONFIG_SETTINGS_TREE                          :Настройки
+STR_SETTINGS_MENU_GAME_OPTIONS                                  :Основные настройки
+STR_SETTINGS_MENU_CONFIG_SETTINGS_TREE                          :Расширенные настройки
 STR_SETTINGS_MENU_SCRIPT_SETTINGS                               :Настройки ИИ / скрипта
 STR_SETTINGS_MENU_NEWGRF_SETTINGS                               :Настройки NewGRF
 STR_SETTINGS_MENU_TRANSPARENCY_OPTIONS                          :Настройки прозрачности
@@ -716,8 +716,8 @@ STR_MONTH_DEC                                                   :Декабрь
 # Graph window
 STR_GRAPH_KEY_BUTTON                                            :{BLACK}Легенда
 STR_GRAPH_KEY_TOOLTIP                                           :{BLACK}Показать легенду к графикам
-STR_GRAPH_X_LABEL_MONTH                                         :{TINY_FONT}{STRING}{} {STRING}
-STR_GRAPH_X_LABEL_MONTH_YEAR                                    :{TINY_FONT}{STRING}{} {STRING}{}{NUM}
+STR_GRAPH_X_LABEL_MONTH                                         :{TINY_FONT}{STRING}
+STR_GRAPH_X_LABEL_MONTH_YEAR                                    :{TINY_FONT}{STRING}{}{NUM}
 STR_GRAPH_Y_LABEL                                               :{TINY_FONT}{STRING}
 STR_GRAPH_Y_LABEL_NUMBER                                        :{TINY_FONT}{COMMA}
 
@@ -1048,7 +1048,7 @@ STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW                                :{BLACK}В ос�
 STR_EXTRA_VIEW_MOVE_MAIN_TO_VIEW_TT                             :{BLACK}Показать в основном окне
 
 # Game options window
-STR_GAME_OPTIONS_CAPTION                                        :{WHITE}Настройки игры
+STR_GAME_OPTIONS_CAPTION                                        :{WHITE}Основные настройки
 STR_GAME_OPTIONS_CURRENCY_UNITS_FRAME                           :{BLACK}Валюта
 STR_GAME_OPTIONS_CURRENCY_UNITS_DROPDOWN_TOOLTIP                :{BLACK}Смена используемой в игре валюты
 
@@ -1087,16 +1087,16 @@ STR_GAME_OPTIONS_CURRENCY_ZAR                                   :Южноафр�
 STR_GAME_OPTIONS_CURRENCY_CUSTOM                                :Своя...
 STR_GAME_OPTIONS_CURRENCY_GEL                                   :Грузинский лари (GEL)
 STR_GAME_OPTIONS_CURRENCY_IRR                                   :Иранский риал (IRR)
-STR_GAME_OPTIONS_CURRENCY_RUB                                   :Российский рубль (RUR)
+STR_GAME_OPTIONS_CURRENCY_RUB                                   :Российский рубль (RUB)
 STR_GAME_OPTIONS_CURRENCY_MXN                                   :Мексиканский песо (MXN)
 STR_GAME_OPTIONS_CURRENCY_NTD                                   :Новый тайваньский доллар (NTD)
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Китайский юань (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Гонконгский доллар (HKD)
 STR_GAME_OPTIONS_CURRENCY_INR                                   :Индийская рупия (INR)
+STR_GAME_OPTIONS_CURRENCY_IDR                                   :Индонезийская рупия (IDR)
+STR_GAME_OPTIONS_CURRENCY_MYR                                   :Малайзийский ринггит (MYR)
 ############ end of currency region
 
-STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Движение автомобилей
-STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_TOOLTIP                 :{BLACK}Сторона дороги, по которой ездит автотранспорт
 STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_LEFT                    :Левостороннее
 STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_RIGHT                   :Правостороннее
 
@@ -1131,11 +1131,11 @@ STR_GAME_OPTIONS_AUTOSAVE_FRAME                                 :{BLACK}Авто
 STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_TOOLTIP                      :{BLACK}Интервал автосохранения игры
 
 ############ start of autosave dropdown
-STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_OFF                          :Отключено
-STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_1_MONTH                :Каждый месяц
-STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_3_MONTHS               :Каждые 3 месяца
-STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_6_MONTHS               :Каждые 6 месяцев
-STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_12_MONTHS              :Каждый год
+STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_OFF                          :отключено
+STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_1_MONTH                :каждый месяц
+STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_3_MONTHS               :каждые 3 месяца
+STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_6_MONTHS               :каждые 6 месяцев
+STR_GAME_OPTIONS_AUTOSAVE_DROPDOWN_EVERY_12_MONTHS              :каждый год
 ############ end of autosave dropdown
 
 STR_GAME_OPTIONS_LANGUAGE                                       :{BLACK}Язык
@@ -1151,6 +1151,7 @@ STR_GAME_OPTIONS_RESOLUTION_OTHER                               :Другое
 STR_GAME_OPTIONS_GUI_ZOOM_FRAME                                 :{BLACK}Размер элементов интерфейса
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_TOOLTIP                      :{BLACK}Выберите размер элементов интерфейса
 
+STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_AUTO                         :(Автовыбор)
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_NORMAL                       :Обычный
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_2X_ZOOM                      :Удвоенный
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_4X_ZOOM                      :Учетверённый
@@ -1158,6 +1159,7 @@ STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_4X_ZOOM                      :Учетвер�
 STR_GAME_OPTIONS_FONT_ZOOM                                      :{BLACK}Размер шрифта
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_TOOLTIP                     :{BLACK}Выберите размер шрифта, используемого в игре
 
+STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_AUTO                        :(Автовыбор)
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_NORMAL                      :Нормальный
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_2X_ZOOM                     :Двукратный
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_4X_ZOOM                     :Четырёхкратный
@@ -1269,7 +1271,7 @@ STR_CITY_APPROVAL_HOSTILE                                       :отрицат�
 STR_WARNING_NO_SUITABLE_AI                                      :{WHITE}Модули ИИ отсутствуют.{}Их можно скачать через систему проверки онлайн-контента.
 
 # Settings tree window
-STR_CONFIG_SETTING_TREE_CAPTION                                 :{WHITE}Настройки
+STR_CONFIG_SETTING_TREE_CAPTION                                 :{WHITE}Расширенные настройки
 STR_CONFIG_SETTING_FILTER_TITLE                                 :{BLACK}Фильтр:
 STR_CONFIG_SETTING_EXPAND_ALL                                   :{BLACK}Развернуть всё
 STR_CONFIG_SETTING_COLLAPSE_ALL                                 :{BLACK}Свернуть всё
@@ -1528,10 +1530,10 @@ STR_CONFIG_SETTING_SMALLMAP_LAND_COLOUR_DARK_GREEN              :тёмно-зе
 STR_CONFIG_SETTING_SMALLMAP_LAND_COLOUR_VIOLET                  :фиолетовый
 STR_CONFIG_SETTING_SCROLLMODE                                   :Перемещение обзора: {STRING}
 STR_CONFIG_SETTING_SCROLLMODE_HELPTEXT                          :Способ перемещения по игровому полю
-STR_CONFIG_SETTING_SCROLLMODE_DEFAULT                           :Перемещать с помощью ПКМ, зафиксировав курсор
-STR_CONFIG_SETTING_SCROLLMODE_RMB_LOCKED                        :Перемещать с помощью ПКМ, зафиксировав курсор
-STR_CONFIG_SETTING_SCROLLMODE_RMB                               :Перемещать с помощью ПКМ
-STR_CONFIG_SETTING_SCROLLMODE_LMB                               :Перемещать с помощью ЛКМ
+STR_CONFIG_SETTING_SCROLLMODE_DEFAULT                           :перемещать обзор с помощью ПКМ, зафиксировав курсор
+STR_CONFIG_SETTING_SCROLLMODE_RMB_LOCKED                        :перемещать карту с помощью ПКМ, зафиксировав курсор
+STR_CONFIG_SETTING_SCROLLMODE_RMB                               :перемещать с помощью ПКМ
+STR_CONFIG_SETTING_SCROLLMODE_LMB                               :перемещать с помощью ЛКМ
 STR_CONFIG_SETTING_SMOOTH_SCROLLING                             :Плавное перемещение: {STRING}
 STR_CONFIG_SETTING_SMOOTH_SCROLLING_HELPTEXT                    :Настройка перемещения обзора в основном окне при щелчке по миникарте или по команде обзора какого-нибудь объекта. Если включено, то обзор смещается плавно; если отключено - то мгновенно.
 STR_CONFIG_SETTING_MEASURE_TOOLTIP                              :Показывать замеры при строительстве: {STRING}
@@ -1606,6 +1608,10 @@ STR_CONFIG_SETTING_EXPENSES_LAYOUT                              :Группир�
 STR_CONFIG_SETTING_EXPENSES_LAYOUT_HELPTEXT                     :Разделять доходы и расходы в окне финансовой информации компании
 STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS                          :Убирать мешающие ж/д сигналы при строительстве: {STRING}
 STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS_HELPTEXT                 :Автоматически убирать сигналы, мешающие постройке новых рельсовых путей. Это может привести к столкновению поездов.
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT                     :Предел ускорения игры: {STRING}
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT_HELPTEXT            :Настройка предела ускорения игры.{}0 - предела нет; игра будет идти с максимально возможной скоростью.{}При значениях ниже 100% игра будет замедляться.{}Реальное значение ускорения зависит от конфигурации компьютера и количества объектов в игре.
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT_VAL                 :{NUM}% обычной скорости
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT_ZERO                :нет (настолько быстро, насколько позволяет компьютер)
 
 STR_CONFIG_SETTING_SOUND_TICKER                                 :Бегущая строка: {STRING}
 STR_CONFIG_SETTING_SOUND_TICKER_HELPTEXT                        :Воспроизводить звук при появлении бегущей строки с новостями
@@ -1947,9 +1953,9 @@ STR_INTRO_PLAY_HEIGHTMAP                                        :{BLACK}Загр
 STR_INTRO_SCENARIO_EDITOR                                       :{BLACK}Редактор сценариев
 STR_INTRO_MULTIPLAYER                                           :{BLACK}Сетевая игра
 
-STR_INTRO_GAME_OPTIONS                                          :{BLACK}Настройки игры
+STR_INTRO_GAME_OPTIONS                                          :{BLACK}Основные настройки
 STR_INTRO_HIGHSCORE                                             :{BLACK}Таблица рекордов
-STR_INTRO_CONFIG_SETTINGS_TREE                                  :{BLACK}Настройки
+STR_INTRO_CONFIG_SETTINGS_TREE                                  :{BLACK}Расширенные настройки
 STR_INTRO_NEWGRF_SETTINGS                                       :{BLACK}Настройки NewGRF
 STR_INTRO_ONLINE_CONTENT                                        :{BLACK}Проверить онлайн-контент
 STR_INTRO_SCRIPT_SETTINGS                                       :{BLACK}Настройки ИИ / скрипта
@@ -1967,15 +1973,15 @@ STR_INTRO_TOOLTIP_SUB_ARCTIC_LANDSCAPE                          :{BLACK}Выбр
 STR_INTRO_TOOLTIP_SUB_TROPICAL_LANDSCAPE                        :{BLACK}Выбрать субтропический климат
 STR_INTRO_TOOLTIP_TOYLAND_LANDSCAPE                             :{BLACK}Выбрать игрушечный мир
 
-STR_INTRO_TOOLTIP_GAME_OPTIONS                                  :{BLACK}Открыть настройки игры
+STR_INTRO_TOOLTIP_GAME_OPTIONS                                  :{BLACK}Изменить основные настройки игры
 STR_INTRO_TOOLTIP_HIGHSCORE                                     :{BLACK}Показать таблицу рекордов
-STR_INTRO_TOOLTIP_CONFIG_SETTINGS_TREE                          :{BLACK}Окно настроек
+STR_INTRO_TOOLTIP_CONFIG_SETTINGS_TREE                          :{BLACK}Изменить расширенные настройки игры
 STR_INTRO_TOOLTIP_NEWGRF_SETTINGS                               :{BLACK}Показать настройки NewGRF
 STR_INTRO_TOOLTIP_ONLINE_CONTENT                                :{BLACK}Найти новый и обновлённый контент для загрузки
 STR_INTRO_TOOLTIP_SCRIPT_SETTINGS                               :{BLACK}Изменить настройки ИИ / игрового скрипта
 STR_INTRO_TOOLTIP_QUIT                                          :{BLACK}Выйти из OpenTTD
 
-STR_INTRO_BASESET                                               :{BLACK}В выбранном наборе базовой графики отсутствует {NUM} спрайт{P "" а ов}. Пожалуйста, обновите набор графики.
+STR_INTRO_BASESET                                               :{BLACK}В выбранном наборе базовой графики отсутству{P 0 е ю ю}т {NUM} спрайт{P "" а ов}. Пожалуйста, обновите набор графики.
 STR_INTRO_TRANSLATION                                           :{BLACK}На этот язык не переведен{P 0 а ы о} {NUM} строк{P а и ""}. Вы можете помочь проекту, зарегистрировавшись как переводчик. Инструкции в файле readme.txt.
 
 # Quit window
@@ -2761,8 +2767,8 @@ STR_FOUND_TOWN_NEW_TOWN_BUTTON                                  :{BLACK}Новы
 STR_FOUND_TOWN_NEW_TOWN_TOOLTIP                                 :{BLACK}Построить новый город. Shift+щелчок - оценка стоимости основания.
 STR_FOUND_TOWN_RANDOM_TOWN_BUTTON                               :{BLACK}Случайный город
 STR_FOUND_TOWN_RANDOM_TOWN_TOOLTIP                              :{BLACK}Создать город в случайном месте
-STR_FOUND_TOWN_MANY_RANDOM_TOWNS                                :{BLACK}Много случайных городов
-STR_FOUND_TOWN_RANDOM_TOWNS_TOOLTIP                             :{BLACK}Случайно разместить на карте города
+STR_FOUND_TOWN_MANY_RANDOM_TOWNS                                :{BLACK}Множество различных городов
+STR_FOUND_TOWN_RANDOM_TOWNS_TOOLTIP                             :{BLACK}Разместить на карте различные города случайным образом
 
 STR_FOUND_TOWN_NAME_TITLE                                       :{YELLOW}Название города:
 STR_FOUND_TOWN_NAME_EDITOR_TITLE                                :{BLACK}Введите название города
@@ -2789,13 +2795,19 @@ STR_FOUND_TOWN_SELECT_LAYOUT_RANDOM                             :{BLACK}Случ
 
 # Fund new industry window
 STR_FUND_INDUSTRY_CAPTION                                       :{WHITE}Создать новое предприятие
-STR_FUND_INDUSTRY_SELECTION_TOOLTIP                             :{BLACK}Выберите тип производства из списка
-STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES                        :Много предприятий
-STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_TOOLTIP                :{BLACK}Случайно разместить предприятия на карте
+STR_FUND_INDUSTRY_SELECTION_TOOLTIP                             :{BLACK}Выберите тип предприятия из списка
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES                        :{BLACK}Множество различных предприятий
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_TOOLTIP                :{BLACK}Разместить на карте различные предприятия случайным образом
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_CAPTION                :{WHITE}Множество различных предприятий
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_QUERY                  :{YELLOW}Разместить на карте различные предприятия случайным образом?
 STR_FUND_INDUSTRY_INDUSTRY_BUILD_COST                           :{BLACK}Цена: {YELLOW}{CURRENCY_LONG}
 STR_FUND_INDUSTRY_PROSPECT_NEW_INDUSTRY                         :{BLACK}Разведать
 STR_FUND_INDUSTRY_BUILD_NEW_INDUSTRY                            :{BLACK}Построить
 STR_FUND_INDUSTRY_FUND_NEW_INDUSTRY                             :{BLACK}Профинансировать
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES                         :{BLACK}Убрать все предприятия
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES_TOOLTIP                 :{BLACK}Убрать все предприятия с карты
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES_CAPTION                 :{WHITE}Убрать все предприятия
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES_QUERY                   :{YELLOW}Убрать все предприятия с карты?
 
 # Industry cargoes window
 STR_INDUSTRY_CARGOES_INDUSTRY_CAPTION                           :{WHITE}Цепочка грузоперевозок для {STRING.gen}
@@ -3028,6 +3040,8 @@ STR_SAVELOAD_DETAIL_GRFSTATUS                                   :{SILVER}NewGRF:
 STR_SAVELOAD_FILTER_TITLE                                       :{BLACK}Фильтр:
 STR_SAVELOAD_OVERWRITE_TITLE                                    :{WHITE}Перезапись файла
 STR_SAVELOAD_OVERWRITE_WARNING                                  :{YELLOW}Перезаписать файл?
+STR_SAVELOAD_DIRECTORY                                          :{STRING} (Каталог)
+STR_SAVELOAD_PARENT_DIRECTORY                                   :{STRING} (Родительский каталог)
 
 STR_SAVELOAD_OSKTITLE                                           :{BLACK}Введите название сохраняемой игры
 
@@ -3046,7 +3060,6 @@ STR_MAPGEN_SNOW_LINE_HEIGHT                                     :{BLACK}Снег
 STR_MAPGEN_SNOW_LINE_UP                                         :{BLACK}Поднять снеговую линию
 STR_MAPGEN_SNOW_LINE_DOWN                                       :{BLACK}Опустить снеговую линию
 STR_MAPGEN_LAND_GENERATOR                                       :{BLACK}Генератор ландшафта:
-STR_MAPGEN_TREE_PLACER                                          :{BLACK}Генератор лесов:
 STR_MAPGEN_TERRAIN_TYPE                                         :{BLACK}Тип ландшафта:
 STR_MAPGEN_QUANTITY_OF_SEA_LAKES                                :{BLACK}Количество морей и озёр:
 STR_MAPGEN_QUANTITY_OF_RIVERS                                   :{BLACK}Количество рек:
@@ -4888,11 +4901,11 @@ STR_BASEGRAPHICS_DOS_DE_DESCRIPTION                             :Графика 
 STR_BASEGRAPHICS_WIN_DESCRIPTION                                :Графика из Transport Tycoon Deluxe для Windows.
 STR_BASESOUNDS_DOS_DESCRIPTION                                  :Набор звукового оформления из игры Transport Tycoon Deluxe для DOS.
 STR_BASESOUNDS_WIN_DESCRIPTION                                  :Набор звукового оформления из игры Transport Tycoon Deluxe для Windows.
-STR_BASESOUNDS_NONE_DESCRIPTION                                 :"Пустой" набор звукового оформления, не содержащий никаких звуков.
+STR_BASESOUNDS_NONE_DESCRIPTION                                 :Пустой набор звукового оформления, не содержащий никаких звуков.
 STR_BASEMUSIC_WIN_DESCRIPTION                                   :Набор музыкального оформления из игры Transport Tycoon Deluxe для Windows.
 STR_BASEMUSIC_DOS_DESCRIPTION                                   :Набор музыкального оформления из игры Transport Tycoon Deluxe для DOS.
 STR_BASEMUSIC_TTO_DESCRIPTION                                   :Набор музыкального оформления из игры Transport Tycoon Deluxe для DOS.
-STR_BASEMUSIC_NONE_DESCRIPTION                                  :"Пустой" набор музыкального оформления, не содержащий никакой музыки.
+STR_BASEMUSIC_NONE_DESCRIPTION                                  :Пустой набор музыкального оформления, не содержащий никакой музыки.
 
 STR_TRADITIONAL_TRAIN_NAME                                      :Поезд №{COMMA}
 STR_TRADITIONAL_ROAD_VEHICLE_NAME                               :Автомобиль №{COMMA}

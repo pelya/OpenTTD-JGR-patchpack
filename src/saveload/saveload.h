@@ -387,17 +387,24 @@ enum SavegameType {
 	SGT_INVALID = 0xFF, ///< broken savegame (used internally)
 };
 
+enum SaveModeFlags : byte {
+	SMF_NONE             = 0,
+	SMF_NET_SERVER       = 1 << 0, ///< Network server save
+	SMF_ZSTD_OK          = 1 << 1, ///< Zstd OK
+};
+DECLARE_ENUM_AS_BIT_SET(SaveModeFlags);
+
 extern FileToSaveLoad _file_to_saveload;
 
 void GenerateDefaultSaveName(char *buf, const char *last);
 void SetSaveLoadError(StringID str);
 const char *GetSaveLoadErrorString();
-SaveOrLoadResult SaveOrLoad(const std::string &filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded = true);
+SaveOrLoadResult SaveOrLoad(const std::string &filename, SaveLoadOperation fop, DetailedFileType dft, Subdirectory sb, bool threaded = true, SaveModeFlags flags = SMF_NONE);
 void WaitTillSaved();
 void ProcessAsyncSaveFinish();
 void DoExitSave();
 
-SaveOrLoadResult SaveWithFilter(struct SaveFilter *writer, bool threaded, bool networkserversave);
+SaveOrLoadResult SaveWithFilter(struct SaveFilter *writer, bool threaded, SaveModeFlags flags);
 SaveOrLoadResult LoadWithFilter(struct LoadFilter *reader);
 bool IsNetworkServerSave();
 

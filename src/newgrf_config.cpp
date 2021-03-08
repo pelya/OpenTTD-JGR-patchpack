@@ -344,6 +344,7 @@ static std::vector<GRFMD5SumState> _grf_md5_pending;
 static std::condition_variable _grf_md5_full_cv;
 static std::condition_variable _grf_md5_empty_cv;
 static std::condition_variable _grf_md5_done_cv;
+static std::atomic<bool> _abort_grf_scan;
 static const uint GRF_MD5_PENDING_MAX = 8;
 
 static void CalcGRFMD5SumFromState(const GRFMD5SumState &state)
@@ -373,7 +374,7 @@ void CalcGRFMD5Thread()
 			_grf_md5_pending.pop_back();
 			lk.unlock();
 			if (full) _grf_md5_full_cv.notify_one();
-			CalcGRFMD5SumFromState(state);
+			if (!_abort_grf_scan.load(std::memory_order_relaxed)) CalcGRFMD5SumFromState(state);
 			lk.lock();
 		}
 	}
@@ -668,18 +669,14 @@ compatible_grf:
 
 /** Helper for scanning for files with GRF as extension */
 class GRFFileScanner : FileScanner {
-	uint next_update; ///< The next (realtime tick) we do update the screen.
+	std::chrono::steady_clock::time_point next_update; ///< The next moment we do update the screen.
 	uint num_scanned; ///< The number of GRFs we have scanned.
 	std::vector<GRFConfig *> grfs;
 
 public:
 	GRFFileScanner() : num_scanned(0)
 	{
-#if defined(__GNUC__) || defined(__clang__)
-		this->next_update = __atomic_load_n(&_realtime_tick, __ATOMIC_RELAXED);
-#else
-		this->next_update = _realtime_tick;
-#endif
+		this->next_update = std::chrono::steady_clock::now();
 	}
 
 	bool AddFile(const std::string &filename, size_t basepath_length, const std::string &tar_filename) override;
@@ -732,6 +729,8 @@ public:
 
 bool GRFFileScanner::AddFile(const std::string &filename, size_t basepath_length, const std::string &tar_filename)
 {
+	if (_abort_grf_scan.load(std::memory_order_relaxed)) return false;
+
 	GRFConfig *c = new GRFConfig(filename.c_str() + basepath_length);
 
 	bool added = FillGRFDetails(c, false);
@@ -740,12 +739,10 @@ bool GRFFileScanner::AddFile(const std::string &filename, size_t basepath_length
 	}
 
 	this->num_scanned++;
-#if defined(__GNUC__) || defined(__clang__)
-	const uint32 now = __atomic_load_n(&_realtime_tick, __ATOMIC_RELAXED);
-#else
-	const uint32 now = _realtime_tick;
-#endif
-	if (this->next_update <= now) {
+	const auto now = std::chrono::steady_clock::now();
+	if (now >= this->next_update) {
+		this->next_update = now + std::chrono::milliseconds(MODAL_PROGRESS_REDRAW_TIMEOUT);
+
 		_modal_progress_work_mutex.unlock();
 		_modal_progress_paint_mutex.lock();
 
@@ -756,8 +753,6 @@ bool GRFFileScanner::AddFile(const std::string &filename, size_t basepath_length
 
 		_modal_progress_work_mutex.lock();
 		_modal_progress_paint_mutex.unlock();
-
-		this->next_update = now + MODAL_PROGRESS_REDRAW_TIMEOUT;
 	}
 
 	if (!added) {
@@ -852,6 +847,11 @@ void ScanNewGRFFiles(NewGRFScanCallback *callback)
 	} else {
 		UpdateNewGRFScanStatus(0, nullptr);
 	}
+}
+
+void AbortScanNewGRFFiles()
+{
+	_abort_grf_scan.store(true, std::memory_order_relaxed);
 }
 
 /**

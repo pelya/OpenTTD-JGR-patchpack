@@ -630,6 +630,9 @@ void AdvanceOrderIndex(const Vehicle *v, VehicleOrderID &index)
 		++index;
 		depth++;
 	} while (depth < v->GetNumOrders());
+
+	/* Wrap around. */
+	if (index >= v->GetNumOrders()) index = 0;
 }
 
 int PredictStationStoppingLocation(const Train *v, const Order *order, int station_length, DestinationID dest)
@@ -824,7 +827,7 @@ static void LimitSpeedFromLookAhead(int &max_speed, const TrainDecelerationStats
 }
 
 static void ApplyLookAheadItem(const Train *v, const TrainReservationLookAheadItem &item, int &max_speed, int &advisory_max_speed,
-		VehicleOrderID &current_order_index, const TrainDecelerationStats &stats, int current_position)
+		VehicleOrderID &current_order_index, const Order *&order, const TrainDecelerationStats &stats, int current_position)
 {
 	auto limit_speed = [&](int position, int end_speed, int z) {
 		LimitSpeedFromLookAhead(max_speed, stats, current_position, position, end_speed, z - stats.z_pos);
@@ -836,19 +839,17 @@ static void ApplyLookAheadItem(const Train *v, const TrainReservationLookAheadIt
 
 	switch (item.type) {
 		case TRLIT_STATION: {
-			if (current_order_index < v->GetNumOrders()) {
-				const Order *order = v->GetOrder(current_order_index);
-				if (order->ShouldStopAtStation(nullptr, item.data_id, Waypoint::GetIfValid(item.data_id) != nullptr)) {
-					limit_advisory_speed(item.start + PredictStationStoppingLocation(v, order, item.end - item.start, item.data_id), 0, item.z_pos);
-				} else if (order->IsType(OT_GOTO_WAYPOINT) && order->GetDestination() == item.data_id && (order->GetWaypointFlags() & OWF_REVERSE)) {
-					limit_advisory_speed(item.start + v->gcache.cached_total_length, 0, item.z_pos);
-				}
-				if (order->IsBaseStationOrder() && order->GetDestination() == item.data_id) {
-					current_order_index++;
-					AdvanceOrderIndex(v, current_order_index);
-					uint16 max_speed = v->GetOrder(current_order_index)->GetMaxSpeed();
-					if (max_speed < UINT16_MAX) limit_advisory_speed(item.start, max_speed, item.z_pos);
-				}
+			if (order->ShouldStopAtStation(nullptr, item.data_id, Waypoint::GetIfValid(item.data_id) != nullptr)) {
+				limit_advisory_speed(item.start + PredictStationStoppingLocation(v, order, item.end - item.start, item.data_id), 0, item.z_pos);
+			} else if (order->IsType(OT_GOTO_WAYPOINT) && order->GetDestination() == item.data_id && (order->GetWaypointFlags() & OWF_REVERSE)) {
+				limit_advisory_speed(item.start + v->gcache.cached_total_length, 0, item.z_pos);
+			}
+			if (order->IsBaseStationOrder() && order->GetDestination() == item.data_id && v->GetNumOrders() > 0) {
+				current_order_index++;
+				AdvanceOrderIndex(v, current_order_index);
+				order = v->GetOrder(current_order_index);
+				uint16 max_speed = order->GetMaxSpeed();
+				if (max_speed < UINT16_MAX) limit_advisory_speed(item.start, max_speed, item.z_pos);
 			}
 			break;
 		}
@@ -1000,8 +1001,9 @@ Train::MaxSpeedInfo Train::GetCurrentMaxSpeedInfoInternal(bool update_state) con
 				LimitSpeedFromLookAhead(max_speed, stats, this->lookahead->current_position, this->lookahead->reservation_end_position, 0, this->lookahead->reservation_end_z - stats.z_pos);
 			}
 			VehicleOrderID current_order_index = this->cur_real_order_index;
+			const Order *order = &(this->current_order);
 			for (const TrainReservationLookAheadItem &item : this->lookahead->items) {
-				ApplyLookAheadItem(this, item, max_speed, advisory_max_speed, current_order_index, stats, this->lookahead->current_position);
+				ApplyLookAheadItem(this, item, max_speed, advisory_max_speed, current_order_index, order, stats, this->lookahead->current_position);
 			}
 			if (HasBit(this->lookahead->flags, TRLF_APPLY_ADVISORY)) {
 				max_speed = std::min(max_speed, advisory_max_speed);
@@ -2993,11 +2995,11 @@ bool Train::FindClosestDepot(TileIndex *location, DestinationID *destination, bo
 void Train::PlayLeaveStationSound() const
 {
 	static const SoundFx sfx[] = {
-		SND_04_TRAIN,
-		SND_0A_TRAIN_HORN,
-		SND_0A_TRAIN_HORN,
-		SND_47_MAGLEV_2,
-		SND_41_MAGLEV
+		SND_04_DEPARTURE_STEAM,
+		SND_0A_DEPARTURE_TRAIN,
+		SND_0A_DEPARTURE_TRAIN,
+		SND_47_DEPARTURE_MONORAIL,
+		SND_41_DEPARTURE_MAGLEV
 	};
 
 	if (PlayVehicleSound(this, VSE_START)) return;
@@ -4317,7 +4319,7 @@ int Train::UpdateSpeed()
 	switch (_settings_game.vehicle.train_acceleration_model) {
 		default: NOT_REACHED();
 		case AM_ORIGINAL:
-			return this->DoUpdateSpeed({ this->acceleration * 2, this->acceleration * -4 }, 0, max_speed_info.strict_max_speed, max_speed_info.advisory_max_speed);
+			return this->DoUpdateSpeed({ this->acceleration * (this->GetAccelerationStatus() == AS_BRAKE ? -4 : 2), this->acceleration * -4 }, 0, max_speed_info.strict_max_speed, max_speed_info.advisory_max_speed);
 
 		case AM_REALISTIC:
 			return this->DoUpdateSpeed(this->GetAcceleration(), accel_status == AS_BRAKE ? 0 : 2, max_speed_info.strict_max_speed, max_speed_info.advisory_max_speed);
@@ -4633,7 +4635,7 @@ static bool CheckTrainCollision(Train *v)
 	AddTileNewsItem(STR_NEWS_TRAIN_CRASH, NT_ACCIDENT, v->tile);
 
 	ModifyStationRatingAround(v->tile, v->owner, -160, 30);
-	if (_settings_client.sound.disaster) SndPlayVehicleFx(SND_13_BIG_CRASH, v);
+	if (_settings_client.sound.disaster) SndPlayVehicleFx(SND_13_TRAIN_COLLISION, v);
 	return true;
 }
 

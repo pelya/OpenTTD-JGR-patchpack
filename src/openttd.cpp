@@ -931,6 +931,7 @@ int openttd_main(int argc, char *argv[])
 
 	/* Initialize the zoom level of the screen to normal */
 	_screen.zoom = ZOOM_LVL_NORMAL;
+	UpdateGUIZoom();
 
 	NetworkStartUp(); // initialize network-core
 
@@ -1011,8 +1012,10 @@ int openttd_main(int argc, char *argv[])
 
 	CrashLog::MainThreadExitCheckPendingCrashlog();
 
+	AbortScanNewGRFFiles();
 	WaitTillSaved();
 	WaitTillGeneratedWorld(); // Make sure any generate world threads have been joined.
+	WaitUntilModalProgressCompleted();
 
 	/* only save config if we have to */
 	if (_save_config) {
@@ -1905,7 +1908,7 @@ static void DoAutosave()
 	}
 
 	DEBUG(sl, 2, "Autosaving to '%s'", buf);
-	if (SaveOrLoad(buf, SLO_SAVE, DFT_GAME_FILE, AUTOSAVE_DIR) != SL_OK) {
+	if (SaveOrLoad(buf, SLO_SAVE, DFT_GAME_FILE, AUTOSAVE_DIR, true, SMF_ZSTD_OK) != SL_OK) {
 		ShowErrorMessage(STR_ERROR_AUTOSAVE_FAILED, INVALID_STRING_ID, WL_ERROR);
 	}
 }
@@ -1937,7 +1940,6 @@ void GameLoop()
 	if (_game_mode == GM_BOOTSTRAP) {
 		/* Check for UDP stuff */
 		if (_network_available) NetworkBackgroundLoop();
-		InputLoop();
 		return;
 	}
 
@@ -1969,8 +1971,6 @@ void GameLoop()
 		/* Singleplayer */
 		StateGameLoop();
 	}
-
-	InputLoop();
 
 	SoundDriver::GetInstance()->MainLoop();
 	MusicLoop();

@@ -213,11 +213,11 @@ void Town::UpdateLabel()
 {
 	if (!(_game_mode == GM_EDITOR) && (_local_company < MAX_COMPANIES)) {
 		int r = this->ratings[_local_company];
-		(this->town_label = 0, r <= RATING_VERYPOOR)  || // Appalling and Very Poor
-		(this->town_label++,   r <= RATING_MEDIOCRE)  || // Poor and Mediocre
-		(this->town_label++,   r <= RATING_GOOD)      || // Good
-		(this->town_label++,   r <= RATING_VERYGOOD)  || // Very Good
-		(this->town_label++,   true);                    // Excellent and Outstanding
+		this->town_label = 0;                         // Appalling and Very Poor
+		if (r > RATING_VERYPOOR)  this->town_label++; // Poor and Mediocre
+		if (r > RATING_MEDIOCRE)  this->town_label++; // Good
+		if (r > RATING_GOOD)      this->town_label++; // Very Good
+		if (r > RATING_VERYGOOD)  this->town_label++; // Excellent and Outstanding
 	}
 }
 
@@ -1272,7 +1272,7 @@ static bool GrowTownWithRoad(const Town *t, TileIndex tile, RoadBits rcmd)
  * @param road_dir The direction of the road
  * @return true if the road can be continued, else false
  */
-static bool CanRoadContinueIntoNextTile(const Town* t, const TileIndex tile, const DiagDirection road_dir)
+static bool CanRoadContinueIntoNextTile(const Town *t, const TileIndex tile, const DiagDirection road_dir)
 {
 	const int delta = TileOffsByDiagDir(road_dir); // +1 tile in the direction of the road
 	TileIndex next_tile = tile + delta; // The tile beyond which must be connectable to the target tile
@@ -1410,7 +1410,7 @@ static bool GrowTownWithBridge(const Town *t, const TileIndex tile, const DiagDi
  * @param tunnel_dir The valid direction in which to grow a tunnel
  * @return true if a tunnel has been built, else false
  */
-static bool GrowTownWithTunnel(const Town* t, const TileIndex tile, const DiagDirection tunnel_dir)
+static bool GrowTownWithTunnel(const Town *t, const TileIndex tile, const DiagDirection tunnel_dir)
 {
 	assert(tunnel_dir < DIAGDIR_END);
 
@@ -2050,15 +2050,10 @@ static void DoCreateTown(Town *t, TileIndex tile, uint32 townnameparts, TownSize
 	t->exclusive_counter = 0;
 	t->statues = 0;
 
-	extern int _nb_orig_names;
-	if (_settings_game.game_creation.town_name < _nb_orig_names) {
-		/* Original town name */
-		t->townnamegrfid = 0;
-		t->townnametype = SPECSTR_TOWNNAME_START + _settings_game.game_creation.town_name;
-	} else {
-		/* Newgrf town name */
-		t->townnamegrfid = GetGRFTownNameId(_settings_game.game_creation.town_name  - _nb_orig_names);
-		t->townnametype  = GetGRFTownNameType(_settings_game.game_creation.town_name - _nb_orig_names);
+	{
+		TownNameParams tnp(_settings_game.game_creation.town_name);
+		t->townnamegrfid = tnp.grfid;
+		t->townnametype = tnp.type;
 	}
 	t->townnameparts = townnameparts;
 

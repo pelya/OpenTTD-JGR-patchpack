@@ -578,8 +578,8 @@ STR_MONTH_DEC                                                   :Desembre
 # Graph window
 STR_GRAPH_KEY_BUTTON                                            :{BLACK}Llegenda
 STR_GRAPH_KEY_TOOLTIP                                           :{BLACK}Mostra la llegenda dels gràfics
-STR_GRAPH_X_LABEL_MONTH                                         :{TINY_FONT}{STRING}{} {STRING}
-STR_GRAPH_X_LABEL_MONTH_YEAR                                    :{TINY_FONT}{STRING}{} {STRING}{}{NUM}
+STR_GRAPH_X_LABEL_MONTH                                         :{TINY_FONT}{STRING}
+STR_GRAPH_X_LABEL_MONTH_YEAR                                    :{TINY_FONT}{STRING}{}{NUM}
 STR_GRAPH_Y_LABEL                                               :{TINY_FONT}{STRING}
 STR_GRAPH_Y_LABEL_NUMBER                                        :{TINY_FONT}{COMMA}
 
@@ -948,10 +948,10 @@ STR_GAME_OPTIONS_CURRENCY_NTD                                   :Nou dòlar taiw
 STR_GAME_OPTIONS_CURRENCY_CNY                                   :Renminbi xinès (CNY)
 STR_GAME_OPTIONS_CURRENCY_HKD                                   :Dòlar de Hong Kong (HKD)
 STR_GAME_OPTIONS_CURRENCY_INR                                   :Rúpia índia (INR)
+STR_GAME_OPTIONS_CURRENCY_IDR                                   :Rupia indonèsia (IDR)
+STR_GAME_OPTIONS_CURRENCY_MYR                                   :Ringgit (MYR)
 ############ end of currency region
 
-STR_GAME_OPTIONS_ROAD_VEHICLES_FRAME                            :{BLACK}Vehicles de carretera
-STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_TOOLTIP                 :{BLACK}Escull el sentit de circulació dels automòbils
 STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_LEFT                    :Conducció per l'esquerra
 STR_GAME_OPTIONS_ROAD_VEHICLES_DROPDOWN_RIGHT                   :Conducció per la dreta
 
@@ -1006,6 +1006,7 @@ STR_GAME_OPTIONS_RESOLUTION_OTHER                               :altres
 STR_GAME_OPTIONS_GUI_ZOOM_FRAME                                 :{BLACK}Mida de la interfície
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_TOOLTIP                      :{BLACK}Escull la mida dels elements de la interfície
 
+STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_AUTO                         :(detecta automàticament)
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_NORMAL                       :Normal
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_2X_ZOOM                      :Doble
 STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_4X_ZOOM                      :Quàdruple
@@ -1013,6 +1014,7 @@ STR_GAME_OPTIONS_GUI_ZOOM_DROPDOWN_4X_ZOOM                      :Quàdruple
 STR_GAME_OPTIONS_FONT_ZOOM                                      :{BLACK}Mida de la lletra
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_TOOLTIP                     :{BLACK}Seleccioneu la mida de les fonts de la interfície.
 
+STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_AUTO                        :(detecta automàticament)
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_NORMAL                      :Normal
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_2X_ZOOM                     :Doble
 STR_GAME_OPTIONS_FONT_ZOOM_DROPDOWN_4X_ZOOM                     :Quàdruple
@@ -1454,6 +1456,10 @@ STR_CONFIG_SETTING_EXPENSES_LAYOUT                              :Agrupa les desp
 STR_CONFIG_SETTING_EXPENSES_LAYOUT_HELPTEXT                     :Defineix la disposició de la companyia a la finestra de despeses
 STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS                          :Treu automàticament els senyals durant la construcció ferroviària: {STRING}
 STR_CONFIG_SETTING_AUTO_REMOVE_SIGNALS_HELPTEXT                 :Treu automàticament els senyals ferroviaris que hi hagi pel mig durant la construcció de rail. Aneu amb compte ja que pot provocar col·lisions de trens.
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT                     :Límit de velocitat de la partida: {STRING}
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT_HELPTEXT            :Estableix el límit de velocitat de la partida quan s'activa l'avanç ràpid del temps. 0 = sense límit (tan ràpid com pugui el vostre ordinador). Els valors per sota de 100{NBSP}% alenteixen la partida. El límit de velocitat depèn de les característiques del vostre ordinador i de la partida que esteu jugant (mida del mapa, nombre de vehicles, longitud de les rutes...).
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT_VAL                 :{NUM}{NBSP}% de la velocitat normal
+STR_CONFIG_SETTING_FAST_FORWARD_SPEED_LIMIT_ZERO                :Sense límit (tan ràpid com pugui el vostre ordinador)
 
 STR_CONFIG_SETTING_SOUND_TICKER                                 :Barra de notícies: {STRING}
 STR_CONFIG_SETTING_SOUND_TICKER_HELPTEXT                        :Reprodueix un so quan apareixen les notícies resumides a la barra inferior
@@ -1821,7 +1827,7 @@ STR_INTRO_TOOLTIP_ONLINE_CONTENT                                :{BLACK}Comprova
 STR_INTRO_TOOLTIP_SCRIPT_SETTINGS                               :{BLACK}Mostra els paràmetres de les IA/Script de la partida
 STR_INTRO_TOOLTIP_QUIT                                          :{BLACK}Surt de l'OpenTTD.
 
-STR_INTRO_BASESET                                               :{WHITE}Al joc de gràfics base seleccionat li falten {NUM} sprite{P "" s}.{}Si us plau, comproveu-ne si hi ha actualitzacions disponibles.
+STR_INTRO_BASESET                                               :{WHITE}Al joc de gràfics base seleccionat li falten {NUM} sprite{P "" s}.{}Si us plau, comproveu si hi ha actualitzacions disponibles.
 STR_INTRO_TRANSLATION                                           :{BLACK}A aquesta traducció li falten {NUM} caden{P a es}. Si us plau, ajudeu a fer millor l'OpenTTD unint-vos com a traductor. Vegeu el fitxer readme.txt per més detalls.
 
 # Quit window
@@ -2607,12 +2613,18 @@ STR_FOUND_TOWN_SELECT_LAYOUT_RANDOM                             :{BLACK}Aleatori
 # Fund new industry window
 STR_FUND_INDUSTRY_CAPTION                                       :{WHITE}Finança una nova indústria
 STR_FUND_INDUSTRY_SELECTION_TOOLTIP                             :{BLACK}Escolleix el tipus d'indústria adequada d'aquesta llista
-STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES                        :Moltes indústries aleatòries
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES                        :{BLACK}Crea indústries aleatòries
 STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_TOOLTIP                :{BLACK}Omple el mapa amb indústries situades aleatòriament
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_CAPTION                :{WHITE}Crea indústries aleatòries
+STR_FUND_INDUSTRY_MANY_RANDOM_INDUSTRIES_QUERY                  :{YELLOW}Esteu segur que voleu crear moltes indústries aleatòries?
 STR_FUND_INDUSTRY_INDUSTRY_BUILD_COST                           :{BLACK}Cost: {YELLOW}{CURRENCY_LONG}
 STR_FUND_INDUSTRY_PROSPECT_NEW_INDUSTRY                         :{BLACK}Prospecciona
 STR_FUND_INDUSTRY_BUILD_NEW_INDUSTRY                            :{BLACK}Construeix
 STR_FUND_INDUSTRY_FUND_NEW_INDUSTRY                             :{BLACK}Finança
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES                         :{BLACK}Treu totes les indústries
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES_TOOLTIP                 :{BLACK}Treu totes les indústries que hi ha actualment al mapa.
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES_CAPTION                 :{WHITE}Treu totes les indústries
+STR_FUND_INDUSTRY_REMOVE_ALL_INDUSTRIES_QUERY                   :{YELLOW}Esteu segur que voleu treure totes les indústries?
 
 # Industry cargoes window
 STR_INDUSTRY_CARGOES_INDUSTRY_CAPTION                           :{WHITE}Cadena industrial per la indústria {STRING}
@@ -2843,6 +2855,8 @@ STR_SAVELOAD_DETAIL_GRFSTATUS                                   :{SILVER}NewGRF:
 STR_SAVELOAD_FILTER_TITLE                                       :{BLACK}Cadena de filtre:
 STR_SAVELOAD_OVERWRITE_TITLE                                    :{WHITE}Sobreescriu fitxer
 STR_SAVELOAD_OVERWRITE_WARNING                                  :{YELLOW}Esteu segur que voleu sobreescriure el fitxer?
+STR_SAVELOAD_DIRECTORY                                          :{STRING} (carpeta)
+STR_SAVELOAD_PARENT_DIRECTORY                                   :{STRING} (carpeta superior)
 
 STR_SAVELOAD_OSKTITLE                                           :{BLACK}Posa el nom amb què desar la partida actual
 
@@ -2861,7 +2875,6 @@ STR_MAPGEN_SNOW_LINE_HEIGHT                                     :{BLACK}Alçada 
 STR_MAPGEN_SNOW_LINE_UP                                         :{BLACK}Mou els estatges amb neu un pas amunt
 STR_MAPGEN_SNOW_LINE_DOWN                                       :{BLACK}Mou els estatges amb neu un pas avall
 STR_MAPGEN_LAND_GENERATOR                                       :{BLACK}Generació de terrenys:
-STR_MAPGEN_TREE_PLACER                                          :{BLACK}Algoritme d'arbres:
 STR_MAPGEN_TERRAIN_TYPE                                         :{BLACK}Tipus de terreny:
 STR_MAPGEN_QUANTITY_OF_SEA_LAKES                                :{BLACK}Nivell de mar:
 STR_MAPGEN_QUANTITY_OF_RIVERS                                   :{BLACK}Quantitat de rius:
@@ -3823,8 +3836,8 @@ STR_VEHICLE_STATUS_HEADING_FOR_DEPOT_SERVICE_VEL                :{LTBLUE}Revisi�
 # Vehicle stopped/started animations
 STR_VEHICLE_COMMAND_STOPPED_SMALL                               :{TINY_FONT}{RED}Parat
 STR_VEHICLE_COMMAND_STOPPED                                     :{RED}Parat
-STR_VEHICLE_COMMAND_STARTED_SMALL                               :{TINY_FONT}{GREEN}Començat
-STR_VEHICLE_COMMAND_STARTED                                     :{GREEN}Començat
+STR_VEHICLE_COMMAND_STARTED_SMALL                               :{TINY_FONT}{GREEN}Engegat
+STR_VEHICLE_COMMAND_STARTED                                     :{GREEN}Engegat
 
 # Vehicle details
 STR_VEHICLE_DETAILS_CAPTION                                     :{WHITE}{VEHICLE} (Detalls)

@@ -2539,6 +2539,13 @@ CommandCost CmdBuildAirport(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 	if (flags & DC_EXEC) {
 		if (action == AIRPORT_UPGRADE) {
 			/* delete old airport if upgrading */
+
+			for (uint i = 0; i < st->airport.GetNumHangars(); ++i) {
+				DeleteWindowById(
+					WC_VEHICLE_DEPOT, st->airport.GetHangarTile(i)
+				);
+			}
+
 			const AirportSpec *old_as = st->airport.GetSpec();
 			AirportTileTableIterator old_iter(old_as->table[st->airport.layout], st->airport.tile);
 			uint old_dist;
@@ -2556,12 +2563,6 @@ CommandCost CmdBuildAirport(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 				DeleteAnimatedTile(tile_cur);
 				DoClearSquare(tile_cur);
 				DeleteNewGRFInspectWindow(GSF_AIRPORTTILES, tile_cur);
-			}
-
-			for (uint i = 0; i < st->airport.GetNumHangars(); ++i) {
-				DeleteWindowById(
-					WC_VEHICLE_DEPOT, st->airport.GetHangarTile(i)
-				);
 			}
 
 			st->rect.AfterRemoveRect(st, st->airport);
@@ -2631,6 +2632,12 @@ static CommandCost RemoveAirport(TileIndex tile, DoCommandFlag flags)
 	if (cost.Failed()) return cost;
 
 	if (flags & DC_EXEC) {
+		for (uint i = 0; i < st->airport.GetNumHangars(); ++i) {
+			DeleteWindowById(
+				WC_VEHICLE_DEPOT, st->airport.GetHangarTile(i)
+			);
+		}
+
 		ZoningMarkDirtyStationCoverageArea(st);
 		const AirportSpec *as = st->airport.GetSpec();
 		/* The noise level is the noise from the airport and reduce it to account for the distance to the town center.
@@ -2650,12 +2657,6 @@ static CommandCost RemoveAirport(TileIndex tile, DoCommandFlag flags)
 
 		/* Clear the persistent storage. */
 		delete st->airport.psa;
-
-		for (uint i = 0; i < st->airport.GetNumHangars(); ++i) {
-			DeleteWindowById(
-				WC_VEHICLE_DEPOT, st->airport.GetHangarTile(i)
-			);
-		}
 
 		st->rect.AfterRemoveRect(st, st->airport);
 
@@ -4379,7 +4380,7 @@ uint MoveGoodsToStation(CargoID type, uint amount, SourceType source_type, Sourc
 			first_station = st;
 			continue;
 		}
-		if  (used_stations.empty()) {
+		if (used_stations.empty()) {
 			used_stations.reserve(2);
 			used_stations.emplace_back(std::make_pair(first_station, 0));
 		}
@@ -4424,9 +4425,9 @@ uint MoveGoodsToStation(CargoID type, uint amount, SourceType source_type, Sourc
 		moving += p.second;
 	}
 
-	/* If there is some cargo left due to rounding issues distribute it among the best rated stations.  */
+	/* If there is some cargo left due to rounding issues distribute it among the best rated stations. */
 	if (amount > moving) {
-		std::sort(used_stations.begin(), used_stations.end(), [type] (const StationInfo &a, const StationInfo &b) {
+		std::sort(used_stations.begin(), used_stations.end(), [type](const StationInfo &a, const StationInfo &b) {
 			return b.first->goods[type].rating < a.first->goods[type].rating;
 		});
 

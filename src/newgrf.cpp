@@ -4135,6 +4135,7 @@ static ChangeInfoResult ObjectChangeInfo(uint id, int numinfo, int prop, const G
 				if (*ospec == nullptr) {
 					*ospec = CallocT<ObjectSpec>(1);
 					(*ospec)->views = 1; // Default for NewGRFs that don't set it.
+					(*ospec)->size = 0x11; // Default for NewGRFs that manage to not set it (1x1)
 				}
 
 				/* Swap classid because we read it in BE. */
@@ -4160,6 +4161,10 @@ static ChangeInfoResult ObjectChangeInfo(uint id, int numinfo, int prop, const G
 
 			case 0x0C: // Size
 				spec->size = buf->ReadByte();
+				if ((spec->size & 0xF0) == 0 || (spec->size & 0x0F) == 0) {
+					grfmsg(1, "ObjectChangeInfo: Invalid object size requested (%u) for object id %u. Ignoring.", spec->size, id + i);
+					spec->size = 0x11; // 1x1
+				}
 				break;
 
 			case 0x0D: // Build cost multipler
@@ -10382,6 +10387,7 @@ void LoadNewGRF(uint load_index, uint file_index, uint num_baseset)
 		_tick_counter = 0;
 		_tick_skip_counter = 0;
 		_display_opt  = 0;
+		UpdateCachedSnowLine();
 		SetScaledTickVariables();
 	}
 
@@ -10478,6 +10484,7 @@ void LoadNewGRF(uint load_index, uint file_index, uint num_baseset)
 	_tick_counter = tick_counter;
 	_tick_skip_counter = tick_skip_counter;
 	_display_opt  = display_opt;
+	UpdateCachedSnowLine();
 	SetScaledTickVariables();
 }
 

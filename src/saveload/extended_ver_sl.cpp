@@ -103,7 +103,7 @@ const SlxiSubChunkInfo _sl_xv_sub_chunk_infos[] = {
 	{ XSLFI_CARGO_TYPE_ORDERS,      XSCF_NULL,                3,   3, "cargo_type_orders",         nullptr, nullptr, "ORDX,VEOX" },
 	{ XSLFI_EXTENDED_GAMELOG,       XSCF_NULL,                1,   1, "extended_gamelog",          nullptr, nullptr, nullptr        },
 	{ XSLFI_STATION_CATCHMENT_INC,  XSCF_NULL,                1,   1, "station_catchment_inc",     nullptr, nullptr, nullptr        },
-	{ XSLFI_CUSTOM_BRIDGE_HEADS,    XSCF_NULL,                3,   3, "custom_bridge_heads",       nullptr, nullptr, nullptr        },
+	{ XSLFI_CUSTOM_BRIDGE_HEADS,    XSCF_NULL,                4,   4, "custom_bridge_heads",       nullptr, nullptr, nullptr        },
 	{ XSLFI_CHUNNEL,                XSCF_NULL,                2,   2, "chunnel",                   nullptr, nullptr, "TUNN"      },
 	{ XSLFI_SCHEDULED_DISPATCH,     XSCF_NULL,                2,   2, "scheduled_dispatch",        nullptr, nullptr, nullptr        },
 	{ XSLFI_MORE_TOWN_GROWTH_RATES, XSCF_NULL,                1,   1, "more_town_growth_rates",    nullptr, nullptr, nullptr        },
@@ -146,6 +146,7 @@ const SlxiSubChunkInfo _sl_xv_sub_chunk_infos[] = {
 	{ XSLFI_INDUSTRY_CARGO_ADJ,     XSCF_IGNORABLE_UNKNOWN,   1,   1, "industry_cargo_adj",        nullptr, nullptr, nullptr        },
 	{ XSLFI_REALISTIC_TRAIN_BRAKING,XSCF_NULL,                1,   1, "realistic_train_braking",   nullptr, nullptr, "VLKA"         },
 	{ XSLFI_INFLATION_FIXED_DATES,  XSCF_IGNORABLE_ALL,       1,   1, "inflation_fixed_dates",     nullptr, nullptr, nullptr        },
+	{ XSLFI_WATER_FLOODING,         XSCF_NULL,                1,   1, "water_flooding",            nullptr, nullptr, nullptr        },
 	{ XSLFI_NULL, XSCF_NULL, 0, 0, nullptr, nullptr, nullptr, nullptr },// This is the end marker
 };
 

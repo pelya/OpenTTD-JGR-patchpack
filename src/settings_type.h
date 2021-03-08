@@ -21,6 +21,15 @@
 #include "zoom_type.h"
 #include "openttd.h"
 
+/* Used to validate sizes of "max" value in settings. */
+const size_t MAX_SLE_UINT8 = UINT8_MAX;
+const size_t MAX_SLE_UINT16 = UINT16_MAX;
+const size_t MAX_SLE_UINT32 = UINT32_MAX;
+const size_t MAX_SLE_UINT = UINT_MAX;
+const size_t MAX_SLE_INT8 = INT8_MAX;
+const size_t MAX_SLE_INT16 = INT16_MAX;
+const size_t MAX_SLE_INT32 = INT32_MAX;
+const size_t MAX_SLE_INT = INT_MAX;
 
 /** Settings profiles and highscore tables. */
 enum SettingsProfile {
@@ -196,6 +205,8 @@ struct GUISettings : public TimeSettings {
 	byte   starting_colour;                  ///< default color scheme for the company to start a new game with
 	bool   show_newgrf_name;                 ///< Show the name of the NewGRF in the build vehicle window
 	bool   auto_remove_signals;              ///< automatically remove signals when in the way during rail construction
+	uint16 refresh_rate;                     ///< How often we refresh the screen (time between draw-ticks).
+	uint16 fast_forward_speed_limit;         ///< Game speed to use when fast-forward is enabled.
 	bool   show_vehicle_route_steps;         ///< when a window related to a specific vehicle is focused, show route steps
 	bool   show_vehicle_list_company_colour; ///< show the company colour of vehicles which have an owner different to the owner of the vehicle list
 	bool   enable_single_veh_shared_order_gui;    ///< enable showing a single vehicle in the shared order GUI window
@@ -207,6 +218,7 @@ struct GUISettings : public TimeSettings {
 	uint8  linkgraph_colours;                ///< linkgraph overlay colours
 	bool   disable_vehicle_image_update;     ///< Disable NewGRFs from continuously updating vehicle images
 	uint8  vehicle_names;                    ///< Vehicle naming scheme
+	bool   shade_trees_on_slopes;            ///< Shade trees on slopes
 
 	uint16 console_backlog_timeout;          ///< the minimum amount of time items should be in the console backlog before they will be removed in ~3 seconds granularity.
 	uint16 console_backlog_length;           ///< the minimum amount of items in the console backlog before items will be removed.
